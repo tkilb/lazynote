@@ -27,7 +27,7 @@ func (m Model) askRename() (Model, Effect) {
 	if !e.IsDir {
 		name = strings.TrimSuffix(strings.TrimSuffix(name, ".md"), ".MD")
 	}
-	return m, Effect{Prompt: &Prompt{Title: "Rename", Label: "New name:", Initial: name, Op: OpRename}}
+	return m, Effect{Prompt: &Prompt{Title: "Rename", Initial: name, Op: OpRename}}
 }
 
 // rename validates the typed name and hands the rename to the root model. A

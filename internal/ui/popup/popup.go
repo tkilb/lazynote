@@ -122,8 +122,13 @@ func DangerConfirmBox(text string, screenWidth int) string {
 }
 
 // InputBox draws a box holding a label and an already rendered input field.
+// An empty label leaves the field alone on one line.
 func InputBox(title, label, field string, screenWidth int) string {
-	return renderBox(title, inputColor, inputHint, label+"\n"+field, screenWidth)
+	body := field
+	if label != "" {
+		body = label + "\n" + field
+	}
+	return renderBox(title, inputColor, inputHint, body, screenWidth)
 }
 
 // FieldWidth is the width to give a text field shown in an InputBox on a
