@@ -64,16 +64,16 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 
 | Key         | Action             |
 | ----------- | ------------------ |
-| `↑/k` `↓/j` | Select notebook    |
+| `↑` `↓` | Select notebook    |
 | `enter`     | Switch to notebook |
 
 **PARA (2)** (Yazi parity; see "Yazi parity" below for markers and rules)
 
 | Key                 | Action                                                                                    |
 | ------------------- | ----------------------------------------------------------------------------------------- |
-| `↑/k` `↓/j`         | Move selection; Related, Info and Body follow                                             |
-| `←/h`               | Go to the parent directory (no-op at the tab root)                                        |
-| `→/l`               | Enter the selected directory, or open a note (focus Body, 0)                              |
+| `↑` `↓`         | Move selection; Related, Info and Body follow                                             |
+| `←`                 | Go to the parent directory (no-op at the tab root)                                        |
+| `→`                 | Enter the selected directory, or open a note (focus Body, 0)                              |
 | `enter`             | Enter the selected directory, or open a note (focus Body, 0)                              |
 | `gg` / `G`          | Jump to first / last entry                                                                |
 | `ctrl+u` / `ctrl+d` | Half page up / down                                                                       |
@@ -103,19 +103,19 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 
 | Key             | Action                                           |
 | --------------- | ------------------------------------------------ |
-| `↑/k` `↓/j`     | Move selection                                   |
+| `↑` `↓`     | Move selection                                   |
 | `enter`         | Jump PARA to the related note                    |
 | `*` (undecided) | Add relation (fuzzy picker); key to be chosen    |
 | `d`             | Remove relation (confirm; References entries only)|
 
-**Info (4)**: `↑/k` `↓/j` scroll.
+**Info (4)**: `↑` `↓` scroll.
 
 **Body (0)**
 
 | Key         | Action                                                                                       |
 | ----------- | -------------------------------------------------------------------------------------------- |
-| `↑/k` `↓/j` | Scroll                                                                                       |
-| `←/h` / `esc` | Return focus to PARA (2)                                                                   |
+| `↑` `↓` | Scroll                                                                                       |
+| `←` / `esc`   | Return focus to PARA (2)                                                                   |
 | `ctrl+d/u`  | Half-page down / up                                                                          |
 | `*v`        | Start line selection; `enter` extracts the lines into a new note (kind chosen in the picker) |
 
@@ -208,8 +208,8 @@ so the retention purge applies to it.
 sections as in lazygit: **Local** (every key of the focused panel, a fuller
 list than the status bar hints), **Global** (keys that work in any panel:
 undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`-`4`, `Tab`,
-`Shift+Tab`). A panel with no keys of its own has no Local section. `j`/`k`
-or the arrows scroll, `esc` or `?` closes, other keys are ignored. It lists
+`Shift+Tab`). A panel with no keys of its own has no Local section. The up and down arrows
+scroll, `esc` or `?` closes, other keys are ignored. It lists
 only keys that are implemented, so each chunk that adds a key adds it to the
 lists in `cmd/lazynote/help.go` (and the status bar hints in `model.go`).
 
@@ -219,7 +219,10 @@ Conflict notes:
   global key. The key for adding a relation in Related is
   undecided (open decision 2); `space` is not used for it, and `+` is
   reserved for panel zoom.
-- `h`/`l` navigate directories in PARA only; other panels use `j`/`k`.
+- `←`/`→` navigate directories in PARA only; other panels use `↑`/`↓`.
+- Movement uses the arrow keys only. `h`, `j`, `k` and `l` are not bound (the
+  project owner uses arrows on a split keyboard), so they are free to be
+  assigned to actions.
 - Related uses `d` for removing a relation (confirm) to stay consistent with
   PARA's delete.
 - Inside the move popup `p` means project; in PARA outside the popup `p` is
@@ -233,8 +236,8 @@ Conflict notes:
   step through its matches.
 - Yazi's `D` is permanent delete in PARA, which does not clash since daily
   append moved to `t` and `T`.
-- In PARA, `enter` and `→`/`l` drill a directory or open a note (focus
-  Body); `←`/`h` goes to the parent directory, and in Body `←`/`h` or `esc`
+- In PARA, `enter` and `→` drill a directory or open a note (focus
+  Body); `←` goes to the parent directory, and in Body `←` or `esc`
   returns focus to PARA. In Related, `enter` jumps to the note.
 - `i` (quick idea) and `I` (import) differ only by case, like `a`/`A` in the
   move popup.
@@ -434,8 +437,8 @@ Conflict notes:
   stays visible as a property). Invalid frontmatter shows a red `Properties`
   row after the standard rows. For a folder, Info shows its name and the
   number of entries it lists; a note that cannot be read shows the error.
-  `↑/k` `↓/j` scroll, with a position footer when it overflows, and `esc` or
-  `h` returns to PARA. The right column, top to bottom, is the Title panel
+  `↑` `↓` scroll, with a position footer when it overflows, and `esc` or
+  `←` returns to PARA. The right column, top to bottom, is the Title panel
   (3 rows), Body, and Info, which is fixed at 3 content rows (5 with the
   border) and scrolls by line; Body gets the rest.
 - Body shows the note under the PARA cursor as plain text and follows it as
@@ -444,7 +447,7 @@ Conflict notes:
   frontmatter is hidden, blank lines around the text are dropped, lines wrap
   at word boundaries (a word longer than the panel is split), tabs become
   four spaces, and a position footer (`first line/total`) shows once the
-  note is longer than the panel. Scrolling is `↑/k` `↓/j` and `ctrl+d`/`ctrl+u`,
+  note is longer than the panel. Scrolling is `↑` `↓` and `ctrl+d`/`ctrl+u`,
   never past the ends. A note is read again only when the selection or its
   modification time changes; the scroll resets for a different note and
   survives a refresh of the same one. Note text is untrusted: every control
@@ -606,7 +609,7 @@ Numbers are kept stable; resolved items were removed.
    unit tests.
 3. PARA panel: five tabs (Inbox, Projects, Areas, Resources, Archives), `[`/`]` switching, note list with selection,
    `enter` to focus Body, kind badge per row.
-   3c. Directory browsing in PARA: Yazi-style navigation (`h`/`l`/arrows,
+   3c. Directory browsing in PARA: Yazi-style navigation (arrows,
    `enter`, `gg`/`G`, half and full page), breadcrumb in the panel title,
    hidden-file toggle (`.`).
    3d. Selection: `space`, `v`/`V`, `ctrl+a`, `esc`, with the yellow marker.
@@ -673,9 +676,9 @@ Numbers are kept stable; resolved items were removed.
 8. Related panel, read-only (UI part, after 8a). Built: two groups (References,
    Referenced by; an empty group is omitted, `(none)` when both are), each entry
    with its PARA folder at the right, unresolved entries dimmed with
-   `unresolved`; `j`/`k` move over entries only; `enter` jumps
+   `unresolved`; `↑`/`↓` move over entries only; `enter` jumps
    PARA to the note (tab, directory and cursor) and moves focus to PARA, and
-   on an unresolved entry shows an info popup instead; `esc`/`h` returns to
+   on an unresolved entry shows an info popup instead; `esc`/`←` returns to
    PARA. The index is built at startup and refreshed with `ctrl+l`, terminal
    focus, the editor returning, and every undoable change or undo/redo.
    Original description: `related` parsing, wikilink resolution,

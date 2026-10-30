@@ -144,9 +144,9 @@ func (m Model) clamp(offset int) int {
 // Update handles a key press while the panel has focus.
 func (m Model) Update(msg tea.KeyMsg) Model {
 	switch msg.String() {
-	case "up", "k":
+	case "up":
 		m.offset = m.clamp(m.offset - 1)
-	case "down", "j":
+	case "down":
 		m.offset = m.clamp(m.offset + 1)
 	}
 	return m

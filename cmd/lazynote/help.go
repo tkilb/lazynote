@@ -25,9 +25,9 @@ var helpNavigationBindings = []statusbar.Binding{
 
 // helpParaBindings is the full PARA list; the status bar shows a trimmed one.
 var helpParaBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "move"},
-	{Key: "h", Label: "go to the parent directory"},
-	{Key: "l/enter", Label: "open a directory or note"},
+	{Key: "↑/↓", Label: "move"},
+	{Key: "←", Label: "go to the parent directory"},
+	{Key: "→/enter", Label: "open a directory or note"},
 	{Key: "gg/G", Label: "first/last entry"},
 	{Key: "ctrl+u/d", Label: "half page up/down"},
 	{Key: "ctrl+b/f", Label: "page up/down"},
@@ -48,20 +48,20 @@ var helpParaBindings = []statusbar.Binding{
 }
 
 var helpRelatedBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "move"},
+	{Key: "↑/↓", Label: "move"},
 	{Key: "enter", Label: "jump to the note"},
-	{Key: "esc/h", Label: "back to PARA"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 var helpBodyBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "scroll"},
+	{Key: "↑/↓", Label: "scroll"},
 	{Key: "ctrl+d/u", Label: "half page down/up"},
-	{Key: "esc/h", Label: "back to PARA"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 var helpInfoBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "scroll"},
-	{Key: "esc/h", Label: "back to PARA"},
+	{Key: "↑/↓", Label: "scroll"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 // helpSections returns the help popup's content for the focused panel: its
@@ -93,13 +93,13 @@ func (m model) helpLocalBindings() []statusbar.Binding {
 	return nil
 }
 
-// updateHelp handles a key while the help popup is open: j/k and the arrows
+// updateHelp handles a key while the help popup is open: the up and down arrows
 // scroll it, esc and ? close it, and other keys are ignored.
 func (m model) updateHelp(msg tea.KeyMsg) model {
 	switch msg.String() {
-	case "up", "k":
+	case "up":
 		m.helpScroll = max(m.helpScroll-1, 0)
-	case "down", "j":
+	case "down":
 		m.helpScroll = min(m.helpScroll+1, helppopup.MaxScroll(m.helpSections(), m.height))
 	case "esc", "?":
 		m.showingHelp, m.helpScroll = false, 0

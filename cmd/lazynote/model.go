@@ -72,8 +72,8 @@ var globalBindings = []statusbar.Binding{
 }
 
 var paraBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "move"},
-	{Key: "h/l", Label: "up/open"},
+	{Key: "↑/↓", Label: "move"},
+	{Key: "←/→", Label: "up/open"},
 	{Key: "[ ]", Label: "tab"},
 	{Key: "space", Label: "select"},
 	{Key: "y/x/p", Label: "yank/cut/paste"},
@@ -88,20 +88,20 @@ var paraBindings = []statusbar.Binding{
 }
 
 var relatedBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "move"},
+	{Key: "↑/↓", Label: "move"},
 	{Key: "enter", Label: "jump to note"},
-	{Key: "esc/h", Label: "back to PARA"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 var infoBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "scroll"},
-	{Key: "esc/h", Label: "back to PARA"},
+	{Key: "↑/↓", Label: "scroll"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 var bodyBindings = []statusbar.Binding{
-	{Key: "j/k", Label: "scroll"},
+	{Key: "↑/↓", Label: "scroll"},
 	{Key: "ctrl+d/u", Label: "half page"},
-	{Key: "esc/h", Label: "back to PARA"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 type model struct {
@@ -271,14 +271,14 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = m.focus.prev()
 	case "0", "1", "2", "3", "4":
 		m.focus = panelID(key[0] - '0')
-	case "esc", "left", "h":
+	case "esc", "left":
 		switch m.focus {
 		case panelBody, panelInfo, panelRelated:
 			m.focus = panelPARA
 		case panelPARA:
 			m, cmd = m.paraKey(msg)
 		}
-	case "enter", "right", "l":
+	case "enter", "right":
 		if m.focus == panelRelated {
 			m, cmd = m.relatedKey(msg)
 			break

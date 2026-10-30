@@ -219,9 +219,9 @@ func (m Model) navigate(msg tea.KeyMsg) Model {
 	m.pendingG = false
 
 	switch msg.String() {
-	case "up", "k":
+	case "up":
 		m.move(-1)
-	case "down", "j":
+	case "down":
 		m.move(1)
 	case " ":
 		m.toggleHovered()
@@ -233,9 +233,9 @@ func (m Model) navigate(msg tea.KeyMsg) Model {
 		m.selectAll()
 	case "esc":
 		m = m.escape()
-	case "left", "h":
+	case "left":
 		m = m.goUp()
-	case "right", "l", "enter":
+	case "right", "enter":
 		m = m.enterDir()
 	case "n":
 		m.jumpToMatch(1, false)

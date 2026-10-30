@@ -135,9 +135,9 @@ func (m Model) move(dir int) Model {
 // Update handles a key press while the panel has focus.
 func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 	switch msg.String() {
-	case "up", "k":
+	case "up":
 		return m.move(-1), Effect{}
-	case "down", "j":
+	case "down":
 		return m.move(1), Effect{}
 	case "enter":
 		if len(m.lines) == 0 || m.lines[m.cursor].header {
