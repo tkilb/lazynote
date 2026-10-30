@@ -16,7 +16,7 @@ type Kind string
 const (
 	// KindUnset means the note has no valid kind property.
 	KindUnset Kind = "unset"
-	// KindFact is confirmed information.
+	// KindFact is accurate information.
 	KindFact Kind = "fact"
 	// KindRumor is unconfirmed information.
 	KindRumor Kind = "rumor"
@@ -71,7 +71,7 @@ func KindOf(fm *Frontmatter) Kind {
 func (k Kind) Meaning() string {
 	switch k {
 	case KindFact:
-		return "Confirmed"
+		return "Accurate information"
 	case KindRumor:
 		return "Unconfirmed"
 	case KindProposal:

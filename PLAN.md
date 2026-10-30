@@ -465,7 +465,7 @@ Conflict notes:
 
   | Value      | Meaning                                                    |
   | ---------- | ---------------------------------------------------------- |
-  | `fact`     | Confirmed information.                                     |
+  | `fact`     | Accurate information.                                      |
   | `rumor`    | Unconfirmed information.                                   |
   | `proposal` | Documented desired outcomes; may not reflect reality.      |
   | `fossil`   | Is or was true, but may have drifted due to time.          |
