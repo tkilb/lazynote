@@ -210,7 +210,7 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		}
 		return m, Effect{}
 	case "a":
-		return m, Effect{Prompt: &Prompt{Title: "New (end with / for a folder)", Op: OpCreate}}
+		return m, Effect{Prompt: &Prompt{Title: "New (end with / for folder)", Op: OpCreate}}
 	}
 	return m.navigate(msg), Effect{}
 }
