@@ -49,6 +49,8 @@ func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	switch {
+	case eff.Edit != "":
+		cmd = m.edit(eff.Edit)
 	case eff.Prompt != nil:
 		m.input, cmd = m.openInput(eff.Prompt)
 	case eff.Confirm != nil:

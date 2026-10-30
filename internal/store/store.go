@@ -54,6 +54,9 @@ type Store interface {
 	Inspect(rel string) (DirInfo, error)
 	// Delete permanently removes a file or directory tree. Not undoable.
 	Delete(rel string) error
+	// Path returns the absolute path of rel (relative to the root), after the
+	// same path-safety checks as every other operation.
+	Path(rel string) (string, error)
 	// Exists reports whether anything is at rel (relative to the root).
 	Exists(rel string) (bool, error)
 

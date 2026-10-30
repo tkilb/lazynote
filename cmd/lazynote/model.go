@@ -76,6 +76,7 @@ var paraBindings = []statusbar.Binding{
 	{Key: "y/x/p", Label: "yank/cut/paste"},
 	{Key: "d/D", Label: "trash/delete"},
 	{Key: "a", Label: "new"},
+	{Key: "e", Label: "edit"},
 	{Key: "/", Label: "search"},
 	{Key: "n/N", Label: "next/prev match"},
 	{Key: "v", Label: "visual"},
@@ -191,6 +192,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.para = m.para.Reload()
 		}
 		return m, nil
+	case editDoneMsg:
+		return m.finishEdit(msg), tea.ClearScreen
 	case tea.ResumeMsg:
 		// Returning from ctrl+z: repaint everything on the alternate screen.
 		return m, tea.ClearScreen

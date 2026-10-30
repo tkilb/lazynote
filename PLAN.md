@@ -635,6 +635,12 @@ Numbers are kept stable; resolved items were removed.
    and only Info's display order is standardized. The field set and order
    must be confirmed before the chunk starts (open decision 13). Engine
    tests for the ordering; manual QA note for Info.
+   5d. Edit in `$EDITOR` (`e` in PARA), moved up from chunk 9 so notes can be
+   opened for testing. `e` on a note hands the terminal to `$EDITOR` (falling
+   back to `vi`; the value may carry arguments) with the note's real path,
+   and PARA reloads when it exits; the editor not starting shows an error
+   popup. A folder under the cursor ignores `e`. Editor changes are not
+   undoable. Engine tests for the command; manual QA note for the key.
 6. `internal/state`: SQLite persistence and restore on launch, including
    the current directory for each PARA tab.
 7. Notebook panel: list the configured notebooks, switch with `enter`, mark
@@ -646,8 +652,7 @@ Numbers are kept stable; resolved items were removed.
    8c. Rename (`r`): rename the hovered item and rewrite matching `related`
    entries in other notes (open decision 8), undoable as one operation.
    It follows the link index, so it cannot come earlier.
-9. Remaining actions: set kind (`K` picker), edit in `$EDITOR` (`e`),
-   and the `m` move popup. Cut/paste, delete, create and undo are already
+9. Remaining actions: set kind (`K` picker) and the `m` move popup. Cut/paste, delete, create and undo are already
    in chunks 3e to 3g.
    9b. Intake core: quick fact (`F`), quick rumor (`R`), quick idea
    (`i`), transcript and note import (`I` and `lazynote import`). The Inbox

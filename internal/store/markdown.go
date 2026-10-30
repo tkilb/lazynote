@@ -25,6 +25,11 @@ func NewMarkdown(root string) *Markdown {
 	return &Markdown{root: root}
 }
 
+// Path implements Store.
+func (m *Markdown) Path(rel string) (string, error) {
+	return ResolveInRoot(m.root, rel)
+}
+
 // List implements Store.
 func (m *Markdown) List(dir string, opts ListOptions) ([]Entry, error) {
 	return m.list(dir, opts, true)

@@ -202,6 +202,11 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m, Effect{Prompt: &Prompt{
 			Op: OpSearch, Placeholder: "search names...", Inline: true, CancelOp: OpClearSearch,
 		}}
+	case "e":
+		if e, ok := m.SelectedNote(); ok {
+			return m, Effect{Edit: e.Rel}
+		}
+		return m, Effect{}
 	case "a":
 		return m, Effect{Prompt: &Prompt{Title: "New", Label: "Name (end with / for a folder):", Op: OpCreate}}
 	}

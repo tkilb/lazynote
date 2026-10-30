@@ -12,6 +12,9 @@ type Effect struct {
 	Info string
 	Warn string
 	Err  error
+	// Edit, when set, is the root-relative path of the note to open in the
+	// editor.
+	Edit string
 	// Confirm, when set, asks the user before anything changes.
 	Confirm *Confirm
 	// Prompt, when set, asks the user to type a line of text.
