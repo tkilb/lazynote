@@ -159,6 +159,18 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   overwrites after a confirm: each replaced file or directory goes to
   `.lazynote/trash/` first, so `u` restores it, and the overwrite and the
   paste undo together as one operation.
+- `a` opens a one-line prompt in the status bar. A note name gets `.md`
+  appended unless it already ends with it; a name ending in `/` makes a
+  folder; any other `/`, empty names, `.` and `..` are rejected. A new note
+  holds frontmatter with only a fresh `uid` (kind stays unset). The cursor
+  moves to the new item, and `u` removes it again (to the trash).
+- `d` and `D` ask first with a status-line question (`y`/`enter` confirms,
+  `n`/`esc` cancels; `D` is shown in red and says it cannot be undone). For a
+  folder the question gives the item count and how many items are not shown,
+  counted from disk, so attachments and hidden files are included. A
+  multi-item `d` is one undo entry and undoes the earlier items if a later
+  one fails. `D` stops at the first failure and reports how many were
+  removed.
 - `d` moves items to `.lazynote/trash/` in the notebook root (hidden), so `u`
   can undo it. `D` removes permanently and is not undoable. Both confirm.
 - Hidden files (names starting with `.`, including `.lazynote/`) are hidden

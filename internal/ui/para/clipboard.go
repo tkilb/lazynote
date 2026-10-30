@@ -213,8 +213,13 @@ func pasteResult(plan pastePlan, actions []undo.Action) Effect {
 
 // ApplyConfirm carries out an accepted Confirm.
 func (m Model) ApplyConfirm(op ConfirmOp) (Model, Effect) {
-	if op == OpOverwritePaste {
+	switch op {
+	case OpOverwritePaste:
 		return m.paste(true, true)
+	case OpTrash:
+		return m.trash()
+	case OpDelete:
+		return m.deletePermanently()
 	}
 	return m, Effect{}
 }

@@ -4,8 +4,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/panel"
@@ -69,6 +71,8 @@ var paraBindings = []statusbar.Binding{
 	{Key: "[ ]", Label: "tab"},
 	{Key: "space", Label: "select"},
 	{Key: "y/x/p", Label: "yank/cut/paste"},
+	{Key: "d/D", Label: "trash/delete"},
+	{Key: "a", Label: "new"},
 	{Key: "v", Label: "visual"},
 	{Key: ".", Label: "hidden"},
 	{Key: "enter", Label: "open"},
@@ -89,7 +93,19 @@ type model struct {
 	message message
 	// pending is a question waiting for y or n; while set, it takes every key.
 	pending *para.Confirm
+	// input is a one-line text prompt; while set, it takes every key.
+	input *input
 }
+
+// input is an open text prompt.
+type input struct {
+	label string
+	op    para.InputOp
+	field textinput.Model
+}
+
+// inputCharLimit bounds what the prompt accepts.
+const inputCharLimit = 255
 
 // message is a transient status line.
 type message struct {
@@ -101,6 +117,7 @@ var (
 	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	confirmStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
+	dangerStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("1"))
 )
 
 func initialModel(s store.Store) model {
@@ -121,6 +138,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.ClearScreen
 	case tea.KeyMsg:
 		return m.updateKey(msg)
+	default:
+		// Cursor blink and similar messages belong to the open prompt.
+		if m.input != nil {
+			var cmd tea.Cmd
+			m.input.field, cmd = m.input.field.Update(msg)
+			return m, cmd
+		}
 	}
 	return m, nil
 }
@@ -128,9 +152,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	m.message = message{}
-	if m.pending != nil && key != "ctrl+c" {
-		return m.answer(key), nil
+	if key != "ctrl+c" {
+		if m.pending != nil {
+			return m.answer(key)
+		}
+		if m.input != nil {
+			return m.typeKey(msg)
+		}
 	}
+	var cmd tea.Cmd
 	switch key {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -151,7 +181,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case panelBody:
 			m.focus = panelPARA
 		case panelPARA:
-			m = m.paraKey(msg)
+			m, cmd = m.paraKey(msg)
 		}
 	case "enter", "right", "l":
 		if m.focus != panelPARA {
@@ -160,18 +190,18 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if _, ok := m.para.SelectedNote(); ok {
 			m.focus = panelBody
 		} else {
-			m = m.paraKey(msg)
+			m, cmd = m.paraKey(msg)
 		}
 	default:
 		if m.focus == panelPARA {
-			m = m.paraKey(msg)
+			m, cmd = m.paraKey(msg)
 		}
 	}
-	return m, nil
+	return m, cmd
 }
 
 // paraKey sends a key to the PARA panel and applies what it asks for.
-func (m model) paraKey(msg tea.KeyMsg) model {
+func (m model) paraKey(msg tea.KeyMsg) (model, tea.Cmd) {
 	var eff para.Effect
 	m.para, eff = m.para.Update(msg)
 	return m.apply(eff)
@@ -179,11 +209,14 @@ func (m model) paraKey(msg tea.KeyMsg) model {
 
 // apply records an Effect from a panel: the undo action, the message, or
 // the question to ask.
-func (m model) apply(eff para.Effect) model {
+func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 	if eff.Action != nil {
 		m.history.Push(*eff.Action)
 	}
+	var cmd tea.Cmd
 	switch {
+	case eff.Prompt != nil:
+		m.input, cmd = openInput(eff.Prompt)
 	case eff.Confirm != nil:
 		m.pending = eff.Confirm
 	case eff.Err != nil:
@@ -191,12 +224,41 @@ func (m model) apply(eff para.Effect) model {
 	case eff.Info != "":
 		m.message = message{text: eff.Info}
 	}
-	return m
+	return m, cmd
+}
+
+// openInput starts a text prompt and returns the command that blinks its
+// cursor.
+func openInput(p *para.Prompt) (*input, tea.Cmd) {
+	field := textinput.New()
+	field.Prompt = ""
+	field.CharLimit = inputCharLimit
+	field.Focus()
+	return &input{label: p.Label, op: p.Op, field: field}, textinput.Blink
+}
+
+// typeKey feeds a key to the open prompt: enter submits, esc cancels.
+func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.input = nil
+		m.message = message{text: "Cancelled"}
+		return m, nil
+	case "enter":
+		op, text := m.input.op, m.input.field.Value()
+		m.input = nil
+		var eff para.Effect
+		m.para, eff = m.para.ApplyInput(op, text)
+		return m.apply(eff)
+	}
+	var cmd tea.Cmd
+	m.input.field, cmd = m.input.field.Update(msg)
+	return m, cmd
 }
 
 // answer handles a key while a question is pending: y or enter accepts, n
 // or esc declines, anything else is ignored.
-func (m model) answer(key string) model {
+func (m model) answer(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "y", "enter":
 		op := m.pending.Op
@@ -207,10 +269,8 @@ func (m model) answer(key string) model {
 	case "n", "esc":
 		m.pending = nil
 		m.message = message{text: "Cancelled"}
-		return m
 	}
-	m.message = message{}
-	return m
+	return m, nil
 }
 
 func capitalize(s string) string {
@@ -238,8 +298,12 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 
 func (m model) statusLine() string {
 	switch {
+	case m.input != nil:
+		return m.input.label + m.input.field.View()
+	case m.pending != nil && m.pending.Danger:
+		return dangerStyle.Render("(y/n) " + m.pending.Prompt)
 	case m.pending != nil:
-		return confirmStyle.Render(m.pending.Prompt) + "  y/enter confirm  n/esc cancel"
+		return confirmStyle.Render("(y/n) " + m.pending.Prompt)
 	case m.message.isErr:
 		return errorStyle.Render(m.message.text)
 	case m.message.text != "":
@@ -282,5 +346,5 @@ func (m model) View() string {
 		render(panelBody, g.rightWidth, g.bodyHeight),
 	)
 	grid := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
-	return lipgloss.JoinVertical(lipgloss.Left, grid, m.statusLine())
+	return lipgloss.JoinVertical(lipgloss.Left, grid, ansi.Truncate(m.statusLine(), m.width, "…"))
 }

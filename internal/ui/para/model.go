@@ -80,6 +80,15 @@ func (t tabState) selectedName() string {
 	return ""
 }
 
+// wantedName is the name the cursor should land on after a reload: one
+// explicitly asked for, else the one under the cursor.
+func (t tabState) wantedName() string {
+	if t.keep != "" {
+		return t.keep
+	}
+	return t.selectedName()
+}
+
 // Model is the PARA panel state. Methods return updated copies.
 type Model struct {
 	store      store.Store
@@ -108,7 +117,7 @@ func (m Model) Resize(visibleRows int) Model {
 // tab keeps its directory, and its cursor stays on the same name.
 func (m Model) Reload() Model {
 	for i, t := range m.tabs {
-		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.selectedName(), selected: t.selected}
+		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.wantedName(), selected: t.selected}
 	}
 	return m.load(m.active)
 }
@@ -161,6 +170,12 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m.paste(false, false)
 	case "P":
 		return m.paste(true, false)
+	case "d":
+		return m.askDelete(OpTrash)
+	case "D":
+		return m.askDelete(OpDelete)
+	case "a":
+		return m, Effect{Prompt: &Prompt{Label: "New note (end with / for a folder): ", Op: OpCreate}}
 	}
 	return m.navigate(msg), Effect{}
 }

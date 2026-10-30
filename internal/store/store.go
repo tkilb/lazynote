@@ -50,6 +50,10 @@ type Store interface {
 	// ReadNote reads and parses the note at rel (relative to the root).
 	ReadNote(rel string) (Note, error)
 
+	// Inspect counts what is inside a directory, listed or not.
+	Inspect(rel string) (DirInfo, error)
+	// Delete permanently removes a file or directory tree. Not undoable.
+	Delete(rel string) error
 	// Exists reports whether anything is at rel (relative to the root).
 	Exists(rel string) (bool, error)
 
