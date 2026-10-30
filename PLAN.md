@@ -387,8 +387,12 @@ Conflict notes:
   Cutting and pasting a directory moves everything inside it.
 - Info lists, for the note under the cursor: a highlighted `Kind` row (the
   badge color, `unset` when missing or unrecognized), `File`, then
-  every frontmatter property except `uid`, in file order, as a label column
-  and wrapped values. A scalar shows its text; a list of scalars is one
+  every frontmatter property except `uid`, in file order. To save vertical
+  space the rows flow into columns (as many as fit, 24 columns wide at
+  least, up to three): a row whose label and value fit on one line within a
+  column sits beside others, and a row that does not fit (a long or
+  multi-line value) takes the full width on its own lines, wrapped, so
+  nothing is cut off. A scalar shows its text; a list of scalars is one
   comma-separated line (`tags  work, ideas`); other lists show one `- ` item
   per line; a mapping shows indented `key: value` lines; aliases show what
   they point to. Depth and length are bounded (400 lines, 8 levels), and all
@@ -399,8 +403,8 @@ Conflict notes:
   number of entries it lists; a note that cannot be read shows the error.
   `↑/k` `↓/j` scroll, with a position footer when it overflows, and `esc` or
   `h` returns to PARA. The right column, top to bottom, is the Title
-  panel (3 rows), Body, and Info (about a third of the height, at least 7
-  rows); Body gets the rest.
+  panel (3 rows), Body, and Info, which is fixed at 4 content rows (6 with
+  the border) and scrolls by line; Body gets the rest.
 - Body shows the note under the PARA cursor as plain text and follows it as
   the cursor moves; with a directory selected it is empty, and a note that
   cannot be read shows the error (for example "note is too large"). The

@@ -10,7 +10,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
 	"go.yaml.in/yaml/v3"
 
 	"github.com/tkilb/lazynote/internal/store"
@@ -19,10 +18,10 @@ import (
 )
 
 const (
-	// maxLabelWidth caps the label column; longer keys are shortened.
+	// maxLabelWidth caps a label; longer keys are shortened.
 	maxLabelWidth = 14
 	// defaultHeight is the page size until the first Resize.
-	defaultHeight = 3
+	defaultHeight = 4
 	// maxValueLines bounds how many lines one note's properties can take.
 	maxValueLines = 400
 	// maxDepth bounds how deep nested values and YAML aliases are followed.
@@ -33,7 +32,7 @@ const (
 	kindKey = "kind"
 	// titleKey is not repeated as a property when it is the title shown.
 	titleKey = "title"
-	// labelGap separates the label column from the values.
+	// labelGap separates a label from its value.
 	labelGap = 2
 )
 
@@ -53,10 +52,9 @@ type row struct {
 	highlight lipgloss.Color
 }
 
-// line is one wrapped screen line.
+// line is one screen line, already styled.
 type line struct {
-	text  string
-	style lipgloss.Style
+	text string
 }
 
 // Model is the Info panel state. Methods return updated copies.
@@ -133,57 +131,6 @@ func (m Model) show(subject string, rows []row) Model {
 	return m.layout()
 }
 
-// layout wraps every row to the panel width.
-func (m Model) layout() Model {
-	m.lines = nil
-	if m.width > 0 {
-		labelWidth := 0
-		for _, r := range m.rows {
-			labelWidth = max(labelWidth, min(ansi.StringWidth(r.label), maxLabelWidth))
-		}
-		valueWidth := max(m.width-labelWidth-labelGap, 1)
-		for _, r := range m.rows {
-			m.lines = append(m.lines, rowLines(r, labelWidth, valueWidth, m.width)...)
-		}
-	}
-	m.offset = m.clamp(m.offset)
-	return m
-}
-
-// rowLines renders one row: the label on its first line, continuation lines
-// indented under the value.
-func rowLines(r row, labelWidth, valueWidth, width int) []line {
-	var wrapped []string
-	for _, v := range r.value {
-		wrapped = append(wrapped, strings.Split(ansi.Wrap(v, valueWidth, ""), "\n")...)
-	}
-	if len(wrapped) == 0 {
-		wrapped = []string{""}
-	}
-
-	label := ansi.Truncate(r.label, labelWidth, "…")
-	label += strings.Repeat(" ", max(labelWidth-ansi.StringWidth(label), 0))
-	indent := strings.Repeat(" ", labelWidth)
-
-	out := make([]line, len(wrapped))
-	for i, v := range wrapped {
-		head := indent
-		if i == 0 {
-			head = label
-		}
-		switch {
-		case r.highlight != "":
-			text := head + strings.Repeat(" ", labelGap) + v
-			text += strings.Repeat(" ", max(width-ansi.StringWidth(text), 0))
-			out[i] = line{text: text, style: lipgloss.NewStyle().Bold(true).
-				Background(r.highlight).Foreground(lipgloss.Color("0"))}
-		default:
-			out[i] = line{text: labelStyle.Render(head) + strings.Repeat(" ", labelGap) + r.style.Render(v)}
-		}
-	}
-	return out
-}
-
 // clamp keeps offset within the scrollable range.
 func (m Model) clamp(offset int) int {
 	return min(max(offset, 0), max(len(m.lines)-m.height, 0))
@@ -206,7 +153,7 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 	end := min(m.offset+height, len(m.lines))
 	rendered := make([]string, 0, end-m.offset)
 	for _, l := range m.lines[min(m.offset, end):end] {
-		rendered = append(rendered, l.style.Render(l.text))
+		rendered = append(rendered, l.text)
 	}
 
 	var footer panel.Footer
