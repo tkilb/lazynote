@@ -1,10 +1,6 @@
 package store
 
-import (
-	"strings"
-
-	"go.yaml.in/yaml/v3"
-)
+import "strings"
 
 const noteExt = ".md"
 
@@ -12,7 +8,8 @@ const noteExt = ".md"
 type Note struct {
 	// Name is the file name, including the .md extension.
 	Name string
-	// Title is the title property when present, otherwise Name without .md.
+	// Title is always Name without the .md extension. A title property in
+	// the frontmatter never overrides it.
 	Title string
 	// Frontmatter is nil when the note has no properties block or the block
 	// is invalid (see FrontmatterErr).
@@ -34,22 +31,19 @@ func ParseNote(name string, data []byte) Note {
 	if ok {
 		n.Frontmatter, n.FrontmatterErr = ParseFrontmatter(raw)
 	}
-	n.Title = noteTitle(name, n.Frontmatter)
+	n.Title = noteTitle(name)
 	n.Kind = KindOf(n.Frontmatter)
 	return n
 }
 
-// noteTitle follows Obsidian, which has no title key: the title property
-// when it is a non-empty scalar, otherwise the file name without .md.
-func noteTitle(name string, fm *Frontmatter) string {
-	if fm != nil {
-		if v := fm.Get("title"); v != nil && v.Kind == yaml.ScalarNode {
-			if t := strings.TrimSpace(v.Value); t != "" {
-				return t
-			}
-		}
+// noteTitle is the file name without its .md extension (in any case). The
+// title always reflects the file name, so renaming a note renames its title
+// and the two can never disagree.
+func noteTitle(name string) string {
+	if isNote(name) {
+		return name[:len(name)-len(noteExt)]
 	}
-	return strings.TrimSuffix(name, noteExt)
+	return name
 }
 
 // isNote reports whether name is a markdown note file name.

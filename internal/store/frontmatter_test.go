@@ -149,3 +149,36 @@ func TestFrontmatterProperties(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, empty.Properties())
 }
+
+func TestFrontmatterSetString(t *testing.T) {
+	fm, err := ParseFrontmatter([]byte("a: 1\n# note\ntitle: old # trailing\nz: last\n"))
+	require.NoError(t, err)
+
+	fm.SetString("title", "New")
+	fm.SetString("added", "x")
+	out, err := fm.Marshal()
+	require.NoError(t, err)
+	got := string(out)
+	assert.Contains(t, got, "title: New")
+	assert.Contains(t, got, "# trailing", "the old value's comment is kept")
+	assert.Contains(t, got, "# note")
+	assert.Less(t, strings.Index(got, "a:"), strings.Index(got, "title:"))
+	assert.Less(t, strings.Index(got, "title:"), strings.Index(got, "z:"), "replaced in place")
+	assert.Less(t, strings.Index(got, "z:"), strings.Index(got, "added:"), "new keys are appended")
+	assert.Equal(t, 1, strings.Count(got, "title:"))
+}
+
+func TestFrontmatterSetStringKeepsStringTypeForTrickyValues(t *testing.T) {
+	for _, v := range []string{"123", "true", "null", "~", "1.5", "2026-10-29", "a: b", "- x", "#c", "", " lead", "multi\nline"} {
+		fm := NewFrontmatter()
+		fm.SetString("k", v)
+		out, err := fm.Marshal()
+		require.NoError(t, err)
+		back, err := ParseFrontmatter(out)
+		require.NoError(t, err, v)
+		got := back.Get("k")
+		require.NotNil(t, got, v)
+		assert.Equal(t, "!!str", got.Tag, "value %q must stay a string", v)
+		assert.Equal(t, v, got.Value, v)
+	}
+}

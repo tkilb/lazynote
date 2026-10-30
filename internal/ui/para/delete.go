@@ -144,7 +144,7 @@ func (m Model) create(text string) (Model, Effect) {
 		act, err = m.store.MakeDir(rel)
 	} else {
 		var content []byte
-		if content, err = store.BlankNote(); err == nil {
+		if content, err = store.BlankNote(name); err == nil {
 			act, err = m.store.Create(rel, content)
 		}
 	}

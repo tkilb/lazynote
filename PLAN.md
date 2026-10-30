@@ -161,7 +161,8 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   undone. Cutting into the directory the item is already in does nothing.
   Sources that no longer exist are dropped and counted in the message.
   `P` asks first (a confirm popup) only when something would be replaced.
-- Yank and paste copies the file with its frontmatter unchanged. Cut and
+- Yank and paste copies the file with its frontmatter unchanged, except that a
+  copy with a new name gets its `title` updated. Cut and
   paste moves it.
 - `p` never overwrites; on a name collision it reports an error. `P`
   overwrites after a confirm: each replaced file or directory goes to
@@ -170,7 +171,7 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
 - `a` opens an input popup. A note name gets `.md`
   appended unless it already ends with it; a name ending in `/` makes a
   folder; any other `/`, empty names, `.` and `..` are rejected. A new note
-  holds frontmatter with only a fresh `uid` (kind stays unset). The cursor
+  holds frontmatter with a fresh `uid` and its `title` (kind stays unset). The cursor
   moves to the new item, and `u` removes it again (to the trash).
 - `d` and `D` ask first with a confirm popup (`y`/`enter` confirms,
   `n`/`esc` cancels; both are drawn in red, and `D` also says it cannot be
@@ -329,8 +330,19 @@ Conflict notes:
   by `---` at the top of the file. Keys are free-form; `tags` and `aliases`
   are lists. Unknown keys must round-trip unchanged on write, with key order
   preserved (parse into a `yaml.Node`, not a fixed struct).
-- Title: Obsidian has no title key, so the title is the `title` property
-  when present, otherwise the filename without `.md`.
+- Title: the title is always the file name without `.md` (any case of the
+  extension), and the `title` frontmatter property must always equal it.
+  The Title panel shows the file name, never the property. Every note
+  lazynote writes carries `title` set to its file name: blank notes from `a`
+  and every other creation path, and a copy that gets a new name (such as
+  the `_1` duplicate) has its `title` rewritten, other properties and the
+  body untouched (a note with no frontmatter gets a block holding the
+  title; one whose frontmatter cannot be parsed is left exactly as it is).
+  Rename (chunk 8c) updates it too, in the same undo entry. lazynote never
+  rewrites a note on read just to fix its title, so a note changed outside
+  the app (for example renamed in Obsidian) can disagree until lazynote next
+  writes it; Info then shows the differing `title` property, and hides it
+  when it equals the file name.
 - Uid: every note carries a stable `uid` property, a random UUIDv4
   generated with the standard library (`crypto/rand`, no new dependency). It
   never changes, including across rename and move, and the backlink index
@@ -397,7 +409,7 @@ Conflict notes:
   they point to. Depth and length are bounded (400 lines, 8 levels), and all
   text is sanitized like Body. The `kind` property is not repeated unless
   its value is unrecognized, so the raw text stays visible, and a `title`
-  property equal to the shown title is not repeated. Invalid frontmatter
+  property equal to the shown title (the file name) is not repeated. Invalid frontmatter
   shows a red `Properties` row. For a folder, Info shows its name and the
   number of entries it lists; a note that cannot be read shows the error.
   `↑/k` `↓/j` scroll, with a position footer when it overflows, and `esc` or
@@ -457,9 +469,8 @@ Confirmed:
   `kind: idea`. The filename is `YYYY-MM-DD-HHMMSS slug.md`, where
   the slug is the first few words of the text, lowercased, with unsafe
   characters removed (a numeric suffix resolves a collision). The full
-  text is the note body, and also the `title` property, so the Title panel
-  shows the text instead of the timestamped name. The same scheme applies to
-  `lazynote add`, extracted notes and URL clips.
+  text is the note body; the title is the file name, as for every note. The
+  same scheme applies to `lazynote add`, extracted notes and URL clips.
 - Import: `I` prompts for a file path (or `lazynote import <file>`), then one
   key chooses `t` transcript or `n` note (the CLI uses `--type`).
   A transcript becomes a note with the text as body, `source: transcript`,
@@ -473,7 +484,8 @@ Also confirmed:
 - Shell capture: `lazynote add "text" --kind idea`, and
   `pbpaste | lazynote add --source clipboard` or `lazynote add --clipboard`,
   so capture works from a hotkey or script without opening the TUI.
-- URL clip: save a link with title and `source: <url>`, `kind: rumor`.
+- URL clip: save a link, named after the page title, with `source: <url>`
+  and `kind: rumor`.
 - Daily retention: when a notebook is first opened in a session (at startup for the
   active one, on first switch for others), lazynote
   permanently deletes files in `archives/daily/` named `YYYY-MM-DD.md` whose date is

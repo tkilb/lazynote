@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -169,6 +170,14 @@ func (m *Markdown) Copy(src, dst string) (undo.Action, error) {
 		removeEmpty(made)
 		return undo.Action{}, err
 	}
+	if !want.isDir && isNote(to) && filepath.Base(to) != filepath.Base(from) {
+		// The copy has a new name, so its title property must follow it.
+		if err := retitle(to); err != nil {
+			c.cleanup()
+			removeEmpty(made)
+			return undo.Action{}, err
+		}
+	}
 	act, err := placed(to, slot, made, "copy "+filepath.Base(from))
 	if err != nil {
 		c.cleanup()
@@ -176,6 +185,36 @@ func (m *Markdown) Copy(src, dst string) (undo.Action, error) {
 		return undo.Action{}, err
 	}
 	return act, nil
+}
+
+// retitle sets the title property of the note at path to its file name. A
+// note whose properties block cannot be parsed, or that is too large to
+// read as a note, is left exactly as it is.
+func retitle(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return ErrUnreadable
+	}
+	if info.Size() > maxNoteBytes {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ErrUnreadable
+	}
+	out, err := SetTitle(data, noteTitle(filepath.Base(path)))
+	switch {
+	case errors.Is(err, ErrFrontmatterInvalid):
+		return nil
+	case err != nil:
+		return ErrUnreadable
+	case bytes.Equal(out, data):
+		return nil
+	}
+	if err := os.WriteFile(path, out, info.Mode().Perm()); err != nil {
+		return ErrUnreadable
+	}
+	return nil
 }
 
 // placed builds the undo action for an item just written at path: undo

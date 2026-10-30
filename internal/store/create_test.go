@@ -23,17 +23,30 @@ func TestNewUID(t *testing.T) {
 }
 
 func TestBlankNote(t *testing.T) {
-	data, err := BlankNote()
+	data, err := BlankNote("My Idea.md")
 	require.NoError(t, err)
 
-	n := ParseNote("x.md", data)
+	n := ParseNote("My Idea.md", data)
 	require.NoError(t, n.FrontmatterErr)
 	require.NotNil(t, n.Frontmatter)
 	assert.NotEmpty(t, n.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "My Idea", n.Frontmatter.Get("title").Value, "the title property equals the file name")
 	assert.Nil(t, n.Frontmatter.Get("kind"), "the kind stays unset")
 	assert.Equal(t, KindUnset, n.Kind)
 	assert.Empty(t, n.Body)
-	assert.Equal(t, "x", n.Title)
+	assert.Equal(t, "My Idea", n.Title)
+}
+
+func TestBlankNoteTitleIsAlwaysAString(t *testing.T) {
+	for _, name := range []string{"2026.md", "true.md", "null.md", "a: b.md", "- dash.md", "#hash.md", "quote\".md", "it's.md", "{brace}.md", "日本語.md", "123", "trailing colon:.md"} {
+		data, err := BlankNote(name)
+		require.NoError(t, err, name)
+		n := ParseNote(name, data)
+		require.NoError(t, n.FrontmatterErr, name)
+		v := n.Frontmatter.Get("title")
+		assert.Equal(t, "!!str", v.Tag, name)
+		assert.Equal(t, noteTitle(name), v.Value, name)
+	}
 }
 
 func TestCleanNewName(t *testing.T) {

@@ -43,6 +43,30 @@ func ParseFrontmatter(raw []byte) (*Frontmatter, error) {
 	return &Frontmatter{node: doc.Content[0]}, nil
 }
 
+// NewFrontmatter returns an empty properties block.
+func NewFrontmatter() *Frontmatter {
+	return &Frontmatter{node: &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}}
+}
+
+// SetString sets key to a string value, replacing it in place when the key
+// exists and appending it otherwise, so key order is kept. The value is
+// always a YAML string, quoted when it would otherwise read as something
+// else (a number, a boolean, a mapping).
+func (f *Frontmatter) SetString(key, value string) {
+	val := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
+	for i := 0; i+1 < len(f.node.Content); i += 2 {
+		if k := f.node.Content[i]; k.Kind == yaml.ScalarNode && k.Value == key {
+			// Keep the comments the old value carried.
+			old := f.node.Content[i+1]
+			val.HeadComment, val.LineComment, val.FootComment = old.HeadComment, old.LineComment, old.FootComment
+			f.node.Content[i+1] = val
+			return
+		}
+	}
+	f.node.Content = append(f.node.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, val)
+}
+
 // Get returns the value node for key, or nil when the key is absent.
 func (f *Frontmatter) Get(key string) *yaml.Node {
 	for i := 0; i+1 < len(f.node.Content); i += 2 {

@@ -19,16 +19,17 @@ func TestParseNote(t *testing.T) {
 		wantFM    bool
 		wantErr   bool
 	}{
-		{"title property", "x.md", "---\ntitle: Real Title\n---\nbody", "Real Title", "body", true, false},
-		{"title is trimmed", "x.md", "---\ntitle: '  Padded  '\n---\n", "Padded", "", true, false},
-		{"numeric title", "x.md", "---\ntitle: 2026\n---\n", "2026", "", true, false},
-		{"falls back to file name", "My Note.md", "---\ntags: [a]\n---\nbody", "My Note", "body", true, false},
-		{"blank title falls back", "x.md", "---\ntitle: ''\n---\n", "x", "", true, false},
-		{"non-scalar title falls back", "x.md", "---\ntitle: [a, b]\n---\n", "x", "", true, false},
+		{"title is the file name", "My Note.md", "---\ntags: [a]\n---\nbody", "My Note", "body", true, false},
+		{"a title property never overrides it", "x.md", "---\ntitle: Real Title\n---\nbody", "x", "body", true, false},
+		{"blank title property", "x.md", "---\ntitle: ''\n---\n", "x", "", true, false},
+		{"non-scalar title property", "x.md", "---\ntitle: [a, b]\n---\n", "x", "", true, false},
 		{"no frontmatter", "plain.md", "# Heading\ntext", "plain", "# Heading\ntext", false, false},
 		{"invalid yaml hides block and reports", "bad.md", "---\na: [oops\n---\nbody", "bad", "body", false, true},
 		{"non-mapping hides block and reports", "list.md", "---\n- a\n---\nbody", "list", "body", false, true},
 		{"only the .md suffix is removed", "a.md.md", "text", "a.md", "text", false, false},
+		{"extension in any case", "Upper.MD", "text", "Upper", "text", false, false},
+		{"dots in the name are kept", "v1.2 notes.md", "text", "v1.2 notes", "text", false, false},
+		{"unicode", "résumé 日本.md", "text", "résumé 日本", "text", false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -65,7 +66,7 @@ func TestReadNote(t *testing.T) {
 		n, err := s.ReadNote("projects/a.md")
 		require.NoError(t, err)
 		assert.Equal(t, "a.md", n.Name)
-		assert.Equal(t, "Alpha", n.Title)
+		assert.Equal(t, "a", n.Title, "the title is the file name, not the title property")
 		assert.Equal(t, "Hello\n", n.Body)
 		assert.Equal(t, "u1", n.Frontmatter.Get("uid").Value)
 	})
