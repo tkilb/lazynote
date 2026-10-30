@@ -2,7 +2,10 @@ package store
 
 import (
 	"errors"
+	"syscall"
 	"time"
+
+	"github.com/tkilb/lazynote/internal/undo"
 )
 
 // Errors returned by Store implementations. Like the path-safety errors,
@@ -12,6 +15,9 @@ var (
 	ErrUnreadable = errors.New("cannot read")
 	ErrTooLarge   = errors.New("note is too large")
 )
+
+// errNotDir is what the OS reports for a path below a regular file.
+var errNotDir = syscall.ENOTDIR
 
 // maxNoteBytes bounds how much of a single note is read into memory.
 const maxNoteBytes = 10 << 20
@@ -43,4 +49,19 @@ type Store interface {
 	List(dir string, opts ListOptions) ([]Entry, error)
 	// ReadNote reads and parses the note at rel (relative to the root).
 	ReadNote(rel string) (Note, error)
+
+	// The write operations take names relative to the notebook root, never
+	// overwrite, create missing folders on demand, and return one undo
+	// action for the whole operation.
+
+	// Create writes a new file containing data.
+	Create(rel string, data []byte) (undo.Action, error)
+	// MakeDir creates a new directory.
+	MakeDir(rel string) (undo.Action, error)
+	// Move renames a file or directory.
+	Move(src, dst string) (undo.Action, error)
+	// Copy copies a file or a directory tree.
+	Copy(src, dst string) (undo.Action, error)
+	// Trash moves a file or directory into .lazynote/trash.
+	Trash(rel string) (undo.Action, error)
 }

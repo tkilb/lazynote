@@ -9,7 +9,9 @@ chunk list. Read it before changing behavior; do not re-decide what it records.
 - Go 1.24 (`go.mod` declares 1.24.2).
 - Build: `make build` (writes the `lazynote` binary, which is git-ignored).
 - Test: `make test` (`go test ./...`).
-- Both `go build ./...` and `go test ./...` must pass before a commit.
+- Both `go build ./...` and `go test ./...` must pass before a commit, and
+  after a commit that adds files, from a clean clone (a bad `.gitignore` once
+  hid `cmd/lazynote/` from every commit).
 
 ## Testing policy
 
