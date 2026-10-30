@@ -6,6 +6,7 @@ package para
 import (
 	"maps"
 	"path/filepath"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -49,6 +50,10 @@ type tabState struct {
 	// directory changes.
 	selected map[string]bool
 	visual   visualState
+	// search is the active search query: n and N jump between the rows whose
+	// names contain it, ignoring case, and the matches are highlighted. It
+	// belongs to the current directory and clears when leaving it.
+	search string
 }
 
 // visualMode says whether a range is being selected, unselected, or neither.
@@ -117,7 +122,7 @@ func (m Model) Resize(visibleRows int) Model {
 // tab keeps its directory, and its cursor stays on the same name.
 func (m Model) Reload() Model {
 	for i, t := range m.tabs {
-		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.wantedName(), selected: t.selected}
+		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.wantedName(), selected: t.selected, search: t.search}
 	}
 	return m.load(m.active)
 }
@@ -174,6 +179,10 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m.askDelete(OpTrash)
 	case "D":
 		return m.askDelete(OpDelete)
+	case "/":
+		return m, Effect{Prompt: &Prompt{
+			Op: OpSearch, Placeholder: "search names...", Inline: true, CancelOp: OpClearSearch,
+		}}
 	case "a":
 		return m, Effect{Prompt: &Prompt{Title: "New", Label: "Name (end with / for a folder):", Op: OpCreate}}
 	}
@@ -199,11 +208,15 @@ func (m Model) navigate(msg tea.KeyMsg) Model {
 	case "ctrl+a":
 		m.selectAll()
 	case "esc":
-		m.escape()
+		m = m.escape()
 	case "left", "h":
 		m = m.goUp()
 	case "right", "l", "enter":
 		m = m.enterDir()
+	case "n":
+		m.jumpToMatch(1, false)
+	case "N":
+		m.jumpToMatch(-1, false)
 	case "g":
 		if pendingG {
 			m.moveTo(0)
@@ -252,7 +265,7 @@ func (m Model) enterDir() Model {
 	}
 	t.dir = filepath.Join(t.dir, t.rows[t.cursor].entry.Name)
 	t.cursor, t.keep = 0, ""
-	t.selected, t.visual = nil, visualState{}
+	t.selected, t.visual, t.search = nil, visualState{}, ""
 	m.tabs[m.active] = t
 	return m.load(m.active)
 }
@@ -265,7 +278,7 @@ func (m Model) goUp() Model {
 		return m
 	}
 	t.keep = filepath.Base(t.dir)
-	t.selected, t.visual = nil, visualState{}
+	t.selected, t.visual, t.search = nil, visualState{}, ""
 	if t.dir = filepath.Dir(t.dir); t.dir == "." {
 		t.dir = ""
 	}
@@ -328,15 +341,67 @@ func (m *Model) selectAll() {
 	t.selected = all
 }
 
-// escape leaves visual mode keeping the selection; outside visual mode it
-// clears the selection.
-func (m *Model) escape() {
+// escape undoes the innermost thing first: visual mode (keeping the
+// selection), then the active search, then the selection.
+func (m Model) escape() Model {
 	t := &m.tabs[m.active]
-	if t.visual.mode != visualOff {
+	switch {
+	case t.visual.mode != visualOff:
 		t.visual = visualState{}
+	case t.search != "":
+		t.search = ""
+	default:
+		t.selected = nil
+	}
+	return m
+}
+
+// setSearch records query as the active search and moves the cursor to the
+// nearest match at or after it, wrapping around the list. The list itself
+// is never filtered. A query with no match leaves the cursor where it is.
+func (m Model) setSearch(query string) Model {
+	m.tabs[m.active].search = strings.TrimSpace(query)
+	m.jumpToMatch(1, true)
+	return m
+}
+
+// jumpToMatch moves the cursor to the next row (direction 1) or previous
+// row (-1) whose name matches the search, wrapping around. With
+// includeCurrent the row under the cursor can match too, which is how a
+// freshly committed query lands on the nearest match. It does nothing when
+// no search is active or nothing matches.
+func (m *Model) jumpToMatch(direction int, includeCurrent bool) {
+	t := &m.tabs[m.active]
+	n := len(t.rows)
+	if n == 0 || t.search == "" {
 		return
 	}
-	t.selected = nil
+	i := t.cursor
+	if !includeCurrent {
+		i += direction
+	}
+	i = ((i % n) + n) % n
+	for range n {
+		if matches(t.rows[i].entry, t.search) {
+			m.moveTo(i)
+			return
+		}
+		i = ((i+direction)%n + n) % n
+	}
+}
+
+// matches reports whether the row's displayed name contains query, ignoring
+// case.
+func matches(e store.Entry, query string) bool {
+	return strings.Contains(strings.ToLower(rowName(e)), strings.ToLower(query))
+}
+
+// rowName is the name shown for an entry: notes without ".md".
+func rowName(e store.Entry) string {
+	if e.IsDir {
+		return e.Name
+	}
+	return strings.TrimSuffix(e.Name, ".md")
 }
 
 // applyVisual recomputes the selection from the visual range.

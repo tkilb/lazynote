@@ -115,8 +115,17 @@ func (m Model) deletePermanently() (Model, Effect) {
 
 // ApplyInput carries out a Prompt with the text the user typed.
 func (m Model) ApplyInput(op InputOp, text string) (Model, Effect) {
-	if op == OpCreate {
+	switch op {
+	case OpCreate:
 		return m.create(text)
+	case OpSearch:
+		if strings.TrimSpace(text) == "" {
+			return m, Effect{}
+		}
+		return m.setSearch(text), Effect{}
+	case OpClearSearch:
+		m.tabs[m.active].search = ""
+		return m, Effect{}
 	}
 	return m, Effect{}
 }

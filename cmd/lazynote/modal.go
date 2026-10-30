@@ -9,6 +9,7 @@ import (
 
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/lazynote/internal/ui/statusbar"
 	"github.com/tkilb/lazynote/internal/undo"
 )
 
@@ -17,7 +18,14 @@ type input struct {
 	title, label string
 	op           para.InputOp
 	field        textinput.Model
+	// inline shows the prompt at the bottom of the screen instead of in a
+	// popup. cancelOp, when set, is applied on esc.
+	inline   bool
+	cancelOp para.InputOp
 }
+
+// inlinePrompt is the prefix of an inline prompt, as in lazygit.
+const inlinePrompt = "/"
 
 // inputCharLimit bounds what the prompt accepts.
 const inputCharLimit = 255
@@ -59,17 +67,31 @@ func (m model) notify(sev popup.Severity, text string) model {
 func (m model) openInput(p *para.Prompt) (*input, tea.Cmd) {
 	field := textinput.New()
 	field.Prompt = ""
-	field.CharLimit = inputCharLimit
 	field.Width = popup.FieldWidth(m.width)
+	if p.Inline {
+		field.Prompt = inlinePrompt
+		field.Width = max(m.width-len(inlinePrompt)-1, 1)
+	}
+	field.CharLimit = inputCharLimit
+	field.Placeholder = p.Placeholder
 	field.Focus()
-	return &input{title: p.Title, label: p.Label, op: p.Op, field: field}, textinput.Blink
+	return &input{
+		title: p.Title, label: p.Label, op: p.Op, field: field,
+		inline: p.Inline, cancelOp: p.CancelOp,
+	}, textinput.Blink
 }
 
 // typeKey feeds a key to the open prompt: enter accepts, esc cancels.
 func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
+		in := m.input
 		m.input = nil
+		if in.cancelOp != 0 {
+			var eff para.Effect
+			m.para, eff = m.para.ApplyInput(in.cancelOp, "")
+			return m.apply(eff)
+		}
 		return m, nil
 	case "enter":
 		op, text := m.input.op, m.input.field.Value()
@@ -119,6 +141,8 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 // front notification on top of that.
 func (m model) overlayModals(view string) string {
 	switch {
+	case m.input != nil && m.input.inline:
+		// Drawn in the status row by statusLine instead.
 	case m.input != nil:
 		box := popup.InputBox(m.input.title, m.input.label, m.input.field.View(), m.width)
 		view = popup.Overlay(view, box, m.width, m.height)
@@ -131,6 +155,14 @@ func (m model) overlayModals(view string) string {
 		view = popup.Overlay(view, popup.Box(msg, m.width), m.width, m.height)
 	}
 	return view
+}
+
+// statusLine is the bottom row: an open inline prompt, else the key hints.
+func (m model) statusLine() string {
+	if m.input != nil && m.input.inline {
+		return m.input.field.View()
+	}
+	return statusbar.Render(m.bindings())
 }
 
 func capitalize(s string) string {

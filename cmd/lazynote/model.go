@@ -70,6 +70,8 @@ var paraBindings = []statusbar.Binding{
 	{Key: "y/x/p", Label: "yank/cut/paste"},
 	{Key: "d/D", Label: "trash/delete"},
 	{Key: "a", Label: "new"},
+	{Key: "/", Label: "search"},
+	{Key: "n/N", Label: "next/prev match"},
 	{Key: "v", Label: "visual"},
 	{Key: ".", Label: "hidden"},
 	{Key: "enter", Label: "open"},
@@ -217,6 +219,6 @@ func (m model) View() string {
 		render(panelBody, g.rightWidth, g.bodyHeight),
 	)
 	grid := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
-	view := lipgloss.JoinVertical(lipgloss.Left, grid, ansi.Truncate(statusbar.Render(m.bindings()), m.width, "…"))
+	view := lipgloss.JoinVertical(lipgloss.Left, grid, ansi.Truncate(m.statusLine(), m.width, "…"))
 	return m.overlayModals(view)
 }

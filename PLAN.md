@@ -88,7 +88,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `a`                 | Create: a name ending in `/` makes a directory, otherwise a note                          |
 | `r`                 | Rename the hovered item                                                                   |
 | `.`                 | Toggle hidden files                                                                       |
-| `/`                 | Filter: hide entries whose name does not match the typed text (`esc` clears it)           |
+| `/`                 | Search names in the directory: jump to the first match (`esc` clears the search)          |
+| `n` / `N`           | Next / previous search match, wrapping around                                             |
 | `[` / `]`           | Previous / next tab (Inbox, Projects, Areas, Resources, Archives)                         |
 | `K`                 | Set kind on the selected note (picker); clashes with Yazi `K` seek                        |
 | `e`                 | Edit in `$EDITOR`                                                                         |
@@ -207,7 +208,8 @@ Conflict notes:
 - Inside the move popup `a` and `A` differ only by case. The popup shows
   both labels clearly, and moving to Archives is undoable.
 - `K` sets the kind in PARA and clashes with Yazi's `K` seek (open
-  decision 9). `/` is a filter here, not Yazi's find, and there is no `n`/`N`.
+  decision 9). `/` is a search that jumps and highlights, as in lazytask, never a filter; `n`/`N`
+  step through its matches.
 - Yazi's `D` is permanent delete in PARA, which does not clash since daily
   append moved to `t` and `T`.
 - In PARA, `enter` and `→`/`l` drill a directory or open a note (focus
@@ -354,11 +356,19 @@ Conflict notes:
   to the tab root. With a directory selected, Info shows its name and item
   counts, and Body and Related are empty. `a` creates the note in the
   current directory, quick capture still goes to the `inbox/` root, and `d` on
-  a directory confirms and warns when it is not empty. `/` filters the
-  current directory only: it hides entries (directories included) whose name
-  does not contain the typed text, case-insensitively, and the panel title
-  shows the active filter. The filter clears when you leave the directory,
-  and `esc` clears it before it clears a selection.
+  a directory confirms and warns when it is not empty. `/` searches the
+  current directory, as lazytask's `/` does: the list is never filtered. `/`
+  opens an inline prompt at the bottom of the screen in place of the key
+  hints; `enter` jumps to the nearest row at or after the cursor whose name
+  (shown without `.md`; directories included) contains the text, ignoring
+  case, wrapping around, and leaves the query active so `n` and `N` step to
+  the next and previous match (wrapping; no-ops without a query). The
+  matching text is highlighted, teal on the cursor row and yellow on other
+  rows, and the footer shows `search: text`. An empty `enter` or a query
+  with no match is a silent no-op, and `esc` in the prompt clears the
+  query. The search clears when you leave the directory (it survives tab
+  switches). Outside the prompt `esc` undoes the innermost thing first:
+  visual mode, then the search, then the selection.
 - File scope: listings show directories and `.md` files only. Attachments
   (images, PDFs, and so on) are not listed but are left untouched. Names
   starting with `.` stay hidden until `.` is pressed, as in Yazi, but
@@ -491,7 +501,7 @@ Numbers are kept stable; resolved items were removed.
 
 ## Package layout
 
-- `cmd/lazynote/` - root model, update, mouse, modal box, filter.
+- `cmd/lazynote/` - root model, update, mouse, modal box, search.
 - `internal/ui/{panel,popup,helppopup,statusbar}` - shared widgets
   (port from lazytask).
 - `internal/ui/{notebook,para,related,info,body}` - one package per panel.
@@ -526,7 +536,7 @@ Numbers are kept stable; resolved items were removed.
    markers, buffer persisting across directories and tabs, undoable.
    3g. Trash, delete and create: `d` (to `.lazynote/trash/`), `D`
    (permanent), `a` (note, or directory with a trailing `/`), confirmations.
-   3h. Filter: `/` text filter on the current directory.
+   3h. Search: `/` name search in the current directory with `n`/`N`.
    3i. Refresh from disk: `ctrl+l` and terminal focus. Later chunks extend it
    to the link index (8) and hook it to `$EDITOR` returning (9).
 4. Body panel: show the selected note as plain text, frontmatter stripped,

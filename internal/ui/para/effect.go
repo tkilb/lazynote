@@ -45,13 +45,23 @@ type InputOp int
 const (
 	// OpCreate creates a note, or a folder with a trailing slash.
 	OpCreate InputOp = iota + 1
+	// OpSearch jumps to the first entry whose name contains the text.
+	OpSearch
+	// OpClearSearch discards the active search.
+	OpClearSearch
 )
 
-// Prompt asks for one line of text. The root model shows an input box
-// titled Title, with Label above the field, and on enter calls
-// Model.ApplyInput with Op and the text.
+// Prompt asks for one line of text and, on enter, calls Model.ApplyInput
+// with Op and the text. The root model shows it as an input popup titled
+// Title with Label above the field, or, when Inline is set, as a line at the
+// bottom of the screen that takes the place of the key hints.
 type Prompt struct {
-	Title string
-	Label string
-	Op    InputOp
+	Title       string
+	Label       string
+	Placeholder string
+	Op          InputOp
+	Inline      bool
+	// CancelOp, when set, is applied (with empty text) on esc instead of just
+	// closing the prompt, so esc also undoes what the prompt set.
+	CancelOp InputOp
 }

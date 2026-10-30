@@ -88,7 +88,11 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		tabs[i] = panel.Tab{Label: d.label, Active: i == m.active}
 	}
 
-	footer := panel.Footer{Left: "/" + filepath.ToSlash(t.dir), Right: status(t, m.clip)}
+	left := "/" + filepath.ToSlash(t.dir)
+	if t.search != "" {
+		left += "  search: " + t.search
+	}
+	footer := panel.Footer{Left: left, Right: status(t, m.clip)}
 	return panel.FrameTabs(panelNumber, tabs, m.body(t, width, height, focused), width, height, focused, footer)
 }
 
@@ -128,15 +132,19 @@ func (m Model) body(t tabState, width, height int, focused bool) string {
 	start, end := panel.ScrollWindow(t.cursor, len(t.rows), height)
 	lines := make([]string, 0, end-start)
 	for i := start; i < end; i++ {
-		lines = append(lines, renderRow(t.rows[i], width, i == t.cursor && focused, m.markOf(t, t.rows[i])))
+		lines = append(lines, renderRow(t.rows[i], width, i == t.cursor && focused, m.markOf(t, t.rows[i]), t.search))
 	}
 	return strings.Join(lines, "\n")
 }
 
 // renderRow draws one row: a marker column, a kind badge (blank for
 // directories), the name, and for directories an item count right-aligned.
-// cursor highlights the row; mk draws the left-edge bar.
-func renderRow(r row, width int, cursor bool, mk mark) string {
+// cursor highlights the row; mk draws the left-edge bar; query, when the row
+// matches it, highlights the matching text in the name.
+func renderRow(r row, width int, cursor bool, mk mark, query string) string {
+	if !matches(r.entry, query) {
+		query = ""
+	}
 	bar := " "
 	if mk != markNone {
 		bar = markerBar
@@ -162,12 +170,49 @@ func renderRow(r row, width int, cursor bool, mk mark) string {
 
 	if cursor {
 		return selStyle.Foreground(markerColors[mk]).Render(bar) +
-			selStyle.Render(ansi.Truncate(badge+" "+name+gap+right, width, ""))
+			selStyle.Render(badge+" ") + highlight(name, query, selStyle, true) + selStyle.Render(gap+right)
 	}
 	nameStyle := lipgloss.NewStyle()
 	if r.entry.IsDir {
 		nameStyle = dirStyle
 	}
 	return markerStyle.Render(bar) + lipgloss.NewStyle().Foreground(badgeColor).Render(badge) + " " +
-		nameStyle.Render(name) + gap + dimStyle.Render(right)
+		highlight(name, query, nameStyle, false) + gap + dimStyle.Render(right)
+}
+
+// Search highlight backgrounds, as in lazytask: teal on the cursor row so
+// the row n and N jump to stands out, yellow on every other matching row.
+var (
+	matchOnCursor  = lipgloss.Color("6")
+	matchElsewhere = lipgloss.Color("3")
+)
+
+// highlight renders s with base, drawing each case-insensitive occurrence of
+// query with a highlight background. An empty query renders s unchanged.
+func highlight(s, query string, base lipgloss.Style, onCursor bool) string {
+	lowerS, lowerQ := strings.ToLower(s), strings.ToLower(query)
+	if query == "" || len(lowerS) != len(s) || len(lowerQ) != len(query) {
+		return base.Render(s)
+	}
+	bg := matchElsewhere
+	if onCursor {
+		bg = matchOnCursor
+	}
+	match := base.Background(bg).Foreground(lipgloss.Color("0")).Bold(false)
+
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		idx := strings.Index(lowerS[i:], lowerQ)
+		if idx < 0 {
+			b.WriteString(base.Render(s[i:]))
+			break
+		}
+		idx += i
+		if idx > i {
+			b.WriteString(base.Render(s[i:idx]))
+		}
+		b.WriteString(match.Render(s[idx : idx+len(query)]))
+		i = idx + len(query)
+	}
+	return b.String()
 }
