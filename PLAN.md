@@ -257,8 +257,10 @@ Conflict notes:
 - Clipboard (`lazynote add --clipboard`): `github.com/atotto/clipboard`, the
   same library lazytask already uses (indirectly, through Bubbles). It shells
   out to `pbpaste` on macOS and to `xclip`, `xsel` or `wl-paste` on Linux, so
-  a missing tool must produce a clear error that names the tool. Verify
-  the module's current status before adding it.
+  a missing tool must produce a clear error that names the tool. Checked:
+  v0.1.4 (2021-02-24) is the latest release, a tiny stable library already
+  compiled in through Bubbles' text inputs; `lazynote` now imports it
+  directly, with no new download.
 - Fuzzy matching (relation picker): `github.com/sahilm/fuzzy` v0.1.1 (added in chunk 8b).
   Approved by you. Checked before use: last release 2023-05-30 (no newer
   version), one 254-line file importing only `sort`, `unicode` and
@@ -519,7 +521,7 @@ Confirmed:
 
 Also confirmed:
 
-- Shell capture: `lazynote add "text" --kind idea`, and
+- Shell capture: `lazynote add "Title" "body" --kind idea`, and
   `pbpaste | lazynote add --source clipboard` or `lazynote add --clipboard`,
   so capture works from a hotkey or script without opening the TUI.
 - URL clip: save a link, named after the page title, with `source: <url>`
@@ -781,8 +783,29 @@ Numbers are kept stable; resolved items were removed.
    - When the new note is not in the list on screen (another tab or folder),
      a notice says it was saved to the Inbox; otherwise there is no popup.
    - The popup menus (`m` move, import) share one menu widget.
-   9c. Shell capture: `lazynote add` with `--kind`, `--source`, stdin and
-   `--clipboard`.
+   9c. Shell capture (done, `internal/cli`, tested; hooked up in `main`):
+   `lazynote add [TITLE] [BODY] [--kind K] [--source S] [--tags a,b]
+   [--clipboard]` and `lazynote import FILE [--type transcript|note]`. Both
+   print the new note's path (relative to the notebook) and report problems on
+   standard error with exit 1 (a flag mistake exits 2, `-h` exits 0). The
+   notebook is the first available one in the config, as in the TUI.
+   - Every flag is optional and flags may come before, between or after the
+     positionals; `--` ends the flags (a title may start with a dash). The
+     title is required: one positional, or the first line of the text.
+   - `--kind`: one of the six kinds in any case, or `unset`; default none, so
+     no `kind` property. `--source`: any word (not blank, no control
+     characters, at most 40 characters, the same rule as the config);
+     default the first source of the config (`adhoc`). `--tags`: the form's
+     rules. Everything is checked before anything is written.
+   - Text: with two positionals the second is the body. Otherwise the body
+     is the clipboard (`--clipboard`, which wins) or piped text (only when
+     stdin is not a terminal): with a title it is the whole body; with no
+     title its first non-blank line is the title and the rest the body (a
+     single line is all title). An empty clipboard or empty piped text is an
+     error. A clipboard failure says it needs `pbpaste` (macOS) or `xclip`,
+     `xsel` or `wl-paste` (Linux).
+   - `import`: the type defaults to `note` for a `.md` file and `transcript`
+     otherwise; the rules are those of `I`. Errors never show the path.
    9d. Extract: select Body lines (`v`, `enter`), pick a kind, create a note in
    `inbox/` with the right source handling (link for transcripts, plain text
    for dailies).

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/tkilb/lazynote/internal/cli"
 	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/popup"
@@ -51,6 +53,13 @@ func main() {
 	if isVersionArg(os.Args[1:]) {
 		fmt.Printf("lazynote %s\n", version.Version)
 		return
+	}
+	open := func() (store.Store, []string, error) {
+		st, _, sources, err := openStore()
+		return st, sources, err
+	}
+	if handled, code := cli.Run(os.Args[1:], cli.SystemEnv(open, clipboard.ReadAll)); handled {
+		os.Exit(code)
 	}
 
 	st, root, sources, err := openStore()

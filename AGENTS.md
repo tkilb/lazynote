@@ -16,7 +16,7 @@ chunk list. Read it before changing behavior; do not re-decide what it records.
 ## Testing policy
 
 Tests cover engine packages only (`internal/store`, `internal/state`,
-`internal/undo`, `internal/config`, `internal/intake`, the link index). Use table-driven tests
+`internal/undo`, `internal/config`, `internal/intake`, `internal/cli`, the link index). Use table-driven tests
 against temp directories; never touch a real notebook or the real state
 database. UI packages (`cmd/lazynote`, `internal/ui/*`) have no automated
 tests; each UI chunk ships a manual QA note instead. This deliberately

@@ -204,19 +204,30 @@ func parseSources(n *yaml.Node) ([]string, error) {
 		if item.Kind != yaml.ScalarNode {
 			return nil, errors.New("sources entries must be plain names")
 		}
-		name := strings.TrimSpace(item.Value)
-		switch {
-		case name == "":
-			return nil, errors.New("sources entries must not be blank")
-		case strings.ContainsFunc(name, unicode.IsControl):
-			return nil, fmt.Errorf("sources entry %q must not contain control characters", name)
-		case utf8.RuneCountInString(name) > maxSourceRunes:
-			return nil, fmt.Errorf("sources entry %q is longer than %d characters", name, maxSourceRunes)
-		case seen[strings.ToLower(name)]:
+		name, err := ValidateSource(item.Value)
+		if err != nil {
+			return nil, fmt.Errorf("sources entry %q: %w", item.Value, err)
+		}
+		if seen[strings.ToLower(name)] {
 			return nil, fmt.Errorf("sources entry %q is listed twice", name)
 		}
 		seen[strings.ToLower(name)] = true
 		out = append(out, name)
 	}
 	return out, nil
+}
+
+// ValidateSource trims name and checks that it can be a source: not blank, no
+// control characters, at most maxSourceRunes long. Any other word is fine.
+func ValidateSource(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	switch {
+	case name == "":
+		return "", errors.New("must not be blank")
+	case strings.ContainsFunc(name, unicode.IsControl):
+		return "", errors.New("must not contain control characters")
+	case utf8.RuneCountInString(name) > maxSourceRunes:
+		return "", fmt.Errorf("must be at most %d characters", maxSourceRunes)
+	}
+	return name, nil
 }

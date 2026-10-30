@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -250,4 +251,20 @@ func TestDefaultSourcesAreNotSharedWithCallers(t *testing.T) {
 	require.NoError(t, err)
 	cfg.Sources[0] = "changed"
 	assert.Equal(t, "adhoc", DefaultSources[0], "changing a parsed config cannot change the defaults")
+}
+
+func TestValidateSource(t *testing.T) {
+	long := ""
+	for i := 0; i < maxSourceRunes; i++ {
+		long += "x"
+	}
+	for _, ok := range []string{"adhoc", "  call  ", "1:1", "team sync", "héllo", long} {
+		got, err := ValidateSource(ok)
+		require.NoError(t, err, ok)
+		assert.Equal(t, strings.TrimSpace(ok), got)
+	}
+	for _, bad := range []string{"", "   ", "a\tb", "a\nb", "a\x00b", long + "x"} {
+		_, err := ValidateSource(bad)
+		assert.Error(t, err, "%q", bad)
+	}
 }

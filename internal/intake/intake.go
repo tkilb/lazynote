@@ -225,3 +225,20 @@ func readSource(path string) ([]byte, error) {
 	}
 	return data, nil
 }
+
+// SplitText splits text, such as pasted from the clipboard, into a title and
+// a body: the title is its first non-blank line, trimmed, and the body is
+// what follows it with leading blank lines dropped. A single line is all
+// title.
+func SplitText(text string) (title, body string) {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		rest := strings.TrimSpace(strings.Join(lines[i+1:], "\n"))
+		return strings.TrimSpace(line), rest
+	}
+	return "", ""
+}

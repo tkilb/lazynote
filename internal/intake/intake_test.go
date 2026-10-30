@@ -286,3 +286,23 @@ func TestCaptureWritesTagsAndOmitsAnUnsetKind(t *testing.T) {
 	assert.Nil(t, n.Frontmatter.Get("kind"))
 	assert.Len(t, n.Frontmatter.Get("tags").Content, 2)
 }
+
+func TestSplitText(t *testing.T) {
+	tests := []struct{ name, in, title, body string }{
+		{"one line", "Call mum about the thing", "Call mum about the thing", ""},
+		{"first line and the rest", "Plan\nline two\nline three\n", "Plan", "line two\nline three"},
+		{"leading blank lines are skipped", "\n\n  Plan  \nbody", "Plan", "body"},
+		{"blank lines after the title are dropped", "Plan\n\n\nbody here", "Plan", "body here"},
+		{"windows line endings", "Plan\r\nbody\r\n", "Plan", "body"},
+		{"only blank", " \n \n", "", ""},
+		{"empty", "", "", ""},
+		{"body keeps its inner blank lines", "T\na\n\nb", "T", "a\n\nb"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			title, body := SplitText(tt.in)
+			assert.Equal(t, tt.title, title)
+			assert.Equal(t, tt.body, body)
+		})
+	}
+}
