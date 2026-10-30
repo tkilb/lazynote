@@ -15,6 +15,14 @@ import (
 
 const addReferenceTitle = "Add reference"
 
+// pickerOp says what the open picker is for.
+type pickerOp int
+
+const (
+	pickReference pickerOp = iota // add a reference to the note at pickerFor
+	pickKind                      // set the kind of the note at pickerFor
+)
+
 // openReferencePicker lists the notes the shown note could reference: every
 // note except itself and those it already references.
 func (m model) openReferencePicker() (model, tea.Cmd) {
@@ -34,7 +42,7 @@ func (m model) openReferencePicker() (model, tea.Cmd) {
 		return m.notify(popup.Info, "There are no other notes to reference."), nil
 	}
 	p, cmd := picker.New(addReferenceTitle, items)
-	m.picker, m.pickerFor = &p, rel
+	m.picker, m.pickerFor, m.pickerOp = &p, rel, pickReference
 	return m, cmd
 }
 
@@ -56,7 +64,10 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 	case picker.Chosen:
 		item, _ := p.Chosen()
 		m.picker = nil
-		return m.editReference(m.pickerFor, fmt.Sprintf("add reference to %s", item.Value),
+		if m.pickerOp == pickKind {
+			return m.setKind(m.pickerFor, store.ParseKind(item.Value)), nil
+		}
+		return m.editNote(m.pickerFor, fmt.Sprintf("add reference to %s", item.Value),
 			func(fm *store.Frontmatter) { links.AddReference(fm, item.Value) }), nil
 	}
 	return m, cmd
@@ -66,14 +77,14 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 func (m model) askRemoval(rel, name string) model {
 	prompt := fmt.Sprintf("Remove the reference to %q from %s?", name, strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel)))
 	return m.ask(prompt, func(m model) model {
-		return m.editReference(rel, "remove reference to "+name,
+		return m.editNote(rel, "remove reference to "+name,
 			func(fm *store.Frontmatter) { links.RemoveReference(fm, name) })
 	})
 }
 
-// editReference changes the properties of the note at rel, records the undo
+// editNote changes the properties of the note at rel, records the undo
 // action and refreshes the panels. A failure is shown as an error popup.
-func (m model) editReference(rel, what string, edit func(*store.Frontmatter)) model {
+func (m model) editNote(rel, what string, edit func(*store.Frontmatter)) model {
 	act, err := m.store.Edit(rel, edit)
 	if err != nil {
 		return m.notify(popup.Error, capitalize(fmt.Sprintf("%s failed: %s.", what, err)))

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -95,4 +96,41 @@ func TestParseNoteKind(t *testing.T) {
 	assert.Equal(t, KindUnset, ParseNote("x.md", []byte("---\nkind: nope\n---\nb")).Kind)
 	assert.Equal(t, KindUnset, ParseNote("x.md", []byte("no frontmatter")).Kind)
 	assert.Equal(t, KindUnset, ParseNote("x.md", []byte("---\n- a\n---\nb")).Kind, "invalid frontmatter")
+}
+
+func TestKindMeaningIsDefinedForEveryKind(t *testing.T) {
+	seen := map[string]bool{}
+	for _, k := range Kinds() {
+		m := k.Meaning()
+		assert.NotEmpty(t, m, k)
+		assert.False(t, seen[m], "meanings are distinct: %s", k)
+		seen[m] = true
+	}
+	assert.Empty(t, KindUnset.Meaning())
+}
+
+func TestSetKindThroughEditChangesOnlyTheKind(t *testing.T) {
+	root, _ := newRoot(t)
+	p := filepath.Join(root, "inbox", "n.md")
+	put(t, p, "---\nuid: u1\ntitle: n\nkind: Rumor\ntags: [x]\n---\nbody\n")
+
+	act, err := NewMarkdown(root).Edit("inbox/n.md", func(fm *Frontmatter) { SetKind(fm, KindFact) })
+	require.NoError(t, err)
+	n := ParseNote("n.md", []byte(read(t, p)))
+	assert.Equal(t, KindFact, n.Kind)
+	assert.Equal(t, "u1", n.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "body\n", n.Body)
+	assert.NotNil(t, n.Frontmatter.Get("tags"))
+
+	require.NoError(t, act.Undo())
+	assert.Equal(t, KindRumor, ParseNote("n.md", []byte(read(t, p))).Kind, "undo restores the previous kind")
+}
+
+func TestSetKindOnANoteWithoutOne(t *testing.T) {
+	root, _ := newRoot(t)
+	p := filepath.Join(root, "inbox", "n.md")
+	put(t, p, "plain\n")
+	_, err := NewMarkdown(root).Edit("inbox/n.md", func(fm *Frontmatter) { SetKind(fm, KindIdea) })
+	require.NoError(t, err)
+	assert.Equal(t, KindIdea, ParseNote("n.md", []byte(read(t, p))).Kind)
 }

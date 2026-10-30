@@ -42,6 +42,7 @@ var helpParaBindings = []statusbar.Binding{
 	{Key: "d/D", Label: "trash/delete permanently"},
 	{Key: "a", Label: "new note (end with / for folder)"},
 	{Key: "r", Label: "rename (updates references)"},
+	{Key: "K", Label: "set the note's kind"},
 	{Key: "e", Label: "edit in $EDITOR"},
 	{Key: "/", Label: "search names"},
 	{Key: "n/N", Label: "next/previous match"},

@@ -79,6 +79,13 @@ func New(title string, items []Item) (Model, tea.Cmd) {
 	return m.refilter(), textinput.Blink
 }
 
+// WithCursor starts the highlight on the i-th listed item (before the user
+// types anything), clamped to the list.
+func (m Model) WithCursor(i int) Model {
+	m.cursor = min(max(i, 0), max(len(m.matches)-1, 0))
+	return m
+}
+
 // refilter recomputes the matches for the current text and puts the cursor
 // on the best one.
 func (m Model) refilter() Model {

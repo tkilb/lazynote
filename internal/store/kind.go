@@ -65,3 +65,29 @@ func KindOf(fm *Frontmatter) Kind {
 	}
 	return ParseKind(v.Value)
 }
+
+// Meaning is a short description of the kind, shown when picking one. It is
+// empty for KindUnset.
+func (k Kind) Meaning() string {
+	switch k {
+	case KindFact:
+		return "Confirmed information"
+	case KindRumor:
+		return "Unconfirmed information"
+	case KindProposal:
+		return "Desired outcomes; may not reflect reality"
+	case KindFossil:
+		return "Was true, but may have drifted over time"
+	case KindIdea:
+		return "A loose thought, not yet a proposal"
+	case KindDraft:
+		return "Incomplete and still being revised"
+	}
+	return ""
+}
+
+// SetKind sets the kind property of fm to k, keeping its place among the
+// properties when it already has one.
+func SetKind(fm *Frontmatter, k Kind) {
+	fm.SetString(kindKey, k.String())
+}

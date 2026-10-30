@@ -133,6 +133,9 @@ type model struct {
 	// pickerFor.
 	picker    *picker.Model
 	pickerFor string
+	pickerOp  pickerOp
+	// pickerKind is the kind the note had when the kind picker opened.
+	pickerKind store.Kind
 	// question is a yes/no question owned by the root model, with what to do
 	// on yes (the para panel's own questions use pending instead).
 	question *question

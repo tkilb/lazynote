@@ -18,6 +18,8 @@ type Effect struct {
 	// Rename, when set, asks the root model to rename an item; it owns the
 	// link index that rewriting references needs.
 	Rename *RenameRequest
+	// SetKind, when set, asks the root model to pick a kind for a note.
+	SetKind *KindRequest
 	// Confirm, when set, asks the user before anything changes.
 	Confirm *Confirm
 	// Prompt, when set, asks the user to type a line of text.

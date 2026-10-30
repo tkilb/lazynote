@@ -55,6 +55,8 @@ func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 
 	var cmd tea.Cmd
 	switch {
+	case eff.SetKind != nil:
+		m, cmd = m.openKindPicker(eff.SetKind)
 	case eff.Edit != "":
 		// The editor can take a long time, and the terminal may be closed
 		// meanwhile, so save the position first.
