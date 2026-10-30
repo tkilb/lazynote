@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/undo"
@@ -28,14 +27,10 @@ const (
 	// SourceExtract is the source of a note extracted from another note.
 	SourceExtract = "extract"
 
-	inboxDir      = "inbox"
-	dayLayout     = "2006-01-02"
-	noteExt       = ".md"
-	titleMaxRunes = 80
-	maxNameTries  = 1000
-	// unsafeChars are removed from a title: unsafe in a file name, or unable
-	// to appear in a wikilink.
-	unsafeChars = `/\:*?"<>|#[]^`
+	inboxDir     = "inbox"
+	dayLayout    = "2006-01-02"
+	noteExt      = ".md"
+	maxNameTries = 1000
 )
 
 // Errors never echo a path, because they are shown in the interface.
@@ -65,35 +60,10 @@ type Result struct {
 	Unchanged bool
 }
 
-// CleanTitle turns text into a title that is safe as a file name and as a
-// link target: characters that are unsafe in either are removed, runs of
-// white space collapse to one space, leading and trailing dots and spaces go,
-// and it is cut at titleMaxRunes. Case and punctuation are kept. It may be
-// empty.
-func CleanTitle(text string) string {
-	var words []string
-	for _, w := range strings.Fields(text) {
-		w = strings.Map(func(r rune) rune {
-			if unicode.IsControl(r) || strings.ContainsRune(unsafeChars, r) {
-				return -1
-			}
-			return r
-		}, w)
-		if w != "" {
-			words = append(words, w)
-		}
-	}
-	title := strings.Trim(strings.Join(words, " "), ". ")
-	if r := []rune(title); len(r) > titleMaxRunes {
-		title = strings.TrimRight(string(r[:titleMaxRunes]), ". ")
-	}
-	return title
-}
-
 // Name returns the file name of an intake note titled title: the cleaned
 // title with .md, or "" when nothing usable is left.
 func Name(title string) string {
-	clean := CleanTitle(title)
+	clean := store.CleanTitle(title)
 	if clean == "" {
 		return ""
 	}

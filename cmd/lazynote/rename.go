@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/tkilb/lazynote/internal/links"
+	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 )
@@ -33,6 +36,11 @@ func (m model) doRename(req *para.RenameRequest) model {
 		m.para = p
 	}
 	m = m.refreshLinks()
+	return m.warnRename(res)
+}
+
+// warnRename reports what a rename could not update.
+func (m model) warnRename(res links.RenameResult) model {
 	if res.TitleKept {
 		m = m.notify(popup.Warning, "The note's properties could not be edited, so its title property was left as it was.")
 	}
@@ -40,6 +48,35 @@ func (m model) doRename(req *para.RenameRequest) model {
 		m = m.notify(popup.Warning, fmt.Sprintf("%s could not be updated and still link to the old name.", noteCount(res.Skipped)))
 	}
 	return m
+}
+
+// followTitle renames a note just edited in the editor to match its title
+// property, when the title was changed, adding _1, _2 and so on if the name is
+// taken. The rename is one undo entry; the edit itself is not undoable.
+func (m model) followTitle(rel string) model {
+	got, err := links.RenameToTitle(m.store, m.links, rel)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return m // the editor moved or removed the file: nothing to follow
+	case errors.Is(err, links.ErrUnusableTitle):
+		return m.notify(popup.Warning, "The title has no characters usable in a file name, so the note was not renamed.")
+	case err != nil:
+		return m.notify(popup.Error, capitalize(fmt.Sprintf("could not rename the note to match its title: %s.", err)))
+	case got.CaseOnly:
+		return m.notify(popup.Info, "The title differs from the file name only by case, so the note was not renamed.")
+	case !got.Changed:
+		return m
+	}
+	m.history.Push(got.Action)
+	m.para = m.para.Reload()
+	if p, ok := m.para.Reveal(got.Rel); ok {
+		m.para = p
+	}
+	m = m.refreshLinks()
+	if got.Collided {
+		m = m.notify(popup.Info, "That name was taken, so the note is now "+strings.TrimSuffix(filepath.Base(got.Rel), ".md")+".")
+	}
+	return m.warnRename(got.Result)
 }
 
 // noteCount words a number of notes.

@@ -171,3 +171,95 @@ func retarget(raw, newName string) string {
 	}
 	return linkOpen + out + linkClose
 }
+
+// ErrUnusableTitle reports a title property with nothing left once it is made
+// safe for a file name.
+var ErrUnusableTitle = errors.New("the title has no characters usable in a file name")
+
+// maxTitleSuffix bounds the search for a free numbered name.
+const maxTitleSuffix = 1000
+
+// Renamed describes what RenameToTitle did.
+type Renamed struct {
+	// Changed is set when the file was renamed.
+	Changed bool
+	// Collided is set when the name the title gives was taken, so a number
+	// was added.
+	Collided bool
+	// CaseOnly is set when the title differs from the file name only by case,
+	// which is not renamed.
+	CaseOnly bool
+	// Rel is the note's path afterwards.
+	Rel string
+	// Action undoes the rename; Result says what could not be updated.
+	Action undo.Action
+	Result RenameResult
+}
+
+// RenameToTitle renames the note at rel to match its title property, for
+// when the title was edited by hand. The name is the title made safe for a
+// file name; when it is taken, _1, _2 and so on are added before the
+// extension until it is free. The title property is then set to the final
+// name and the notes that reference this one are rewritten, as for Rename.
+// Nothing happens (Changed false) when the note has no usable title
+// property, its properties are invalid, or the title is already the name; a
+// title differing only by case is reported but not renamed, because that
+// cannot be done safely on a case-insensitive disk.
+func RenameToTitle(s store.Store, x *Index, rel string) (Renamed, error) {
+	unchanged := Renamed{Rel: rel}
+	note, err := s.ReadNote(rel)
+	if err != nil {
+		return unchanged, err
+	}
+	if note.Frontmatter == nil {
+		return unchanged, nil
+	}
+	node := note.Frontmatter.Get("title")
+	if node == nil || node.Kind != yaml.ScalarNode || strings.TrimSpace(node.Value) == "" {
+		return unchanged, nil
+	}
+	want := store.CleanTitle(node.Value)
+	if want == "" {
+		return unchanged, ErrUnusableTitle
+	}
+	current := nameOf(rel)
+	switch {
+	case want == current:
+		return unchanged, nil
+	case strings.EqualFold(want, current):
+		unchanged.CaseOnly = true
+		return unchanged, nil
+	}
+
+	name, err := freeName(s, filepath.Dir(rel), want)
+	if err != nil {
+		return unchanged, err
+	}
+	act, res, err := Rename(s, x, rel, false, name)
+	if err != nil {
+		return unchanged, err
+	}
+	return Renamed{
+		Changed: true, Collided: name != want,
+		Rel: filepath.Join(filepath.Dir(rel), name+noteExt), Action: act, Result: res,
+	}, nil
+}
+
+// freeName returns base, or base_1, base_2 and so on, as the first name for
+// which no note exists in dir.
+func freeName(s store.Store, dir, base string) (string, error) {
+	for n := 0; n <= maxTitleSuffix; n++ {
+		name := base
+		if n > 0 {
+			name = fmt.Sprintf("%s_%d", base, n)
+		}
+		exists, err := s.Exists(filepath.Join(dir, name+noteExt))
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			return name, nil
+		}
+	}
+	return "", errors.New("could not find a free name")
+}

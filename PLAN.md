@@ -382,7 +382,9 @@ Conflict notes:
   rewrites a note on read just to fix its title, so a note changed outside
   the app (for example renamed in Obsidian) can disagree until lazynote next
   writes it; Info then shows the differing `title` property, and hides it
-  when it equals the file name.
+  when it equals the file name. Editing in `$EDITOR` is the exception that
+  goes the other way: when the editor returns and the `title` property was
+  changed, the file is renamed to match it (see "Title follows the editor").
 - Uid: every note carries a stable `uid` property, a random UUIDv4
   generated with the standard library (`crypto/rand`, no new dependency). It
   never changes, including across rename and move, and the backlink index
@@ -847,6 +849,21 @@ Numbers are kept stable; resolved items were removed.
      back (this covers transcripts); if the origin's name holds `| # [ ] ^`
      the note is made without the link and a warning says so.
    - Undo moves the new note to the trash.
+   Title follows the editor (done, after 9e; `links.RenameToTitle`, tested):
+   when `$EDITOR` exits cleanly after `e`, the note is read again; if its
+   `title` property differs from the file name, the file is renamed to the
+   title, made safe for a file name with the same cleaning as Quick Add titles
+   (`store.CleanTitle`, which moved into `store`). When that name is taken, `_1`,
+   `_2` and so on (counting from 1) are added before the extension until it
+   is free, and a notice says the note was renamed. The `title` property is
+   set to the final name, references to the note in other notes are rewritten
+   and the cursor follows the note, all as the `r` rename does; the rename is
+   one undo entry (the editing itself is not undoable). Nothing happens when
+   the title is missing, blank, not plain text, or already the file name, or
+   when the properties are invalid. A title that differs only by case is not
+   renamed (a case-only rename cannot be done safely on a case-insensitive
+   disk) and a notice says so; a title with no usable characters shows a
+   warning. A file the editor removed is ignored.
    9e. Daily-note rules (done; `store.DailyDate`, `store.DailyOverdue`, tested):
    - Overdue marker: a dated daily note (`YYYY-MM-DD.md`) still in
      `inbox/daily/` whose date is `retention.daily` or more calendar days

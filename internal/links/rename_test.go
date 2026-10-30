@@ -188,3 +188,119 @@ func TestRenameUndoRefusesAfterAnOutsideEditAndLeavesEverythingAlone(t *testing.
 	assert.Equal(t, renamed, readFile(t, root, "inbox/a.md"), "a failed undo puts the referrer back as it was")
 	assert.Equal(t, "changed outside\n", readFile(t, root, "projects/New.md"))
 }
+
+func titled(title string) string {
+	return "---\nuid: u1\ntitle: " + title + "\nkind: fact\n---\nbody\n"
+}
+
+func TestRenameToTitleRenamesTheFileAndRewritesLinks(t *testing.T) {
+	root, s, x := notebook(t, map[string]string{
+		"projects/Old name.md": titled("A better name"),
+		"inbox/ref.md":         note("[[Old name]]"),
+	})
+
+	got, err := RenameToTitle(s, x, "projects/Old name.md")
+	require.NoError(t, err)
+	require.True(t, got.Changed)
+	assert.Equal(t, "projects/A better name.md", got.Rel)
+	assert.False(t, got.Collided)
+	assert.Equal(t, 1, got.Result.Updated)
+	assert.NoFileExists(t, filepath.Join(root, "projects", "Old name.md"))
+	n := store.ParseNote("x.md", []byte(readFile(t, root, got.Rel)))
+	assert.Equal(t, "A better name", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, "u1", n.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "body\n", n.Body)
+	assert.Contains(t, readFile(t, root, "inbox/ref.md"), "[[A better name]]", "links follow the new name")
+
+	require.NoError(t, got.Action.Undo())
+	assert.FileExists(t, filepath.Join(root, "projects", "Old name.md"))
+	assert.Contains(t, readFile(t, root, "inbox/ref.md"), "[[Old name]]")
+}
+
+func TestRenameToTitleLeavesNotesAloneWhenThereIsNothingToDo(t *testing.T) {
+	tests := []struct {
+		name, content string
+	}{
+		{"title equals the file name", titled("Note")},
+		{"title differs only by case", titled("NOTE")},
+		{"no frontmatter", "just text\n"},
+		{"no title property", "---\nkind: fact\n---\nbody\n"},
+		{"blank title", "---\ntitle: \"   \"\n---\nbody\n"},
+		{"title is a list", "---\ntitle: [a, b]\n---\nbody\n"},
+		{"invalid frontmatter", "---\ntitle: [oops\n---\nbody\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root, s, x := notebook(t, map[string]string{"inbox/Note.md": tt.content})
+			got, err := RenameToTitle(s, x, "inbox/Note.md")
+			require.NoError(t, err)
+			assert.False(t, got.Changed)
+			assert.Equal(t, tt.content, readFile(t, root, "inbox/Note.md"), "the note is not rewritten")
+		})
+	}
+}
+
+func TestRenameToTitleReportsACaseOnlyChange(t *testing.T) {
+	_, s, x := notebook(t, map[string]string{"inbox/Note.md": titled("note")})
+	got, err := RenameToTitle(s, x, "inbox/Note.md")
+	require.NoError(t, err)
+	assert.False(t, got.Changed)
+	assert.True(t, got.CaseOnly, "a case-only rename is left to the user: it cannot be done safely on a case-insensitive disk")
+}
+
+func TestRenameToTitleNumbersACollision(t *testing.T) {
+	root, s, x := notebook(t, map[string]string{
+		"inbox/Taken.md":   "---\nuid: other\n---\n",
+		"inbox/Taken_1.md": "---\nuid: other2\n---\n",
+		"inbox/Draft.md":   titled("Taken"),
+	})
+
+	got, err := RenameToTitle(s, x, "inbox/Draft.md")
+	require.NoError(t, err)
+	require.True(t, got.Changed)
+	assert.Equal(t, "inbox/Taken_2.md", got.Rel, "the first free _n, counting from 1")
+	assert.True(t, got.Collided)
+	n := store.ParseNote("x.md", []byte(readFile(t, root, got.Rel)))
+	assert.Equal(t, "Taken_2", n.Frontmatter.Get("title").Value, "the title follows the final file name")
+	assert.Contains(t, readFile(t, root, "inbox/Taken.md"), "uid: other", "the existing note is untouched")
+}
+
+func TestRenameToTitleFirstCollisionIsUnderscoreOne(t *testing.T) {
+	_, s, x := notebook(t, map[string]string{
+		"inbox/Taken.md": "x",
+		"inbox/Draft.md": titled("Taken"),
+	})
+	got, err := RenameToTitle(s, x, "inbox/Draft.md")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Taken_1.md", got.Rel)
+}
+
+func TestRenameToTitleCleansUnsafeCharacters(t *testing.T) {
+	root, s, x := notebook(t, map[string]string{"inbox/Draft.md": titled("'Plan: Q4/Q1?  [v2]'")})
+	got, err := RenameToTitle(s, x, "inbox/Draft.md")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Plan Q4Q1 v2.md", got.Rel)
+	n := store.ParseNote("x.md", []byte(readFile(t, root, got.Rel)))
+	assert.Equal(t, "Plan Q4Q1 v2", n.Frontmatter.Get("title").Value, "the title property is normalized to the name")
+}
+
+func TestRenameToTitleWithNothingUsableInTheTitle(t *testing.T) {
+	root, s, x := notebook(t, map[string]string{"inbox/Draft.md": titled("\"///\"")})
+	_, err := RenameToTitle(s, x, "inbox/Draft.md")
+	assert.ErrorIs(t, err, ErrUnusableTitle)
+	assert.FileExists(t, filepath.Join(root, "inbox", "Draft.md"))
+}
+
+func TestRenameToTitleKeepsASubfolder(t *testing.T) {
+	root, s, x := notebook(t, map[string]string{"projects/deep/er/Draft.md": titled("Final")})
+	got, err := RenameToTitle(s, x, "projects/deep/er/Draft.md")
+	require.NoError(t, err)
+	assert.Equal(t, "projects/deep/er/Final.md", got.Rel)
+	assert.FileExists(t, filepath.Join(root, "projects", "deep", "er", "Final.md"))
+}
+
+func TestRenameToTitleOfAMissingNote(t *testing.T) {
+	_, s, x := notebook(t, map[string]string{})
+	_, err := RenameToTitle(s, x, "inbox/gone.md")
+	assert.Error(t, err)
+}

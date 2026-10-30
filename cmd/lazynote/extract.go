@@ -46,7 +46,7 @@ func (m model) startExtract() (model, tea.Cmd) {
 func (m model) askExtractTitle(kind store.Kind) (model, tea.Cmd) {
 	first, _ := intake.SplitText(m.extract.text)
 	title := fmt.Sprintf("Extract as %s: title", kind)
-	return m.openRootInput(title, intake.CleanTitle(first), func(m model, typed string) (model, tea.Cmd) {
+	return m.openRootInput(title, store.CleanTitle(first), func(m model, typed string) (model, tea.Cmd) {
 		x := m.extract
 		res, err := intake.Extract(m.store, time.Now(), kind, x.origin, typed, x.text)
 		if err != nil {
