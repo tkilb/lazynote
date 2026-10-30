@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/undo"
@@ -115,6 +116,14 @@ func (m Model) planPaste() (pastePlan, error) {
 			plan.skipped++
 			continue
 		}
+		if m.clip.mode == clipYank && dst == src {
+			// Copying an item into its own directory makes a duplicate.
+			if dst, err = m.freeName(dst); err != nil {
+				return plan, err
+			}
+			plan.items = append(plan.items, pasteItem{src: src, dst: dst})
+			continue
+		}
 		collides, err := m.store.Exists(dst)
 		if err != nil {
 			return plan, err
@@ -122,6 +131,32 @@ func (m Model) planPaste() (pastePlan, error) {
 		plan.items = append(plan.items, pasteItem{src: src, dst: dst, collides: collides})
 	}
 	return plan, nil
+}
+
+// maxDuplicates bounds the search for a free "_N" name.
+const maxDuplicates = 9999
+
+// errNoFreeName reports that every "_N" name up to maxDuplicates is taken.
+var errNoFreeName = errors.New("no free name for the copy")
+
+// freeName returns rel with the first "_N" suffix (before a ".md"
+// extension) that nothing occupies yet: a.md becomes a_1.md, then a_2.md.
+func (m Model) freeName(rel string) (string, error) {
+	stem, ext := rel, ""
+	if strings.HasSuffix(strings.ToLower(rel), ".md") {
+		stem, ext = rel[:len(rel)-len(".md")], rel[len(rel)-len(".md"):]
+	}
+	for n := 1; n <= maxDuplicates; n++ {
+		candidate := fmt.Sprintf("%s_%d%s", stem, n, ext)
+		taken, err := m.store.Exists(candidate)
+		if err != nil {
+			return "", err
+		}
+		if !taken {
+			return candidate, nil
+		}
+	}
+	return "", errNoFreeName
 }
 
 // paste puts the buffer into the current directory. Without overwrite a

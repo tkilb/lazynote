@@ -147,7 +147,11 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   selection. `Y` and `X` both empty the buffer. A yanked row shows a green
   bar and a cut row a red one; both outrank the yellow selection bar, and
   the footer shows `N yanked` or `N cut` on every tab.
-- A paste is all or nothing: if any name collides, `p` cancels the whole
+- Yanking an item and pasting it into the directory it already lives in
+  makes a duplicate named with the first free `_N` suffix before the
+  extension (`a.md` becomes `a_1.md`, then `a_2.md`; a folder `p` becomes
+  `p_1`), with no prompt, for both `p` and `P`.
+- A paste is all or nothing: if any other name collides, `p` cancels the whole
   paste and names the count; if a step fails, the steps already done are
   undone. Cutting into the directory the item is already in does nothing.
   Sources that no longer exist are dropped and counted in the message.
