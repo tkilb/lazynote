@@ -26,7 +26,7 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
 | —   | Title    | Title of the selected note on one line, led by its kind badge. Display only: no number key, not in the focus cycle. |
 | `0` | Body     | Read-only plain-text view of the selected note (frontmatter hidden, lines wrapped).                                                                                                               |
-| `4` | Info     | Kind (highlighted) and every frontmatter property except `uid` of the selected note (Obsidian-style: `tags`, `aliases`, custom keys). Sits below Body. |
+| `4` | Info     | Three standard rows (Kind, Source, Date; Tags; Aliases), then every other frontmatter property of the selected note (custom keys), scrolling. `uid` and `related` are hidden. Sits below Body. |
 
 Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Notebook, PARA, Related, Body, Info and
 back; the Title panel is never focusable. Mouse support follows lazytask.
@@ -399,26 +399,30 @@ Conflict notes:
   deleting or trashing a directory counts every entry on disk, not just the
   listed ones, and the confirm popup says how many unlisted files it holds.
   Cutting and pasting a directory moves everything inside it.
-- Info lists, for the note under the cursor: a highlighted `Kind` row (the
-  badge color, `unset` when missing or unrecognized), then
-  every frontmatter property except `uid`, in file order. To save vertical
-  space the rows flow into columns (as many as fit, 24 columns wide at
-  least, up to three): a row whose label and value fit on one line within a
-  column sits beside others, and a row that does not fit (a long or
-  multi-line value) takes the full width on its own lines, wrapped, so
-  nothing is cut off. A scalar shows its text; a list of scalars is one
+- Info shows, for the note under the cursor, three standard rows that sit in
+  the same place for every note, drawn even when a field is empty: row 1 holds
+  `Kind` (highlighted in the badge color, `unset` when missing or
+  unrecognized), `Source` and `Date` as three equal columns; row 2 is `Tags`;
+  row 3 is `Aliases`. Each is one line and a long value is cut with an
+  ellipsis. `Date` is shown as `YYYY-MM-DD` with any time of day dropped
+  (`store.DateOnly`); a value that is not a date is shown as written. Below
+  them come all other properties in file order, flowing into columns (as
+  many as fit, 24 columns wide at least, up to three): a row whose label and
+  value fit on one line within a column sits beside others, and a row that
+  does not fit (a long or multi-line value) takes the full width on its own
+  lines, wrapped. A scalar shows its text; a list of scalars is one
   comma-separated line (`tags  work, ideas`); other lists show one `- ` item
-  per line; a mapping shows indented `key: value` lines; aliases show what
-  they point to. Depth and length are bounded (400 lines, 8 levels), and all
-  text is sanitized like Body. The `kind` property is not repeated unless
-  its value is unrecognized, so the raw text stays visible, and a `title`
-  property equal to the shown title (the file name) is not repeated. Invalid frontmatter
-  shows a red `Properties` row. For a folder, Info shows its name and the
+  per line; a mapping shows indented `key: value` lines. Depth and length are
+  bounded (400 lines, 8 levels), and all text is sanitized like Body. Hidden:
+  `uid`, `related` (the Related panel shows it), `title` when it equals the
+  file name, and `kind` when its value is recognized (an unrecognized value
+  stays visible as a property). Invalid frontmatter shows a red `Properties`
+  row after the standard rows. For a folder, Info shows its name and the
   number of entries it lists; a note that cannot be read shows the error.
   `↑/k` `↓/j` scroll, with a position footer when it overflows, and `esc` or
-  `h` returns to PARA. The right column, top to bottom, is the Title
-  panel (3 rows), Body, and Info, which is fixed at 4 content rows (6 with
-  the border) and scrolls by line; Body gets the rest.
+  `h` returns to PARA. The right column, top to bottom, is the Title panel
+  (3 rows), Body, and Info, which is fixed at 3 content rows (5 with the
+  border) and scrolls by line; Body gets the rest.
 - Body shows the note under the PARA cursor as plain text and follows it as
   the cursor moves; with a directory selected it is empty, and a note that
   cannot be read shows the error (for example "note is too large"). The
@@ -549,11 +553,6 @@ Numbers are kept stable; resolved items were removed.
     inbox with its frontmatter preserved. Default: it gets a fresh `uid` and
     its `title` set to its new file name, as copies do in chunk 5b, because
     the same `uid` would otherwise exist twice.
-13. The standard metadata fields and their order (chunk 5c). Default until
-    answered: `kind` (highlighted row), `date`, `source`, `tags`, `aliases`,
-    `related`, then any other properties in file order. Hidden: `uid`, and
-    `title` when it equals the file name. Only the fields a note has are
-    drawn, with no blank slots. Needs your confirmation or changes before 5c.
 
 ## Future enhancements
 
@@ -624,17 +623,12 @@ Numbers are kept stable; resolved items were removed.
    rewrites a note on read. Engine tests: file, folder tree, no frontmatter,
    invalid frontmatter, undo and redo stability, source untouched, uniqueness
    across many copies. Import (9b) follows the same rule (open decision 12).
-   5c. Standardize the metadata fields and their positions in Info. The
-   standard set and its order are defined once in `internal/store`, like the
-   kinds, and Info draws the present standard fields first, in that order,
-   then any other properties in file order, so a field sits in the same place
-   from note to note. `uid` stays hidden, `title` stays hidden when it equals
-   the file name, and `kind` stays the highlighted first row. The same order
-   is used when lazynote writes the frontmatter of a new note; an existing
-   note keeps its file order when lazynote rewrites it (the round-trip rule),
-   and only Info's display order is standardized. The field set and order
-   must be confirmed before the chunk starts (open decision 13). Engine
-   tests for the ordering; manual QA note for Info.
+   5c. Standard metadata rows in Info (confirmed layout, see the Info
+   decision): Kind | Source | Date on row 1, Tags on row 2, Aliases on row 3,
+   other properties scrolling below, `related` hidden, Info 3 content rows.
+   `store.DateOnly` carries the date rule, with a table test; manual QA note
+   for Info. Writing new notes' frontmatter in this order is left to the
+   intake chunks (9b), which are the first to write these fields.
    5d. Edit in `$EDITOR` (`e` in PARA), moved up from chunk 9 so notes can be
    opened for testing. `e` on a note hands the terminal to `$EDITOR` (falling
    back to `vi`; the value may carry arguments) with the note's real path,

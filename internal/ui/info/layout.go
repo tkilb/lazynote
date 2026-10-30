@@ -23,7 +23,10 @@ const (
 func (m Model) layout() Model {
 	m.lines = nil
 	if m.width > 0 {
-		m.lines = flow(m.rows, m.width)
+		if m.std != nil {
+			m.lines = m.std.lines(m.width)
+		}
+		m.lines = append(m.lines, flow(m.rows, m.width)...)
 	}
 	m.offset = m.clamp(m.offset)
 	return m

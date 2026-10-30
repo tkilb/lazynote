@@ -1,7 +1,9 @@
-// Package info implements the Info panel: the kind of the selected note
-// followed by every frontmatter property except the uid, in file order, with
-// nested values drawn generically. (The title has its own panel.) For a
-// folder it shows the name and item count.
+// Package info implements the Info panel: three standard rows (Kind, Source
+// and Date; Tags; Aliases) that sit in the same place for every note,
+// followed by every other frontmatter property in file order, with nested
+// values drawn generically. The uid and related properties are never shown.
+// (The title has its own panel.) For a folder it shows the name and item
+// count.
 package info
 
 import (
@@ -21,7 +23,7 @@ const (
 	// maxLabelWidth caps a label; longer keys are shortened.
 	maxLabelWidth = 14
 	// defaultHeight is the page size until the first Resize.
-	defaultHeight = 4
+	defaultHeight = 3
 	// maxValueLines bounds how many lines one note's properties can take.
 	maxValueLines = 400
 	// maxDepth bounds how deep nested values and YAML aliases are followed.
@@ -60,9 +62,11 @@ type line struct {
 // Model is the Info panel state. Methods return updated copies.
 type Model struct {
 	subject string // identifies what is shown, to keep the scroll on refresh
-	rows    []row
-	lines   []line
-	offset  int
+	// std, when set, is drawn first as the standard rows; rows follow it.
+	std    *standard
+	rows   []row
+	lines  []line
+	offset int
 
 	width, height int
 }
@@ -84,9 +88,8 @@ func (m Model) Clear() Model {
 // ShowNote shows the note read from rel. The scroll is kept when rel is
 // already shown and reset otherwise.
 func (m Model) ShowNote(rel string, n store.Note) Model {
-	rows := []row{
-		{label: "Kind", value: []string{n.Kind.String()}, highlight: kindstyle.Color(n.Kind)},
-	}
+	std := newStandard(n.Kind, kindstyle.Color(n.Kind), n.Frontmatter)
+	var rows []row
 	if n.FrontmatterErr != nil {
 		rows = append(rows, row{
 			label: "Properties", value: []string{"invalid frontmatter, left unchanged"}, style: errorStyle,
@@ -95,7 +98,7 @@ func (m Model) ShowNote(rel string, n store.Note) Model {
 	if n.Frontmatter != nil {
 		budget := maxValueLines
 		for _, p := range n.Frontmatter.Properties() {
-			if p.Key == uidKey ||
+			if isStandardKey(p.Key) ||
 				(p.Key == kindKey && n.Kind != store.KindUnset) ||
 				(p.Key == titleKey && p.Value.Kind == yaml.ScalarNode && strings.TrimSpace(p.Value.Value) == n.Title) {
 				continue
@@ -103,7 +106,7 @@ func (m Model) ShowNote(rel string, n store.Note) Model {
 			rows = append(rows, row{label: p.Key, value: valueLines(p.Value, 0, &budget), style: plain})
 		}
 	}
-	return m.show(rel, rows)
+	return m.showStd(rel, &std, rows)
 }
 
 // ShowDir shows a folder's name and the number of entries it lists.
@@ -122,10 +125,14 @@ func (m Model) ShowError(rel string, err error) Model {
 }
 
 func (m Model) show(subject string, rows []row) Model {
+	return m.showStd(subject, nil, rows)
+}
+
+func (m Model) showStd(subject string, std *standard, rows []row) Model {
 	if subject != m.subject {
 		m.offset = 0
 	}
-	m.subject, m.rows = subject, rows
+	m.subject, m.std, m.rows = subject, std, rows
 	return m.layout()
 }
 
