@@ -18,13 +18,15 @@ import (
 )
 
 const (
-	minBoxWidth  = 30
-	maxBoxWidth  = 60
-	maxListRows  = 10
-	minListRows  = 3
-	boxMargin    = 8 // columns and rows kept free around the box
-	chromeRows   = 4 // border (2), field and gap
-	charLimit    = 100
+	minBoxWidth = 30
+	maxBoxWidth = 60
+	maxListRows = 10
+	minListRows = 3
+	boxMargin   = 8 // columns and rows kept free around the box
+	chromeRows  = 4 // border (2), field and gap
+	charLimit   = 100
+	// detailExtra widens the detail column beyond half the box.
+	detailExtra  = 4
 	noMatchLabel = "(no matches)"
 	hint         = "enter select  esc cancel"
 )
@@ -181,7 +183,7 @@ func (m Model) View(screenWidth, screenHeight int) string {
 // its detail right-aligned.
 func (m Model) row(mt match, width int, cursor bool) string {
 	it := m.items[mt.item]
-	detail := ansi.Truncate(it.Detail, width/2, "…")
+	detail := ansi.Truncate(it.Detail, width/2+detailExtra, "…")
 	label := ansi.Truncate(it.Label, max(width-lipgloss.Width(detail)-1, 1), "…")
 	gap := strings.Repeat(" ", max(width-lipgloss.Width(label)-lipgloss.Width(detail), 0))
 

@@ -71,17 +71,17 @@ func KindOf(fm *Frontmatter) Kind {
 func (k Kind) Meaning() string {
 	switch k {
 	case KindFact:
-		return "Confirmed information"
+		return "Confirmed"
 	case KindRumor:
-		return "Unconfirmed information"
+		return "Unconfirmed"
 	case KindProposal:
-		return "Desired outcomes; may not reflect reality"
+		return "Desired outcome, may not be real"
 	case KindFossil:
-		return "Was true, but may have drifted over time"
+		return "Was true, may have drifted"
 	case KindIdea:
-		return "A loose thought, not yet a proposal"
+		return "Loose thought"
 	case KindDraft:
-		return "Incomplete and still being revised"
+		return "Incomplete, still revising"
 	}
 	return ""
 }
