@@ -52,7 +52,7 @@ func newStore(t *testing.T) (string, store.Store) {
 func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 	root, s := newStore(t)
 
-	res, err := Capture(s, now, store.KindFact, SourceQuick, "Water boils", "At 100C at sea level")
+	res, err := Capture(s, now, store.KindFact, SourceQuick, "Water boils", "At 100C at sea level", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "inbox/Water boils.md", res.Rel, "named from the title, no timestamp")
 
@@ -73,7 +73,7 @@ func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 
 func TestCaptureWithoutABodyMakesAnEmptyBody(t *testing.T) {
 	root, s := newStore(t)
-	res, err := Capture(s, now, store.KindIdea, SourceQuick, "Just a title", "  ")
+	res, err := Capture(s, now, store.KindIdea, SourceQuick, "Just a title", "  ", nil)
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	assert.Empty(t, store.ParseNote("x.md", data).Body)
@@ -81,11 +81,11 @@ func TestCaptureWithoutABodyMakesAnEmptyBody(t *testing.T) {
 
 func TestCaptureNumbersACollidingName(t *testing.T) {
 	root, s := newStore(t)
-	a, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "one")
+	a, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "one", nil)
 	require.NoError(t, err)
-	b, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "two")
+	b, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "two", nil)
 	require.NoError(t, err)
-	c, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "three")
+	c, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "three", nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "inbox/Same.md", a.Rel)
@@ -98,7 +98,7 @@ func TestCaptureNumbersACollidingName(t *testing.T) {
 func TestCaptureRejectsAMissingTitle(t *testing.T) {
 	_, s := newStore(t)
 	for _, title := range []string{"", "   ", "\t", "///", "#"} {
-		_, err := Capture(s, now, store.KindFact, SourceQuick, title, "has a body")
+		_, err := Capture(s, now, store.KindFact, SourceQuick, title, "has a body", nil)
 		assert.ErrorIs(t, err, ErrEmpty, "%q", title)
 	}
 }
@@ -106,7 +106,7 @@ func TestCaptureRejectsAMissingTitle(t *testing.T) {
 func TestCaptureKeepsTheBodyVerbatim(t *testing.T) {
 	root, s := newStore(t)
 	body := "---\nnot: frontmatter [[link]] # heading"
-	res, err := Capture(s, now, store.KindRumor, SourceQuick, "T", body)
+	res, err := Capture(s, now, store.KindRumor, SourceQuick, "T", body, nil)
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	n := store.ParseNote("x.md", data)
@@ -241,4 +241,48 @@ func TestErrorsNeverEchoThePath(t *testing.T) {
 	_, err := ImportNote(s, now, "/definitely/secret/place/x.md")
 	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "secret")
+}
+
+func TestParseTags(t *testing.T) {
+	tests := []struct {
+		in      string
+		want    []string
+		wantErr bool
+	}{
+		{"work", []string{"work"}, false},
+		{"work, ideas  new", []string{"work", "ideas", "new"}, false},
+		{"#work #ideas", []string{"work", "ideas"}, false},
+		{"a,,b, ,c", []string{"a", "b", "c"}, false},
+		{"Work work WORK", []string{"Work"}, false},
+		{"ideas/new_stuff-2", []string{"ideas/new_stuff-2"}, false},
+		{"héllo", []string{"héllo"}, false},
+		{"", nil, false},
+		{" , ", nil, false},
+		{"#", nil, false},
+		{"has+plus", nil, true},
+		{"a\"b", nil, true},
+		{"2026", nil, true},
+		{"w[0]", nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got, err := ParseTags(tt.in)
+			if tt.wantErr {
+				assert.ErrorIs(t, err, ErrBadTag)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestCaptureWritesTagsAndOmitsAnUnsetKind(t *testing.T) {
+	root, s := newStore(t)
+	res, err := Capture(s, now, store.KindUnset, SourceQuick, "Tagged", "b", []string{"work", "ideas"})
+	require.NoError(t, err)
+	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
+	n := store.ParseNote("x.md", data)
+	assert.Nil(t, n.Frontmatter.Get("kind"))
+	assert.Len(t, n.Frontmatter.Get("tags").Content, 2)
 }

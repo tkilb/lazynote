@@ -8,14 +8,14 @@ import (
 )
 
 func TestIntakeNote(t *testing.T) {
-	data, err := IntakeNote("2026-10-30-143005 call mum.md", KindIdea, "quick", "2026-10-30", "call mum\n")
+	data, err := IntakeNote("call mum.md", KindIdea, "quick", "2026-10-30", "call mum\n", nil)
 	require.NoError(t, err)
-	n := ParseNote("2026-10-30-143005 call mum.md", data)
+	n := ParseNote("call mum.md", data)
 	require.NoError(t, n.FrontmatterErr)
 	assert.Equal(t, KindIdea, n.Kind)
 	assert.Equal(t, "quick", n.Frontmatter.Get("source").Value)
 	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
-	assert.Equal(t, "2026-10-30-143005 call mum", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, "call mum", n.Frontmatter.Get("title").Value)
 	assert.NotEmpty(t, n.Frontmatter.Get("uid").Value)
 	assert.NotNil(t, n.Frontmatter.Get("tags"), "every intake note has a tags property")
 	assert.Empty(t, n.Frontmatter.Get("tags").Content)
@@ -23,7 +23,7 @@ func TestIntakeNote(t *testing.T) {
 }
 
 func TestIntakeNoteQuotesTextSoItStaysAString(t *testing.T) {
-	data, err := IntakeNote("n.md", KindFact, "2026-01-01", "2026-10-30", "x\n")
+	data, err := IntakeNote("n.md", KindFact, "2026-01-01", "2026-10-30", "x\n", nil)
 	require.NoError(t, err)
 	n := ParseNote("n.md", data)
 	assert.Equal(t, "2026-01-01", n.Frontmatter.Get("source").Value)
@@ -72,4 +72,19 @@ func TestImportedNoteGetsAFreshUIDAndKeepsTheRest(t *testing.T) {
 func TestImportedNoteRefusesInvalidFrontmatter(t *testing.T) {
 	_, err := ImportedNote([]byte("---\nkind: [oops\n---\nbody\n"), "New.md", "2026-10-30")
 	assert.ErrorIs(t, err, ErrFrontmatterInvalid)
+}
+
+func TestIntakeNoteTagsAndUnsetKind(t *testing.T) {
+	data, err := IntakeNote("n.md", KindUnset, "quick", "2026-10-30", "", []string{"work", "ideas/new"})
+	require.NoError(t, err)
+	n := ParseNote("n.md", data)
+	require.NoError(t, n.FrontmatterErr)
+	assert.Nil(t, n.Frontmatter.Get("kind"), "an unset kind writes no kind property")
+	assert.Equal(t, KindUnset, n.Kind)
+	tags := n.Frontmatter.Get("tags")
+	require.NotNil(t, tags)
+	require.Len(t, tags.Content, 2)
+	assert.Equal(t, "work", tags.Content[0].Value)
+	assert.Equal(t, "ideas/new", tags.Content[1].Value)
+	assert.Empty(t, n.Body)
 }

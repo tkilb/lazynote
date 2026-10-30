@@ -93,8 +93,9 @@ func Name(title string) string {
 }
 
 // Capture creates an inbox note named after its title, holding body, with the
-// given kind and source. A missing title is ErrEmpty.
-func Capture(s store.Store, now time.Time, kind store.Kind, source, title, body string) (Result, error) {
+// given kind (KindUnset for none), source and tags. A missing title is
+// ErrEmpty.
+func Capture(s store.Store, now time.Time, kind store.Kind, source, title, body string, tags []string) (Result, error) {
 	name := Name(title)
 	if name == "" {
 		return Result{}, ErrEmpty
@@ -104,7 +105,7 @@ func Capture(s store.Store, now time.Time, kind store.Kind, source, title, body 
 		text = body + "\n"
 	}
 	return createUnique(s, name, func(final string) ([]byte, error) {
-		return store.IntakeNote(final, kind, source, now.Format(dayLayout), text)
+		return store.IntakeNote(final, kind, source, now.Format(dayLayout), text, tags)
 	})
 }
 
@@ -122,7 +123,7 @@ func ImportTranscript(s store.Store, now time.Time, path string) (Result, error)
 		name = Name(SourceTranscript)
 	}
 	return createUnique(s, name, func(final string) ([]byte, error) {
-		return store.IntakeNote(final, store.KindRumor, SourceTranscript, now.Format(dayLayout), string(text))
+		return store.IntakeNote(final, store.KindRumor, SourceTranscript, now.Format(dayLayout), string(text), nil)
 	})
 }
 

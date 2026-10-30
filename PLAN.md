@@ -50,9 +50,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `0`-`4`             | Focus Body / Notebook / PARA / Related / Info |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
 | `?`                 | Keybindings popup (see "Help popup")          |
-| `F`                 | Quick fact (one-line prompt, `kind: fact`)    |
-| `R`                 | Quick rumor (one-line prompt, `kind: rumor`)  |
-| `i`                 | Quick idea (one-line prompt, `kind: idea`)    |
+| `A`                 | Quick Add: form for a new inbox note          |
 | `I`                 | Import transcript or note (path prompt)       |
 | `U`                 | URL clip                                      |
 | `t`                 | Append to today's daily note                  |
@@ -226,8 +224,7 @@ Conflict notes:
   PARA's delete.
 - Inside the move popup `p` means project; in PARA outside the popup `p` is
   paste. The popup captures the next key, so there is no clash.
-- Quick capture keys are global: `F` fact, `R` rumor, `i` idea.
-  `m` is panel-scoped (PARA).
+- Quick Add (`A`) and import (`I`) are global. `m` is panel-scoped (PARA).
 - Inside the move popup `a` and `A` differ only by case. The popup shows
   both labels clearly, and moving to Archives is undoable.
 - `K` sets the kind in PARA and clashes with Yazi's `K` seek (open
@@ -238,8 +235,9 @@ Conflict notes:
 - In PARA, `enter` and `→` drill a directory or open a note (focus
   Body); `←` goes to the parent directory, and in Body `←` or `esc`
   returns focus to PARA. In Related, `enter` jumps to the note.
-- `i` (quick idea) and `I` (import) differ only by case, like `a`/`A` in the
-  move popup.
+- Global `A` (Quick Add) is not the same as PARA's `a` (new note in the
+  current folder, by name only); `A` is also a destination key inside the
+  modal move popup, which captures the next key, so there is no clash.
 
 ## Decisions
 
@@ -493,9 +491,8 @@ listed first like any directory, next to the intake notes.
 
 Confirmed:
 
-- Quick capture prompts, each a form with a Title box and a multi-line Body
-  box (see the 9b notes) creating an inbox note: `F` for `kind: fact`, `R` for `kind: rumor`, `i` for
-  `kind: idea`. The file name is the title, cleaned (unsafe characters
+- Quick Add (`A`): one form with Title, multi-line Body, Kind and Tags boxes
+  (see the 9b notes) creating an inbox note. The file name is the title, cleaned (unsafe characters
   removed), plus `.md`, with no timestamp (the day is the `date` property);
   a numeric suffix resolves a collision. The body field is the note body;
   the title is the file name, as for every note. The same naming applies to
@@ -725,29 +722,34 @@ Numbers are kept stable; resolved items were removed.
    rule that a daily accepts only `A` is still to come (9e). Cut/paste, delete, create and undo are already
    in chunks 3e to 3g.
    9b. Intake core (done for the TUI; `lazynote import` comes with 9c):
-   quick fact (`F`), quick rumor (`R`), quick idea (`i`), transcript and
-   note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
+   Quick Add (`A`), transcript and note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
    created on first use. Engine in `internal/intake`, tested.
-   - Quick capture: a form ported from lazytask's add-task form
-     (`internal/ui/noteform`): a "Fact title" / "Rumor title" / "Idea title"
-     box and a "Body" box, each its own bordered box with the field name in
-     the border and the focused one highlighted. `tab` and `shift+tab` move
-     between them (the arrows belong to the body's cursor). The body is
-     multi-line and scrolls inside a fixed height of 3 to 8 lines (more on a
-     tall terminal), with the cursor line and total shown at the bottom left
-     once it overflows; `enter` there starts a new line. `enter` in the title
-     and `ctrl+s` in either field save, `esc` cancels. (`ctrl+s` is an
-     addition: lazytask's form can only save from a single-line field.) The
-     note is `inbox/<title>.md`: the
-     title with `/ \ : * ? " < > | # [ ] ^` and control characters removed,
-     white space collapsed, leading and trailing dots and spaces trimmed, at
-     most 80 characters, case kept. It has `uid`, `title` (the file name),
-     `kind`, `source: quick`, `date` (`YYYY-MM-DD`, unquoted so Obsidian reads
-     a date) and an empty `tags` list, and the body text (none when the body
-     is blank). A name already taken gets ` 2`, ` 3` and so on, and the title
-     property follows. Both fields blank does nothing; a body without a
-     usable title is an error ("a title is needed"). Undo moves the note to
-     the trash.
+   - Quick Add: a form ported from lazytask's add-task form
+     (`internal/ui/noteform`), opened with `A` from any panel. Four boxes, in
+     tab order: "Quick Add: Title", "Body", "Kind" and "Tags", each its own
+     bordered box with the field name in the border and the focused one
+     highlighted. `tab` and `shift+tab` move between them (the arrows belong
+     to the body's cursor). The body is multi-line and scrolls inside a fixed
+     height of 3 to 8 lines (more on a tall terminal), with the cursor line
+     and total shown at the bottom left once it overflows; `enter` there
+     starts a new line. The kind box shows `‹ kind ›` in its color with its
+     meaning and changes with `←`/`→` through unset, fact, rumor, proposal,
+     fossil, idea and draft (unset by default). Tags are names separated by
+     commas or white space, `#` optional, letters, digits, `_`, `-` and `/`
+     only, not all digits, duplicates dropped. `enter` in any one-line field
+     and `ctrl+s` anywhere save, `esc` cancels; the key hints are on the last
+     box's border and follow the focused field. (`ctrl+s` is an addition:
+     lazytask's form can only save from a single-line field.) The note is
+     `inbox/<title>.md`: the title with `/ \ : * ? " < > | # [ ] ^` and
+     control characters removed, white space collapsed, leading and trailing
+     dots and spaces trimmed, at most 80 characters, case kept. It has `uid`,
+     `title` (the file name), `kind` (omitted when unset), `source: quick`,
+     `date` (`YYYY-MM-DD`, unquoted so Obsidian reads a date) and `tags`
+     (empty when none), and the body text (none when blank). A name already
+     taken gets ` 2`, ` 3` and so on, and the title property follows. Both
+     title and body blank does nothing. A missing title, or a bad tag, shows
+     a warning and puts the form back with everything typed and the focus on
+     the field to fix. Undo moves the note to the trash.
    - Import: `I` asks for a file path (`~` is expanded), then a menu: `t`
      transcript or `n` note. The file is only read: it must be a regular
      file (a symlink to one is fine) of at most 10 MB, and nothing is ever

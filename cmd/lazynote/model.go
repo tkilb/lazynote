@@ -139,7 +139,7 @@ type model struct {
 	pickerKind store.Kind
 	// form is the open quick-capture form; formSave handles its texts.
 	form     *noteform.Model
-	formSave func(model, string, string) model
+	formSave func(model, noteform.Values) (model, tea.Cmd)
 	// menu is the open choose-by-key menu, if any.
 	menu *menu
 	// question is a yes/no question owned by the root model, with what to do
@@ -297,8 +297,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "?":
 		m.showingHelp = true
-	case "F", "R", "i":
-		m, cmd = m.startCapture(key)
+	case "A":
+		m, cmd = m.startQuickAdd()
 	case "I":
 		m, cmd = m.startImport()
 	case "ctrl+z":

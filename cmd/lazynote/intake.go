@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -9,53 +10,49 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/noteform"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 )
 
-// captureKinds maps the global capture keys to the kind they create and the
-// word that names it in the form.
-var captureKinds = map[string]struct {
-	kind  store.Kind
-	label string // names the kind in the form: "Fact title"
-}{
-	"F": {store.KindFact, "Fact"},
-	"R": {store.KindRumor, "Rumor"},
-	"i": {store.KindIdea, "Idea"},
-}
-
-// openRootInput opens a one-line prompt whose text goes to accept.
-func (m model) openRootInput(title string, accept func(model, string) (model, tea.Cmd)) (model, tea.Cmd) {
-	in, cmd := m.openInput(&para.Prompt{Title: title})
-	in.accept = accept
-	m.input = in
-	return m, cmd
-}
-
-// startCapture opens the quick capture form for the capture key.
-func (m model) startCapture(key string) (model, tea.Cmd) {
-	c := captureKinds[key]
-	form, cmd := noteform.New(c.label, m.width, m.height)
+// startQuickAdd opens the Quick Add form.
+func (m model) startQuickAdd() (model, tea.Cmd) {
+	form, cmd := noteform.New("Quick Add", m.width, m.height)
 	m.form = &form
-	m.formSave = func(m model, title, body string) model {
-		if strings.TrimSpace(title) == "" && strings.TrimSpace(body) == "" {
-			return m // nothing typed
+	m.formSave = func(m model, v noteform.Values) (model, tea.Cmd) {
+		if strings.TrimSpace(v.Title) == "" && strings.TrimSpace(v.Body) == "" {
+			return m, nil // nothing typed
 		}
-		res, err := intake.Capture(m.store, time.Now(), c.kind, intake.SourceQuick, title, body)
-		return m.finishIntake(res, err)
+		tags, err := intake.ParseTags(v.Tags)
+		if err != nil {
+			return m.reopenForm(v, noteform.FieldTags, err)
+		}
+		res, err := intake.Capture(m.store, time.Now(), v.Kind, intake.SourceQuick, v.Title, v.Body, tags)
+		if errors.Is(err, intake.ErrEmpty) {
+			return m.reopenForm(v, noteform.FieldTitle, err)
+		}
+		return m.finishIntake(res, err), nil
 	}
 	return m, cmd
 }
 
-// formKey handles a key while the capture form is open: esc cancels, enter in
-// the title and ctrl+s anywhere save, and everything else edits the form.
+// reopenForm puts the form back after a mistake, with a warning and what was
+// typed, so a typo in the tags does not lose a long body.
+func (m model) reopenForm(v noteform.Values, f noteform.Field, why error) (model, tea.Cmd) {
+	form, _ := noteform.New("Quick Add", m.width, m.height)
+	form, cmd := form.WithValues(v, f)
+	m.form = &form
+	return m.notify(popup.Warning, capitalize(why.Error())+"."), cmd
+}
+
+// formKey handles a key while the Quick Add form is open: esc cancels, enter
+// in any single-line field and ctrl+s anywhere save, and everything else
+// edits the form.
 func (m model) formKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	save := func() (tea.Model, tea.Cmd) {
-		title, body, onSave := m.form.Title(), m.form.Body(), m.formSave
-		m.form, m.formSave = nil, nil
-		return onSave(m, title, body), nil
+		v, onSave := m.form.Values(), m.formSave
+		m.form = nil
+		return onSave(m, v)
 	}
 	switch msg.String() {
 	case "esc":
@@ -64,12 +61,20 @@ func (m model) formKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+s":
 		return save()
 	case "enter":
-		if m.form.FocusedField() == noteform.FieldTitle {
+		if m.form.FocusedField() != noteform.FieldBody {
 			return save()
 		}
 	}
 	f, cmd := m.form.Update(msg)
 	m.form = &f
+	return m, cmd
+}
+
+// openRootInput opens a one-line prompt whose text goes to accept.
+func (m model) openRootInput(title string, accept func(model, string) (model, tea.Cmd)) (model, tea.Cmd) {
+	in, cmd := m.openInput(&para.Prompt{Title: title})
+	in.accept = accept
+	m.input = in
 	return m, cmd
 }
 

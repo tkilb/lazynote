@@ -12,8 +12,9 @@ const (
 
 // IntakeNote returns the contents of a new intake note named name: the
 // properties every intake note carries (uid, title, kind, source, date and
-// an empty tags list) followed by body. date is YYYY-MM-DD.
-func IntakeNote(name string, kind Kind, source, date, body string) ([]byte, error) {
+// a tags list, empty when there are none) followed by body. date is
+// YYYY-MM-DD. An unset kind writes no kind property.
+func IntakeNote(name string, kind Kind, source, date, body string, tags []string) ([]byte, error) {
 	uid, err := NewUID()
 	if err != nil {
 		return nil, err
@@ -21,10 +22,12 @@ func IntakeNote(name string, kind Kind, source, date, body string) ([]byte, erro
 	fm := NewFrontmatter()
 	fm.SetString(uidKey, uid)
 	fm.SetString(titleKey, noteTitle(name))
-	fm.SetString(kindKey, kind.String())
+	if kind != KindUnset {
+		fm.SetString(kindKey, kind.String())
+	}
 	fm.SetString(sourceKey, source)
 	fm.SetDate(dateKey, date)
-	fm.SetStringList(tagsKey, nil)
+	fm.SetStringList(tagsKey, tags)
 	return assembleNote(fm, []byte(body), false)
 }
 
