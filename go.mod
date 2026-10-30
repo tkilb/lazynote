@@ -26,3 +26,8 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 )
+
+require (
+	github.com/stretchr/testify v1.12.1
+	go.yaml.in/yaml/v3 v3.0.5
+)
