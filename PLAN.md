@@ -105,7 +105,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | --------------- | ------------------------------------------------ |
 | `↑/k` `↓/j`     | Move selection                                   |
 | `enter`         | Jump PARA to the related note                    |
-| `*space`        | Add relation (fuzzy picker)                      |
+| `*` (undecided) | Add relation (fuzzy picker); key to be chosen    |
 | `d`             | Remove relation (confirm; References entries only)|
 
 **Info (4)**: `↑/k` `↓/j` scroll.
@@ -216,8 +216,8 @@ lists in `cmd/lazynote/help.go` (and the status bar hints in `model.go`).
 Conflict notes:
 
 - `a` creates a note or directory in PARA only (as in Yazi); it is not a
-  global key. Related uses `space` for adding a relation (`+` is kept free for a
-  future panel zoom, as in lazygit).
+  global key. The key for adding a relation in Related is
+  undecided (open decision 2); `space` and `+` are not used for it.
 - `h`/`l` navigate directories in PARA only; other panels use `j`/`k`.
 - Related uses `d` for removing a relation (confirm) to stay consistent with
   PARA's delete.
@@ -520,7 +520,7 @@ Also confirmed:
   missing.
 - Sorting the inbox: there is no separate triage mode. Work through the
   Inbox tab with the ordinary PARA keys: `K` to set a kind, `m` then a
-  key to file a note, `space` in Related to add relations, and Body line
+  key to file a note, the add-relation key in Related, and Body line
   selection (`v`, `enter`) to extract. If a queue or mode is needed later, it
   will be added then.
 - Daily notes in `inbox/daily/` are digested, not filed: extract the useful
@@ -543,7 +543,7 @@ Also confirmed:
 
 Numbers are kept stable; resolved items were removed.
 
-2. Creating a relation in-app. Default: `space` in the Related panel opens a
+2. Creating a relation in-app. Default: a key in the Related panel (to be chosen; not `space`) opens a
    fuzzy picker over all notes and appends the choice to the selected note's
    `related` property. Removing: `d` on a Related row (confirm).
 3. Fossil drift. Default: `fossil` is set manually; no automatic aging and no
@@ -570,8 +570,8 @@ Numbers are kept stable; resolved items were removed.
 
 ## Future enhancements
 
-- Zoom the focused panel to full screen with `+` (as lazygit does). `+` is
-  deliberately unused until then.
+- Zoom the focused panel to full screen, as lazygit does. The key is
+  undecided.
 - Markdown rendering in Body with `charmbracelet/glamour` (headings, lists,
   code blocks, emphasis). Needs a new dependency, so verify it is current and
   maintained and get approval first. Keep the plain-text view available as a
