@@ -86,8 +86,8 @@ const (
 	maxBoxWidth = 60
 
 	dismissHint = "press any key to dismiss"
-	confirmHint = "(y/enter) confirm   (n/esc) cancel"
-	inputHint   = "(enter) accept   (esc) cancel"
+	confirmHint = "(y/enter) confirm  (n/esc) cancel"
+	inputHint   = "(enter) accept  (esc) cancel"
 
 	// boxChrome is the columns a box spends on its border and padding.
 	boxChrome = 4
