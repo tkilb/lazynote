@@ -69,17 +69,22 @@ func InnerSize(outerWidth, outerHeight int) (width, height int) {
 // in a rounded border of exactly width+2 x height+2, with title embedded in
 // the top border line rather than as a separate content row.
 //
-// An optional footer (e.g. a "3/10" scroll position) is embedded
-// right-aligned in the bottom border line. Only the first is used.
-func Frame(title, body string, width, height int, focused bool, footer ...string) string {
+// An optional Footer (e.g. a path on the left and a "3/10" scroll position
+// on the right) is embedded in the bottom border line. Only the first is used.
+func Frame(title, body string, width, height int, focused bool, footer ...Footer) string {
 	lineStyle := lipgloss.NewStyle().Foreground(borderColor(focused))
 	top := topBorder(title, width, focused, lineStyle)
 	return frameBody(top, firstFooter(footer), body, width, height, lineStyle)
 }
 
-func firstFooter(footer []string) string {
+// Footer is text embedded in a panel's bottom border line.
+type Footer struct {
+	Left, Right string
+}
+
+func firstFooter(footer []Footer) Footer {
 	if len(footer) == 0 {
-		return ""
+		return Footer{}
 	}
 	return footer[0]
 }
@@ -93,7 +98,7 @@ type Tab struct {
 // FrameTabs is like Frame, but embeds a row of tabs in the title instead of
 // a single label (e.g. "╭─[2]-Inbox - Projects─╮"), styling the active tab
 // distinctly from the others.
-func FrameTabs(number rune, tabs []Tab, body string, width, height int, focused bool, footer ...string) string {
+func FrameTabs(number rune, tabs []Tab, body string, width, height int, focused bool, footer ...Footer) string {
 	lineStyle := lipgloss.NewStyle().Foreground(borderColor(focused))
 	top := topBorderTabs(number, tabs, width, focused, lineStyle)
 	return frameBody(top, firstFooter(footer), body, width, height, lineStyle)
@@ -101,7 +106,7 @@ func FrameTabs(number rune, tabs []Tab, body string, width, height int, focused 
 
 // frameBody renders the border/content assembly shared by Frame and
 // FrameTabs, given an already-built top border line.
-func frameBody(top, footer, body string, width, height int, lineStyle lipgloss.Style) string {
+func frameBody(top string, footer Footer, body string, width, height int, lineStyle lipgloss.Style) string {
 	// Height/Width here size only the content area; the border characters
 	// are added separately above/below/around it.
 	content := lipgloss.NewStyle().Width(width).Height(height).Render(body)
@@ -161,19 +166,42 @@ func titleLabel(title string) string {
 	return title
 }
 
-// bottomBorder builds the bottom border line, optionally embedding footer
-// right-aligned near the corner (e.g. "╰──────────3/10─╯"). A footer that
-// does not fit within width is dropped rather than truncated.
-func bottomBorder(footer string, width int, lineStyle lipgloss.Style) string {
-	if footer == "" || len(footer) > width {
-		return lineStyle.Render("╰" + strings.Repeat("─", width) + "╯")
+// bottomBorder builds the bottom border line, embedding footer.Left near
+// the left corner and footer.Right near the right corner, e.g.
+// "╰─/daily────────3/10─╯". A Right that does not fit is dropped; a Left
+// that does not fit is shortened from its start, keeping the deepest names.
+func bottomBorder(footer Footer, width int, lineStyle lipgloss.Style) string {
+	const cornerDashes = 1
+	right := footer.Right
+	if lipgloss.Width(right) > width-2*cornerDashes {
+		right = ""
 	}
+	rightWidth := lipgloss.Width(right)
+	if rightWidth > 0 {
+		rightWidth += 1 // keep one dash between the two labels
+	}
+	left := truncateHead(footer.Left, width-2*cornerDashes-rightWidth)
 
-	const trailDashes = 1
-	fill := max(width-trailDashes-len(footer), 0)
-	return lineStyle.Render("╰"+strings.Repeat("─", fill)) +
-		lipgloss.NewStyle().Render(footer) +
-		lineStyle.Render(strings.Repeat("─", trailDashes)+"╯")
+	fill := max(width-2*cornerDashes-lipgloss.Width(left)-lipgloss.Width(right), 0)
+	return lineStyle.Render("╰"+strings.Repeat("─", cornerDashes)) + left +
+		lineStyle.Render(strings.Repeat("─", fill)) + right +
+		lineStyle.Render(strings.Repeat("─", cornerDashes)+"╯")
+}
+
+// truncateHead shortens s to at most width columns by replacing its start
+// with an ellipsis.
+func truncateHead(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= width {
+		return s
+	}
+	if width == 1 {
+		return "…"
+	}
+	return "…" + string(r[len(r)-width+1:])
 }
 
 // tabSeparator joins the labels in a FrameTabs title.

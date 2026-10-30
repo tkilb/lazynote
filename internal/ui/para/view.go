@@ -2,6 +2,7 @@ package para
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -50,9 +51,9 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		tabs[i] = panel.Tab{Label: d.label, Active: i == m.active}
 	}
 
-	var footer string
+	footer := panel.Footer{Left: "/" + filepath.ToSlash(t.dir)}
 	if len(t.rows) > 0 {
-		footer = fmt.Sprintf("%d/%d", t.cursor+1, len(t.rows))
+		footer.Right = fmt.Sprintf("%d/%d", t.cursor+1, len(t.rows))
 	}
 	return panel.FrameTabs(panelNumber, tabs, m.body(t, width, height, focused), width, height, focused, footer)
 }

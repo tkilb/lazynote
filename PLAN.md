@@ -69,7 +69,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | ------------------- | ----------------------------------------------------------------------------------------- |
 | `↑/k` `↓/j`         | Move selection; Related, Info and Body follow                                             |
 | `←/h`               | Go to the parent directory (no-op at the tab root)                                        |
-| `→/l`               | Enter the selected directory only; no-op on a note                                        |
+| `→/l`               | Enter the selected directory, or open a note (focus Body, 0)                              |
 | `enter`             | Enter the selected directory, or open a note (focus Body, 0)                              |
 | `gg` / `G`          | Jump to first / last entry                                                                |
 | `ctrl+u` / `ctrl+d` | Half page up / down                                                                       |
@@ -110,6 +110,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | Key         | Action                                                                                       |
 | ----------- | -------------------------------------------------------------------------------------------- |
 | `↑/k` `↓/j` | Scroll                                                                                       |
+| `←/h` / `esc` | Return focus to PARA (2)                                                                   |
 | `ctrl+d/u`  | Half-page down / up                                                                          |
 | `*v`        | Start line selection; `enter` extracts the lines into a new note (kind chosen in the picker) |
 
@@ -176,9 +177,9 @@ Conflict notes:
   decision 9). `/` is a filter here, not Yazi's find, and there is no `n`/`N`.
 - Yazi's `D` is permanent delete in PARA, which does not clash since daily
   append moved to `t` and `T`.
-- In PARA, `enter` drills a directory or opens a note (focus Body), while
-  `→`/`l` only drill directories; in Related, `enter` or `space` jumps to
-  the note.
+- In PARA, `enter` and `→`/`l` drill a directory or open a note (focus
+  Body); `←`/`h` goes to the parent directory, and in Body `←`/`h` or `esc`
+  returns focus to PARA. In Related, `enter` or `space` jumps to the note.
 - `i` (quick idea) and `I` (import) differ only by case, like `a`/`A` in the
   move popup.
 

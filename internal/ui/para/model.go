@@ -4,6 +4,8 @@
 package para
 
 import (
+	"path/filepath"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/tkilb/lazynote/internal/store"
@@ -27,38 +29,70 @@ type row struct {
 	kind  store.Kind // notes only
 }
 
+// defaultPageSize is the page length until the first Resize.
+const defaultPageSize = 10
+
 // tabState is one tab's listing. A tab loads when it is first shown and
-// remembers its cursor while another tab is active.
+// remembers its directory and cursor while another tab is active.
 type tabState struct {
 	loaded bool
+	// dir is the current directory relative to the tab root ("" is the root).
+	dir    string
 	rows   []row
 	cursor int
-	err    error
+	// keep is the name to put the cursor on at the next load, when set.
+	keep string
+	err  error
+}
+
+// selectedName returns the name under the cursor, or the pending keep name
+// while the tab is stale.
+func (t tabState) selectedName() string {
+	if !t.loaded {
+		return t.keep
+	}
+	if t.cursor < len(t.rows) {
+		return t.rows[t.cursor].entry.Name
+	}
+	return ""
 }
 
 // Model is the PARA panel state. Methods return updated copies.
 type Model struct {
-	store  store.Store
-	active int
-	tabs   [5]tabState
+	store      store.Store
+	active     int
+	tabs       [5]tabState
+	showHidden bool
+	pageSize   int
+	// pendingG is set after a first "g", waiting for the second of "gg".
+	pendingG bool
 }
 
 // New returns a panel over s with the first tab loaded.
 func New(s store.Store) Model {
-	return Model{store: s}.load(0)
+	return Model{store: s, pageSize: defaultPageSize}.load(0)
 }
 
-// Reload re-reads the active tab from disk and marks the others stale.
+// Resize sets the number of visible list rows, used for paging.
+func (m Model) Resize(visibleRows int) Model {
+	m.pageSize = max(visibleRows, 1)
+	return m
+}
+
+// Reload re-reads the active tab from disk and marks the others stale. Each
+// tab keeps its directory, and its cursor stays on the same name.
 func (m Model) Reload() Model {
 	for i, t := range m.tabs {
-		m.tabs[i] = tabState{cursor: t.cursor}
+		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.selectedName()}
 	}
 	return m.load(m.active)
 }
 
-// load reads tab i's listing and each note's kind.
+// load reads tab i's current directory and each note's kind.
 func (m Model) load(i int) Model {
-	entries, err := m.store.List(tabDefs[i].dir, store.ListOptions{})
+	t := m.tabs[i]
+	dir := filepath.Join(tabDefs[i].dir, t.dir)
+	entries, err := m.store.List(dir, store.ListOptions{ShowHidden: m.showHidden})
 	rows := make([]row, len(entries))
 	for j, e := range entries {
 		rows[j] = row{entry: e, kind: store.KindUnset}
@@ -68,27 +102,101 @@ func (m Model) load(i int) Model {
 			}
 		}
 	}
-	t := m.tabs[i]
 	t.loaded, t.rows, t.err = true, rows, err
-	t.cursor = min(t.cursor, max(len(rows)-1, 0))
+	t.cursor = restoreCursor(rows, t.cursor, t.keep)
+	t.keep = ""
 	m.tabs[i] = t
 	return m
 }
 
+// restoreCursor returns the row index named keep, or cursor clamped to the
+// rows when keep is empty or gone.
+func restoreCursor(rows []row, cursor int, keep string) int {
+	for i, r := range rows {
+		if keep != "" && r.entry.Name == keep {
+			return i
+		}
+	}
+	return min(cursor, max(len(rows)-1, 0))
+}
+
 // Update handles a key press while the panel has focus.
 func (m Model) Update(msg tea.KeyMsg) Model {
+	pendingG := m.pendingG
+	m.pendingG = false
+
 	switch msg.String() {
 	case "up", "k":
-		m.tabs[m.active].cursor = max(m.tabs[m.active].cursor-1, 0)
+		m.move(-1)
 	case "down", "j":
-		t := &m.tabs[m.active]
-		t.cursor = min(t.cursor+1, max(len(t.rows)-1, 0))
+		m.move(1)
+	case "left", "h":
+		m = m.goUp()
+	case "right", "l", "enter":
+		m = m.enterDir()
+	case "g":
+		if pendingG {
+			m.moveTo(0)
+		} else {
+			m.pendingG = true
+		}
+	case "G":
+		m.moveTo(len(m.tabs[m.active].rows) - 1)
+	case "ctrl+u":
+		m.move(-max(m.pageSize/2, 1))
+	case "ctrl+d":
+		m.move(max(m.pageSize/2, 1))
+	case "ctrl+b":
+		m.move(-m.pageSize)
+	case "ctrl+f":
+		m.move(m.pageSize)
+	case ".":
+		m.showHidden = !m.showHidden
+		m = m.Reload()
 	case "[":
 		return m.switchTab(m.active - 1)
 	case "]":
 		return m.switchTab(m.active + 1)
 	}
 	return m
+}
+
+// move shifts the cursor by delta rows, clamped to the list.
+func (m *Model) move(delta int) {
+	t := &m.tabs[m.active]
+	t.cursor = min(max(t.cursor+delta, 0), max(len(t.rows)-1, 0))
+}
+
+func (m *Model) moveTo(i int) {
+	m.move(i - m.tabs[m.active].cursor)
+}
+
+// enterDir descends into the directory under the cursor; it does nothing on
+// a note.
+func (m Model) enterDir() Model {
+	t := m.tabs[m.active]
+	if t.cursor >= len(t.rows) || !t.rows[t.cursor].entry.IsDir {
+		return m
+	}
+	t.dir = filepath.Join(t.dir, t.rows[t.cursor].entry.Name)
+	t.cursor, t.keep = 0, ""
+	m.tabs[m.active] = t
+	return m.load(m.active)
+}
+
+// goUp moves to the parent directory with the cursor on the directory just
+// left, as Yazi does. It does nothing at the tab root.
+func (m Model) goUp() Model {
+	t := m.tabs[m.active]
+	if t.dir == "" {
+		return m
+	}
+	t.keep = filepath.Base(t.dir)
+	if t.dir = filepath.Dir(t.dir); t.dir == "." {
+		t.dir = ""
+	}
+	m.tabs[m.active] = t
+	return m.load(m.active)
 }
 
 func (m Model) switchTab(i int) Model {
