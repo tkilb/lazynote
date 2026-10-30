@@ -70,9 +70,10 @@ func (m model) formKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// openRootInput opens a one-line prompt whose text goes to accept.
-func (m model) openRootInput(title string, accept func(model, string) (model, tea.Cmd)) (model, tea.Cmd) {
-	in, cmd := m.openInput(&para.Prompt{Title: title})
+// openRootInput opens a one-line prompt, starting with initial, whose text
+// goes to accept.
+func (m model) openRootInput(title, initial string, accept func(model, string) (model, tea.Cmd)) (model, tea.Cmd) {
+	in, cmd := m.openInput(&para.Prompt{Title: title, Initial: initial})
 	in.accept = accept
 	m.input = in
 	return m, cmd
@@ -80,7 +81,7 @@ func (m model) openRootInput(title string, accept func(model, string) (model, te
 
 // startImport asks for a file path, then whether it is a transcript or a note.
 func (m model) startImport() (model, tea.Cmd) {
-	return m.openRootInput("Import file (path)", func(m model, text string) (model, tea.Cmd) {
+	return m.openRootInput("Import file (path)", "", func(m model, text string) (model, tea.Cmd) {
 		path := strings.TrimSpace(text)
 		if path == "" {
 			return m, nil
@@ -109,6 +110,9 @@ func (m model) finishIntake(res intake.Result, err error) model {
 	m.history.Push(res.Action)
 	m.para = m.para.Reload()
 	m = m.refreshLinks()
+	if res.Unlinked {
+		m = m.notify(popup.Warning, "The note's name has characters a link cannot hold (| # [ ] ^), so the new note does not link back to it.")
+	}
 	if res.Unchanged {
 		m = m.notify(popup.Warning, "The note's properties could not be read, so it was imported unchanged and keeps its original uid.")
 	}

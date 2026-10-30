@@ -107,6 +107,7 @@ var infoBindings = []statusbar.Binding{
 var bodyBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "scroll"},
 	{Key: "ctrl+d/u", Label: "half page"},
+	{Key: "v", Label: "select lines"},
 	{Key: "esc/←", Label: "back to PARA"},
 }
 
@@ -138,6 +139,8 @@ type model struct {
 	pickerOp  pickerOp
 	// pickerKind is the kind the note had when the kind picker opened.
 	pickerKind store.Kind
+	// extract is the extraction in progress, if any.
+	extract *extractState
 	// sources are the sources Quick Add offers, from the config.
 	sources []string
 	// form is the open quick-capture form; formSave handles its texts.
@@ -323,7 +326,14 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = panelID(key[0] - '0')
 	case "esc", "left":
 		switch m.focus {
-		case panelBody, panelInfo, panelRelated:
+		case panelBody:
+			// Leaving an open line selection comes before leaving the panel.
+			if m.body.Selecting() {
+				m.body = m.body.Cancel()
+			} else {
+				m.focus = panelPARA
+			}
+		case panelInfo, panelRelated:
 			m.focus = panelPARA
 		case panelPARA:
 			m, cmd = m.paraKey(msg)
@@ -331,6 +341,10 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", "right":
 		if m.focus == panelRelated {
 			m, cmd = m.relatedKey(msg)
+			break
+		}
+		if m.focus == panelBody && m.body.Selecting() && key == "enter" {
+			m, cmd = m.startExtract()
 			break
 		}
 		if m.focus != panelPARA {

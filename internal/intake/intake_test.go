@@ -306,3 +306,74 @@ func TestSplitText(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractFromAnOrdinaryNoteLinksBackToIt(t *testing.T) {
+	root, s := newStore(t)
+	origin := "inbox/Standup transcript.md"
+	_, err := s.Create(origin, []byte("---\nsource: transcript\n---\nraw\n"))
+	require.NoError(t, err)
+	originBytes, _ := os.ReadFile(filepath.Join(root, origin))
+
+	res, err := Extract(s, now, store.KindFact, origin, "Launch moved", "The launch moved to May.\nOwner: Sam")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Launch moved.md", res.Rel)
+	assert.False(t, res.Unlinked)
+
+	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
+	n := store.ParseNote("x.md", data)
+	assert.Equal(t, store.KindFact, n.Kind)
+	assert.Equal(t, "extract", n.Frontmatter.Get("source").Value)
+	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
+	rel := n.Frontmatter.Get("related")
+	require.NotNil(t, rel)
+	assert.Equal(t, "[[Standup transcript]]", rel.Content[0].Value)
+	assert.Equal(t, "The launch moved to May.\nOwner: Sam\n", n.Body)
+
+	after, _ := os.ReadFile(filepath.Join(root, origin))
+	assert.Equal(t, originBytes, after, "the origin note is never touched")
+
+	require.NoError(t, res.Action.Undo())
+	assert.NoFileExists(t, filepath.Join(root, res.Rel))
+}
+
+func TestExtractFromADailyNoteDoesNotLinkBack(t *testing.T) {
+	root, s := newStore(t)
+	for _, origin := range []string{"inbox/daily/2026-10-29.md", "archives/daily/2026-10-29.md"} {
+		res, err := Extract(s, now, store.KindIdea, origin, "From "+filepath.Dir(origin), "a thought")
+		require.NoError(t, err)
+		data, _ := os.ReadFile(filepath.Join(root, res.Rel))
+		n := store.ParseNote("x.md", data)
+		assert.Equal(t, "daily 2026-10-29", n.Frontmatter.Get("source").Value, "plain text, since the daily will be deleted")
+		assert.Nil(t, n.Frontmatter.Get("related"), "no link to a note that will disappear")
+		assert.False(t, res.Unlinked)
+	}
+}
+
+func TestExtractCannotLinkToANameWithLinkBreakingCharacters(t *testing.T) {
+	root, s := newStore(t)
+	res, err := Extract(s, now, store.KindFact, "inbox/C# notes.md", "Point", "text")
+	require.NoError(t, err)
+	assert.True(t, res.Unlinked)
+	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
+	assert.Nil(t, store.ParseNote("x.md", data).Frontmatter.Get("related"))
+}
+
+func TestExtractRefusals(t *testing.T) {
+	_, s := newStore(t)
+	_, err := Extract(s, now, store.KindFact, "inbox/a.md", "///", "text")
+	assert.ErrorIs(t, err, ErrEmpty, "a title is needed")
+	_, err = Extract(s, now, store.KindFact, "inbox/a.md", "Title", " \n ")
+	assert.ErrorIs(t, err, ErrNoText)
+	_, err = Extract(s, now, store.KindUnset, "inbox/a.md", "Title", "text")
+	assert.ErrorIs(t, err, ErrNoKind, "an extract always has a kind chosen")
+}
+
+func TestExtractNumbersACollidingName(t *testing.T) {
+	_, s := newStore(t)
+	a, err := Extract(s, now, store.KindFact, "inbox/o.md", "Same", "one")
+	require.NoError(t, err)
+	b, err := Extract(s, now, store.KindFact, "inbox/o.md", "Same", "two")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Same.md", a.Rel)
+	assert.Equal(t, "inbox/Same 2.md", b.Rel)
+}

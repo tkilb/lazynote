@@ -25,6 +25,8 @@ const (
 	SourceAdhoc = "adhoc"
 	// SourceTranscript is the source of an imported transcript.
 	SourceTranscript = "transcript"
+	// SourceExtract is the source of a note extracted from another note.
+	SourceExtract = "extract"
 
 	inboxDir      = "inbox"
 	dayLayout     = "2006-01-02"
@@ -45,6 +47,8 @@ var (
 	ErrTooLarge   = errors.New("file is too large")
 	ErrUnreadable = errors.New("cannot read the file")
 	ErrNoFreeName = errors.New("could not find a free name")
+	ErrNoText     = errors.New("no text selected")
+	ErrNoKind     = errors.New("a kind is needed")
 )
 
 // Result describes a note that was created.
@@ -53,6 +57,9 @@ type Result struct {
 	Rel string
 	// Action undoes (and redoes) the creation.
 	Action undo.Action
+	// Unlinked is set when an extracted note could not link back to its
+	// origin, because the origin's name has characters a link cannot hold.
+	Unlinked bool
 	// Unchanged is set when an imported note was saved exactly as it was,
 	// because its properties could not be parsed: it keeps its original uid.
 	Unchanged bool
@@ -241,4 +248,49 @@ func SplitText(text string) (title, body string) {
 		return strings.TrimSpace(line), rest
 	}
 	return "", ""
+}
+
+// Extract creates an inbox note holding text taken from the note at origin,
+// with the chosen kind. It links back to the origin with a related property,
+// except when the origin is a dated daily note: that will be deleted, so the
+// new note records source "daily YYYY-MM-DD" as plain text instead. The origin
+// is never changed.
+func Extract(s store.Store, now time.Time, kind store.Kind, origin, title, text string) (Result, error) {
+	name := Name(title)
+	text = strings.TrimSpace(text)
+	switch {
+	case kind == store.KindUnset:
+		return Result{}, ErrNoKind
+	case name == "":
+		return Result{}, ErrEmpty
+	case text == "":
+		return Result{}, ErrNoText
+	}
+
+	source := SourceExtract
+	var related []string
+	var unlinked bool
+	if date, daily := store.DailyDate(origin); daily {
+		source = "daily " + date
+	} else if link := originLink(origin); link != "" {
+		related = []string{link}
+	} else {
+		unlinked = true
+	}
+	res, err := createUnique(s, name, func(final string) ([]byte, error) {
+		return store.ExtractedNote(final, kind, source, now.Format(dayLayout), text+"\n", related)
+	})
+	res.Unlinked = unlinked
+	return res, err
+}
+
+// originLink is the wikilink to the note at rel, or "" when its name has
+// characters a link cannot hold.
+func originLink(rel string) string {
+	base := filepath.Base(rel)
+	stem := strings.TrimSuffix(base, filepath.Ext(base))
+	if stem == "" || strings.ContainsAny(stem, "|#[]^") {
+		return ""
+	}
+	return "[[" + stem + "]]"
 }

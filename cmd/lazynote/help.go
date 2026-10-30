@@ -63,6 +63,8 @@ var helpRelatedBindings = []statusbar.Binding{
 var helpBodyBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "scroll"},
 	{Key: "ctrl+d/u", Label: "half page down/up"},
+	{Key: "v", Label: "select lines (↑/↓ extend, v or esc cancel)"},
+	{Key: "enter", Label: "extract the selected lines into a new note"},
 	{Key: "esc/←", Label: "back to PARA"},
 }
 

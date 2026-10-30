@@ -88,3 +88,23 @@ func TestIntakeNoteTagsAndUnsetKind(t *testing.T) {
 	assert.Equal(t, "ideas/new", tags.Content[1].Value)
 	assert.Empty(t, n.Body)
 }
+
+func TestExtractedNote(t *testing.T) {
+	data, err := ExtractedNote("Point.md", KindFact, "extract", "2026-10-30", "the text\n", []string{"[[Origin]]"})
+	require.NoError(t, err)
+	n := ParseNote("Point.md", data)
+	require.NoError(t, n.FrontmatterErr)
+	assert.Equal(t, KindFact, n.Kind)
+	assert.Equal(t, "extract", n.Frontmatter.Get("source").Value)
+	rel := n.Frontmatter.Get("related")
+	require.NotNil(t, rel)
+	require.Len(t, rel.Content, 1)
+	assert.Equal(t, "[[Origin]]", rel.Content[0].Value)
+	assert.Equal(t, "the text\n", n.Body)
+	assert.NotNil(t, n.Frontmatter.Get("tags"))
+
+	plain, err := ExtractedNote("P.md", KindIdea, "daily 2026-10-29", "2026-10-30", "x\n", nil)
+	require.NoError(t, err)
+	assert.Nil(t, ParseNote("P.md", plain).Frontmatter.Get("related"), "no links means no related property")
+	assert.Equal(t, "daily 2026-10-29", ParseNote("P.md", plain).Frontmatter.Get("source").Value)
+}

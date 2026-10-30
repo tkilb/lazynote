@@ -115,7 +115,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `↑` `↓` | Scroll                                                                                       |
 | `←` / `esc`   | Return focus to PARA (2)                                                                   |
 | `ctrl+d/u`  | Half-page down / up                                                                          |
-| `*v`        | Start line selection; `enter` extracts the lines into a new note (kind chosen in the picker) |
+| `v`         | Start line selection (`↑`/`↓` extend it); `enter` extracts the lines into a new note; `v` or `esc` cancels |
 
 Mouse follows lazytask (click to focus or select, wheel to scroll).
 
@@ -556,7 +556,8 @@ Also confirmed:
   `inbox/` and show up in the Inbox tab. From a transcript they `related`-link
   back to it. From a daily note they must not link back, because the daily
   note will eventually be deleted; they record `source: daily YYYY-MM-DD` as plain
-  text instead. (Automatic extraction with an LLM is out of scope.)
+  text instead. (Automatic extraction with an LLM is out of scope.) See 9d
+  for the exact behavior.
 
 ## Open decisions (defaults assumed until answered)
 
@@ -806,9 +807,30 @@ Numbers are kept stable; resolved items were removed.
      `xsel` or `wl-paste` (Linux).
    - `import`: the type defaults to `note` for a `.md` file and `transcript`
      otherwise; the rules are those of `I`. Errors never show the path.
-   9d. Extract: select Body lines (`v`, `enter`), pick a kind, create a note in
-   `inbox/` with the right source handling (link for transcripts, plain text
-   for dailies).
+   9d. Extract (done; engine `intake.Extract`, tested):
+   - In Body (`0`), `v` starts a line selection at the first line in view.
+     `↑`/`↓` (and `ctrl+u`/`ctrl+d`) move its cursor by source line, and the
+     view follows; a line that wraps counts as one line, whole lines are
+     selected, and the selected lines are highlighted (the cursor line in
+     teal) with `VISUAL n lines` at the bottom left. `v` or `esc` cancels it
+     (`esc` cancels before it leaves the panel). A refresh keeps it while the
+     text is unchanged.
+   - `enter` opens the "Extract as" picker with the six kinds (colored, with
+     their meanings), then a title prompt "Extract as <kind>: title" starting
+     with the first selected line (cleaned for a file name); `enter` creates
+     the note. Selecting only blank lines says so instead. A missing title
+     shows an error and keeps the selection.
+   - The note is `inbox/<title>.md`, named and numbered like a Quick Add note,
+     with `uid`, `title`, the chosen `kind`, `date`, an empty `tags` list and
+     the selected text (as shown: control characters removed, tabs as spaces)
+     as its body. The origin note is never changed.
+   - Source and link: from a dated daily note (`inbox/daily/` or
+     `archives/daily/`, `YYYY-MM-DD.md`), `source: daily YYYY-MM-DD` as plain
+     text and no `related`, because the daily will be deleted. From any other
+     note, `source: extract` and `related: ["[[Origin name]]"]` so it links
+     back (this covers transcripts); if the origin's name holds `| # [ ] ^`
+     the note is made without the link and a warning says so.
+   - Undo moves the new note to the trash.
    9e. Overdue marker for undigested dailies, and the daily-note rules for
    `K` and `m` (only `A`).
    9f. URL clip (title fetch needs a network call; confirm design first).

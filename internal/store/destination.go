@@ -44,3 +44,18 @@ func isDailyName(name string) bool {
 	_, err := time.Parse(dateLayout, strings.TrimSuffix(name, name[len(name)-len(noteExt):]))
 	return err == nil
 }
+
+// DailyDate returns the date of a dated daily note: a note named
+// YYYY-MM-DD.md directly inside inbox/daily or archives/daily. It reports
+// false for anything else.
+func DailyDate(rel string) (string, bool) {
+	dir := path.Dir(rel)
+	if dir != path.Join(tabInbox, dailyDir) && dir != path.Join(tabArchives, dailyDir) {
+		return "", false
+	}
+	name := path.Base(rel)
+	if !isDailyName(name) {
+		return "", false
+	}
+	return name[:len(name)-len(noteExt)], true
+}

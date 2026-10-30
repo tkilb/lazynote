@@ -29,3 +29,28 @@ func TestMoveDestination(t *testing.T) {
 		})
 	}
 }
+
+func TestDailyDate(t *testing.T) {
+	tests := []struct {
+		rel  string
+		want string
+		ok   bool
+	}{
+		{"inbox/daily/2026-10-30.md", "2026-10-30", true},
+		{"archives/daily/2026-10-30.md", "2026-10-30", true},
+		{"inbox/daily/2026-10-30.MD", "2026-10-30", true},
+		{"inbox/daily/notes.md", "", false},
+		{"inbox/daily/2026-13-45.md", "", false},
+		{"inbox/2026-10-30.md", "", false},
+		{"projects/daily/2026-10-30.md", "", false},
+		{"inbox/daily/sub/2026-10-30.md", "", false},
+		{"", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.rel, func(t *testing.T) {
+			got, ok := DailyDate(tt.rel)
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

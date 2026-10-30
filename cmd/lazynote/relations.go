@@ -19,8 +19,9 @@ const addReferenceTitle = "Add reference"
 type pickerOp int
 
 const (
-	pickReference pickerOp = iota // add a reference to the note at pickerFor
-	pickKind                      // set the kind of the note at pickerFor
+	pickReference   pickerOp = iota // add a reference to the note at pickerFor
+	pickKind                        // set the kind of the note at pickerFor
+	pickExtractKind                 // choose the kind of a note being extracted
 )
 
 // openReferencePicker lists the notes the shown note could reference: every
@@ -64,8 +65,11 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 	case picker.Chosen:
 		item, _ := p.Chosen()
 		m.picker = nil
-		if m.pickerOp == pickKind {
+		switch m.pickerOp {
+		case pickKind:
 			return m.setKind(m.pickerFor, store.ParseKind(item.Value)), nil
+		case pickExtractKind:
+			return m.askExtractTitle(store.ParseKind(item.Value))
 		}
 		return m.editNote(m.pickerFor, fmt.Sprintf("add reference to %s", item.Value),
 			func(fm *store.Frontmatter) { links.AddReference(fm, item.Value) }), nil
