@@ -1,9 +1,9 @@
 // Package noteform implements the Quick Add form: a Title, a multi-line Body,
-// a Kind chooser and a Tags field, each in its own bordered box with the
+// Kind and Source choosers and a Tags field, each in its own bordered box with the
 // field name in the border and the focused box highlighted, as in lazytask's
 // add-task form. Tab and Shift+Tab move between the fields (not the arrows,
 // which the body's text area needs for its cursor). The body scrolls within a
-// fixed height, and Left and Right change the kind.
+// fixed height, and Left and Right change the kind or source.
 package noteform
 
 import (
@@ -30,6 +30,8 @@ const (
 	FieldBody
 	// FieldKind is the kind chooser.
 	FieldKind
+	// FieldSource is the source chooser.
+	FieldSource
 	// FieldTags is the single-line tag list.
 	FieldTags
 
@@ -42,7 +44,7 @@ const (
 	screenMargin = 8 // columns and rows kept free around the form
 	lineBoxRows  = 3 // a one-line box: its line plus the border
 	boxChrome    = 2 // a box's top and bottom border
-	lineBoxes    = 3 // the title, kind and tags boxes
+	lineBoxes    = 4 // the title, kind, source and tags boxes
 	minBodyRows  = 3 // visible body lines, at the smallest
 	maxBodyRows  = 8 // and at the largest
 	titleLimit   = 120
@@ -58,10 +60,11 @@ const (
 // hints are the key hints for each focused field, shown on the bottom border
 // of the last box.
 var hints = [fieldCount]string{
-	FieldTitle: "(tab/↓) next  (enter) save  (esc) cancel",
-	FieldBody:  "(tab, or ↑/↓ at the ends) move  (ctrl+s) save  (esc) cancel",
-	FieldKind:  "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
-	FieldTags:  "(tab/↑↓) move  (enter) save  (esc) cancel",
+	FieldTitle:  "(tab/↓) next  (enter) save  (esc) cancel",
+	FieldBody:   "(tab, or ↑/↓ at the ends) move  (ctrl+s) save  (esc) cancel",
+	FieldKind:   "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldSource: "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldTags:   "(tab/↑↓) move  (enter) save  (esc) cancel",
 }
 
 // Values are what the user entered.
@@ -69,6 +72,8 @@ type Values struct {
 	Title, Body string
 	// Kind is KindUnset when none was chosen.
 	Kind store.Kind
+	// Source is the chosen source.
+	Source string
 	// Tags is the tags text as typed, to be parsed by the caller.
 	Tags string
 }
@@ -81,16 +86,18 @@ type Model struct {
 	tags    textinput.Model
 	kinds   []store.Kind // unset first, then the six kinds
 	kindIdx int
+	sources []string
+	srcIdx  int
 	focused Field
 	width   int
 	// bodyRows is how many body lines show at once.
 	bodyRows int
 }
 
-// New returns an empty form named name ("Quick Add"), sized for a
-// screenWidth x screenHeight terminal, with the title focused. The command
-// blinks the cursor.
-func New(name string, screenWidth, screenHeight int) (Model, tea.Cmd) {
+// New returns an empty form named name ("Quick Add") offering sources, the
+// first of which is the default, sized for a screenWidth x screenHeight
+// terminal, with the title focused. The command blinks the cursor.
+func New(name string, sources []string, screenWidth, screenHeight int) (Model, tea.Cmd) {
 	title := textinput.New()
 	title.Prompt = ""
 	title.Placeholder = titlePlaceholder
@@ -114,7 +121,8 @@ func New(name string, screenWidth, screenHeight int) (Model, tea.Cmd) {
 
 	m := Model{
 		name: name, title: title, body: body, tags: tags,
-		kinds: append([]store.Kind{store.KindUnset}, store.Kinds()...),
+		kinds:   append([]store.Kind{store.KindUnset}, store.Kinds()...),
+		sources: sources,
 	}
 	m = m.Resize(screenWidth, screenHeight)
 	return m.focus(FieldTitle)
@@ -129,6 +137,11 @@ func (m Model) WithValues(v Values, f Field) (Model, tea.Cmd) {
 	for i, k := range m.kinds {
 		if k == v.Kind {
 			m.kindIdx = i
+		}
+	}
+	for i, s := range m.sources {
+		if s == v.Source {
+			m.srcIdx = i
 		}
 	}
 	return m.focus(f)
@@ -150,7 +163,10 @@ func (m Model) Resize(screenWidth, screenHeight int) Model {
 
 // Values returns what has been entered.
 func (m Model) Values() Values {
-	return Values{Title: m.title.Value(), Body: m.body.Value(), Kind: m.kinds[m.kindIdx], Tags: m.tags.Value()}
+	return Values{
+		Title: m.title.Value(), Body: m.body.Value(), Kind: m.kinds[m.kindIdx],
+		Source: m.sources[m.srcIdx], Tags: m.tags.Value(),
+	}
 }
 
 // FocusedField reports which field has the keyboard.
@@ -204,14 +220,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.body, cmd = m.body.Update(msg)
 		m.body = followCursor(m.body)
 	case FieldKind:
-		if key, ok := msg.(tea.KeyMsg); ok {
-			switch key.String() {
-			case "left":
-				m.kindIdx = (m.kindIdx + len(m.kinds) - 1) % len(m.kinds)
-			case "right":
-				m.kindIdx = (m.kindIdx + 1) % len(m.kinds)
-			}
-		}
+		m.kindIdx = cycle(msg, m.kindIdx, len(m.kinds))
+	case FieldSource:
+		m.srcIdx = cycle(msg, m.srcIdx, len(m.sources))
 	case FieldTags:
 		m.tags, cmd = m.tags.Update(msg)
 	}
@@ -241,6 +252,22 @@ func (m Model) step(dir int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	return m.focus(next)
+}
+
+// cycle returns idx moved one step by a Left or Right key press in a list of
+// n choices, wrapping around, or idx unchanged for any other message.
+func cycle(msg tea.Msg, idx, n int) int {
+	key, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return idx
+	}
+	switch key.String() {
+	case "left":
+		return (idx + n - 1) % n
+	case "right":
+		return (idx + 1) % n
+	}
+	return idx
 }
 
 // followCursor scrolls the text area to its cursor right away. The text
@@ -275,10 +302,17 @@ func (m Model) View() string {
 	bodyBox := panel.Frame("Body", m.body.View(), inner, m.bodyRows, m.focused == FieldBody, bodyFooter)
 
 	kindBox := panel.Frame("Kind", m.kindLine(), inner, 1, m.focused == FieldKind)
+	sourceBox := panel.Frame("Source", m.sourceLine(), inner, 1, m.focused == FieldSource)
 
 	tagsFooter := panel.Footer{Right: hints[m.focused], Tint: true}
 	tagsBox := panel.Frame("Tags", m.tags.View(), inner, 1, m.focused == FieldTags, tagsFooter)
-	return strings.Join([]string{titleBox, bodyBox, kindBox, tagsBox}, "\n")
+	return strings.Join([]string{titleBox, bodyBox, kindBox, sourceBox, tagsBox}, "\n")
+}
+
+// sourceLine shows the chosen source between arrows.
+func (m Model) sourceLine() string {
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	return dim.Render("‹ ") + lipgloss.NewStyle().Bold(true).Render(m.sources[m.srcIdx]) + dim.Render(" ›")
 }
 
 // kindLine shows the chosen kind in its color between arrows, with what it

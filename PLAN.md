@@ -725,8 +725,8 @@ Numbers are kept stable; resolved items were removed.
    Quick Add (`A`), transcript and note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
    created on first use. Engine in `internal/intake`, tested.
    - Quick Add: a form ported from lazytask's add-task form
-     (`internal/ui/noteform`), opened with `A` from any panel. Four boxes, in
-     tab order: "Quick Add: Title", "Body", "Kind" and "Tags", each its own
+     (`internal/ui/noteform`), opened with `A` from any panel. Five boxes, in
+     tab order: "Quick Add: Title", "Body", "Kind", "Source" and "Tags", each its own
      bordered box with the field name in the border and the focused one
      highlighted. `tab` and `shift+tab` move between them (they wrap around),
      and so do `↑`/`↓` (they stop at the first and last box). In the body the
@@ -736,7 +736,9 @@ Numbers are kept stable; resolved items were removed.
      and total shown at the bottom left once it overflows; `enter` there
      starts a new line. The kind box shows `‹ kind ›` in its color with its
      meaning and changes with `←`/`→` through unset, fact, rumor, proposal,
-     fossil, idea and draft (unset by default). Tags are names separated by
+     fossil, idea and draft (unset by default). The source box works the same
+     way through adhoc, meeting, conversation, email, web and document
+     (`intake.Sources`; `adhoc` by default and first). Tags are names separated by
      commas or white space, `#` optional, letters, digits, `_`, `-` and `/`
      only, not all digits, duplicates dropped. `enter` in any one-line field
      and `ctrl+s` anywhere save, `esc` cancels; the key hints are on the last
@@ -745,7 +747,7 @@ Numbers are kept stable; resolved items were removed.
      `inbox/<title>.md`: the title with `/ \ : * ? " < > | # [ ] ^` and
      control characters removed, white space collapsed, leading and trailing
      dots and spaces trimmed, at most 80 characters, case kept. It has `uid`,
-     `title` (the file name), `kind` (omitted when unset), `source: quick`,
+     `title` (the file name), `kind` (omitted when unset), `source` (as chosen, `adhoc` by default),
      `date` (`YYYY-MM-DD`, unquoted so Obsidian reads a date) and `tags`
      (empty when none), and the body text (none when blank). A name already
      taken gets ` 2`, ` 3` and so on, and the title property follows. Both

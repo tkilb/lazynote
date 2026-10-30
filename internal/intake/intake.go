@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	// SourceQuick is the source of a note typed into a quick capture prompt.
-	SourceQuick = "quick"
+	// SourceAdhoc is the default source of a note added by hand.
+	SourceAdhoc = "adhoc"
 	// SourceTranscript is the source of an imported transcript.
 	SourceTranscript = "transcript"
 
@@ -34,6 +34,9 @@ const (
 	// to appear in a wikilink.
 	unsafeChars = `/\:*?"<>|#[]^`
 )
+
+// Sources are the sources Quick Add offers, the default first.
+var Sources = []string{SourceAdhoc, "meeting", "conversation", "email", "web", "document"}
 
 // Errors never echo a path, because they are shown in the interface.
 var (

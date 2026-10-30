@@ -52,7 +52,7 @@ func newStore(t *testing.T) (string, store.Store) {
 func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 	root, s := newStore(t)
 
-	res, err := Capture(s, now, store.KindFact, SourceQuick, "Water boils", "At 100C at sea level", nil)
+	res, err := Capture(s, now, store.KindFact, SourceAdhoc, "Water boils", "At 100C at sea level", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "inbox/Water boils.md", res.Rel, "named from the title, no timestamp")
 
@@ -60,7 +60,7 @@ func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 	require.NoError(t, err)
 	n := store.ParseNote("x.md", data)
 	assert.Equal(t, store.KindFact, n.Kind)
-	assert.Equal(t, "quick", n.Frontmatter.Get("source").Value)
+	assert.Equal(t, "adhoc", n.Frontmatter.Get("source").Value)
 	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value, "the date lives in the properties")
 	assert.Equal(t, "Water boils", n.Frontmatter.Get("title").Value)
 	assert.Equal(t, "At 100C at sea level\n", n.Body)
@@ -73,7 +73,7 @@ func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 
 func TestCaptureWithoutABodyMakesAnEmptyBody(t *testing.T) {
 	root, s := newStore(t)
-	res, err := Capture(s, now, store.KindIdea, SourceQuick, "Just a title", "  ", nil)
+	res, err := Capture(s, now, store.KindIdea, SourceAdhoc, "Just a title", "  ", nil)
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	assert.Empty(t, store.ParseNote("x.md", data).Body)
@@ -81,11 +81,11 @@ func TestCaptureWithoutABodyMakesAnEmptyBody(t *testing.T) {
 
 func TestCaptureNumbersACollidingName(t *testing.T) {
 	root, s := newStore(t)
-	a, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "one", nil)
+	a, err := Capture(s, now, store.KindIdea, SourceAdhoc, "Same", "one", nil)
 	require.NoError(t, err)
-	b, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "two", nil)
+	b, err := Capture(s, now, store.KindIdea, SourceAdhoc, "Same", "two", nil)
 	require.NoError(t, err)
-	c, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "three", nil)
+	c, err := Capture(s, now, store.KindIdea, SourceAdhoc, "Same", "three", nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "inbox/Same.md", a.Rel)
@@ -98,7 +98,7 @@ func TestCaptureNumbersACollidingName(t *testing.T) {
 func TestCaptureRejectsAMissingTitle(t *testing.T) {
 	_, s := newStore(t)
 	for _, title := range []string{"", "   ", "\t", "///", "#"} {
-		_, err := Capture(s, now, store.KindFact, SourceQuick, title, "has a body", nil)
+		_, err := Capture(s, now, store.KindFact, SourceAdhoc, title, "has a body", nil)
 		assert.ErrorIs(t, err, ErrEmpty, "%q", title)
 	}
 }
@@ -106,7 +106,7 @@ func TestCaptureRejectsAMissingTitle(t *testing.T) {
 func TestCaptureKeepsTheBodyVerbatim(t *testing.T) {
 	root, s := newStore(t)
 	body := "---\nnot: frontmatter [[link]] # heading"
-	res, err := Capture(s, now, store.KindRumor, SourceQuick, "T", body, nil)
+	res, err := Capture(s, now, store.KindRumor, SourceAdhoc, "T", body, nil)
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	n := store.ParseNote("x.md", data)
@@ -279,10 +279,20 @@ func TestParseTags(t *testing.T) {
 
 func TestCaptureWritesTagsAndOmitsAnUnsetKind(t *testing.T) {
 	root, s := newStore(t)
-	res, err := Capture(s, now, store.KindUnset, SourceQuick, "Tagged", "b", []string{"work", "ideas"})
+	res, err := Capture(s, now, store.KindUnset, SourceAdhoc, "Tagged", "b", []string{"work", "ideas"})
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	n := store.ParseNote("x.md", data)
 	assert.Nil(t, n.Frontmatter.Get("kind"))
 	assert.Len(t, n.Frontmatter.Get("tags").Content, 2)
+}
+
+func TestSourcesStartWithTheDefault(t *testing.T) {
+	assert.Equal(t, SourceAdhoc, Sources[0])
+	assert.Equal(t, []string{"adhoc", "meeting", "conversation", "email", "web", "document"}, Sources)
+	seen := map[string]bool{}
+	for _, s := range Sources {
+		assert.False(t, seen[s], "duplicate %s", s)
+		seen[s] = true
+	}
 }
