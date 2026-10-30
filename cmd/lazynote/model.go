@@ -113,6 +113,10 @@ type model struct {
 	pending *para.Confirm
 	// input is an open one-line text prompt.
 	input *input
+	// session saves and restores the position between runs.
+	session session
+	// saveErr is a failure to save on quit, reported after the screen closes.
+	saveErr error
 }
 
 // shownNote identifies what the Body and Info panels last loaded. A changed
@@ -226,9 +230,10 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch key {
 	case "q", "ctrl+c":
+		m.saveErr = m.save()
 		return m, tea.Quit
 	case "ctrl+z":
-		return m, tea.Suspend
+		return m.saveOrWarn(), tea.Suspend
 	case "ctrl+l":
 		m.para = m.para.Reload()
 		cmd = tea.ClearScreen

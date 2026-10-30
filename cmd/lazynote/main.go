@@ -10,26 +10,27 @@ import (
 
 	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/lazynote/internal/ui/popup"
 	"github.com/tkilb/lazynote/internal/version"
 )
 
 // openStore loads the config and opens the first available notebook. The
 // Notebook panel (a later chunk) will replace this with a real selection.
-func openStore() (store.Store, error) {
+func openStore() (store.Store, string, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	cfg, err := config.Load(path)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	for _, nb := range cfg.Notebooks {
 		if nb.Available {
-			return store.NewMarkdown(nb.Path), nil
+			return store.NewMarkdown(nb.Path), nb.Path, nil
 		}
 	}
-	return nil, errors.New("none of the configured notebooks is an existing directory")
+	return nil, "", errors.New("none of the configured notebooks is an existing directory")
 }
 
 // isVersionArg reports whether args (os.Args[1:]) ask for the version
@@ -51,19 +52,32 @@ func main() {
 		return
 	}
 
-	st, err := openStore()
+	st, root, err := openStore()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "lazynote: %v\n", err)
 		os.Exit(1)
 	}
+	sess, sessErr := openSession(root)
+	if sess.db != nil {
+		defer sess.db.Close()
+	}
+	start := initialModel(st)
+	if sessErr != nil {
+		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
+	}
+	start = start.withSession(sess)
 
 	// The alternate screen gives the program the full terminal buffer, so
 	// resuming after ctrl+z or an external editor repaints cleanly. Focus
 	// reporting lets the app refresh when the terminal regains focus (not
 	// every terminal sends it; ctrl+l always works).
-	p := tea.NewProgram(initialModel(st), tea.WithAltScreen(), tea.WithReportFocus())
-	if _, err := p.Run(); err != nil {
+	p := tea.NewProgram(start, tea.WithAltScreen(), tea.WithReportFocus())
+	final, err := p.Run()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running lazynote: %v\n", err)
 		os.Exit(1)
+	}
+	if m, ok := final.(model); ok && m.saveErr != nil {
+		fmt.Fprintf(os.Stderr, "lazynote: could not save your position: %v\n", m.saveErr)
 	}
 }

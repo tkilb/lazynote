@@ -50,6 +50,9 @@ func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case eff.Edit != "":
+		// The editor can take a long time, and the terminal may be closed
+		// meanwhile, so save the position first.
+		m = m.saveOrWarn()
 		cmd = m.edit(eff.Edit)
 	case eff.Prompt != nil:
 		m.input, cmd = m.openInput(eff.Prompt)

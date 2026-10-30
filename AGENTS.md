@@ -6,7 +6,7 @@ chunk list. Read it before changing behavior; do not re-decide what it records.
 
 ## Commands
 
-- Go 1.24 (`go.mod` declares 1.24.2).
+- Go 1.25 (`go.mod` declares 1.25.0, which `modernc.org/sqlite` requires).
 - Build: `make build` (writes the `lazynote` binary, which is git-ignored).
 - Test: `make test` (`go test ./...`).
 - Both `go build ./...` and `go test ./...` must pass before a commit, and

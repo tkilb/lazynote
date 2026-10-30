@@ -238,7 +238,7 @@ Conflict notes:
   them; undo and redo always report, including "Nothing to undo". The
   status bar shows only key hints.
 
-- Stack: Go 1.24, bubbletea, bubbles, lipgloss, testify, YAML config.
+- Stack: Go 1.25, bubbletea, bubbles, lipgloss, testify, YAML config.
 - Clipboard (`lazynote add --clipboard`): `github.com/atotto/clipboard`, the
   same library lazytask already uses (indirectly, through Bubbles). It shells
   out to `pbpaste` on macOS and to `xclip`, `xsel` or `wl-paste` on Linux, so
@@ -637,6 +637,16 @@ Numbers are kept stable; resolved items were removed.
    undoable. Engine tests for the command; manual QA note for the key.
 6. `internal/state`: SQLite persistence and restore on launch, including
    the current directory for each PARA tab.
+   Saved: the last notebook and focused panel, and per notebook its active
+   tab and, for each tab, the current directory and the note under the cursor
+   (by name). Written on quit, on `ctrl+z` and just before `$EDITOR` starts,
+   not on every key. Restore treats saved text as untrusted: a directory that
+   is not a plain relative path, or a name with a separator, is dropped, and a
+   vanished directory falls back to its nearest ancestor. If the database
+   cannot be opened or read, the app starts from the defaults and says so in
+   a warning popup. The notebook is still chosen by config until chunk 7
+   restores the last one used. Engine tests for `internal/state`; manual QA
+   note for the restore.
 7. Notebook panel: list the configured notebooks, switch with `enter`, mark
    unavailable paths, restore the last used notebook.
 8. Related panel, read-only: `related` parsing, wikilink resolution,
