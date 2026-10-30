@@ -457,7 +457,7 @@ Conflict notes:
 
 New material lands in `inbox/`, shown as the Inbox tab (outside the four
 PARA folders), and is sorted into PARA later from the Inbox tab. Every intake note gets
-frontmatter: `kind`, `source` (how it arrived), `captured` (ISO timestamp),
+frontmatter: `kind`, `source` (how it arrived), `date` (the day it arrived, `YYYY-MM-DD`),
 and `tags`. Inbox is the first tab and is always shown. Daily notes are not
 a tab: they live in `inbox/daily/`, which appears as an ordinary directory,
 listed first like any directory, next to the intake notes.
@@ -476,7 +476,7 @@ Confirmed:
   A transcript becomes a note with the text as body, `source: transcript`,
   and `kind: rumor` (raw and unconfirmed until reviewed); the original text
   is kept unmodified. An existing markdown note is copied into the inbox
-  with its frontmatter preserved, `source: import` and `captured` added when
+  with its frontmatter preserved, `source: import` and `date` added when
   absent, and `kind` left as is (or `unset`).
 
 Also confirmed:
