@@ -112,10 +112,16 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 
 | Key         | Action                                                                                       |
 | ----------- | -------------------------------------------------------------------------------------------- |
-| `↑` `↓` | Scroll                                                                                       |
-| `←` / `esc`   | Return focus to PARA (2)                                                                   |
-| `ctrl+d/u`  | Half-page down / up                                                                          |
-| `v`         | Start line selection (`↑`/`↓` extend it); `enter` extracts the lines into a new note; `v` or `esc` cancels |
+| `↑` `↓`     | Move the cursor line (the view follows) |
+| `ctrl+d/u`  | Half page down / up |
+| `g` / `G`   | First / last line |
+| `space`     | Pick the cursor line (cherry-pick) and move down |
+| `v` / `V`   | Select / unselect a range as the cursor moves (the same key again closes it) |
+| `ctrl+a`    | Select all |
+| `y`         | Yank: copy the selection, or the cursor line, to the system clipboard |
+| `enter`     | Extract the selection into a new note (kind picked in the picker) |
+| `esc`       | Close an open range; then clear the selection; then return focus to PARA (2) |
+| `←`         | Return focus to PARA (2) (closing a range or clearing the selection first, like `esc`) |
 
 Mouse follows lazytask (click to focus or select, wheel to scroll).
 
@@ -462,10 +468,17 @@ Conflict notes:
   frontmatter is hidden, blank lines around the text are dropped, lines wrap
   at word boundaries (a word longer than the panel is split), tabs become
   four spaces, and a position footer (`first line/total`) shows once the
-  note is longer than the panel. Scrolling is `↑` `↓` and `ctrl+d`/`ctrl+u`,
-  never past the ends. A note is read again only when the selection or its
-  modification time changes; the scroll resets for a different note and
-  survives a refresh of the same one. Note text is untrusted: every control
+  note is longer than the panel. Body has a cursor line, highlighted while the
+  panel has focus, that moves with `↑` `↓` and `ctrl+d`/`ctrl+u` by source line
+  (a wrapped line is one line) and keeps your place: the view follows it, the
+  footer shows `cursor line/total lines`, and the cursor of each note is
+  remembered for the session, so coming back to a note puts you where you
+  were. A note is read again only when the selection or its modification
+  time changes; the cursor survives a refresh of the same note. Lines are
+  selected as in PARA: `space` picks single lines, `v`/`V` select or unselect a
+  range, `ctrl+a` selects all, selected lines are highlighted and the footer
+  shows `VISUAL`, `UNSELECT`, `N sel` and the number of groups of adjacent
+  lines. `y` yanks and `enter` extracts (see chunk 9d). Note text is untrusted: every control
   character, including escape and the C1 range, is removed before drawing,
   so a note can never send terminal escape sequences.
 - Backlink index is built at startup and kept in SQLite (`internal/state`),
@@ -808,14 +821,17 @@ Numbers are kept stable; resolved items were removed.
    - `import`: the type defaults to `note` for a `.md` file and `transcript`
      otherwise; the rules are those of `I`. Errors never show the path.
    9d. Extract (done; engine `intake.Extract`, tested):
-   - In Body (`0`), `v` starts a line selection at the first line in view.
-     `↑`/`↓` (and `ctrl+u`/`ctrl+d`) move its cursor by source line, and the
-     view follows; a line that wraps counts as one line, whole lines are
-     selected, and the selected lines are highlighted (the cursor line in
-     teal) with `VISUAL n lines` at the bottom left. `v` or `esc` cancels it
-     (`esc` cancels before it leaves the panel). A refresh keeps it while the
-     text is unchanged.
-   - `enter` opens the "Extract as" picker with the six kinds (colored, with
+   - In Body (`0`), select lines as described in the Body decision above
+     (cursor line, `space` to cherry-pick, `v`/`V` for ranges). The selection
+     is whole source lines, in file order; lines that were not next to each
+     other are separated by a blank line in the new note, so the gaps show.
+     `esc` closes a range, then clears the selection, then leaves the panel.
+   - `y` yanks the selection (or the cursor line) to the system clipboard
+     (`pbcopy` on macOS; `xclip`, `xsel` or `wl-copy` on Linux, named in the
+     error when missing) and clears the selection, as a yank does in PARA; the
+     footer says `N yanked` until the next key. On failure the error shows and
+     the selection stays.
+   - `enter` (with lines selected) opens the "Extract as" picker with the six kinds (colored, with
      their meanings), then a title prompt "Extract as <kind>: title" starting
      with the first selected line (cleaned for a file name); `enter` creates
      the note. Selecting only blank lines says so instead. A missing title

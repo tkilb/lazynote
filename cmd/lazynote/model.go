@@ -3,6 +3,8 @@ package main
 import (
 	"time"
 
+	"github.com/atotto/clipboard"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
@@ -105,9 +107,12 @@ var infoBindings = []statusbar.Binding{
 }
 
 var bodyBindings = []statusbar.Binding{
-	{Key: "↑/↓", Label: "scroll"},
+	{Key: "↑/↓", Label: "move"},
 	{Key: "ctrl+d/u", Label: "half page"},
+	{Key: "space", Label: "pick line"},
 	{Key: "v", Label: "select lines"},
+	{Key: "y", Label: "yank"},
+	{Key: "enter", Label: "extract"},
 	{Key: "esc/←", Label: "back to PARA"},
 }
 
@@ -141,6 +146,8 @@ type model struct {
 	pickerKind store.Kind
 	// extract is the extraction in progress, if any.
 	extract *extractState
+	// writeClipboard copies text to the system clipboard (a yank).
+	writeClipboard func(string) error
 	// sources are the sources Quick Add offers, from the config.
 	sources []string
 	// form is the open quick-capture form; formSave handles its texts.
@@ -174,7 +181,7 @@ func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
 		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{},
-		sources: config.DefaultSources,
+		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll,
 	}
 }
 
@@ -327,9 +334,10 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc", "left":
 		switch m.focus {
 		case panelBody:
-			// Leaving an open line selection comes before leaving the panel.
-			if m.body.Selecting() {
-				m.body = m.body.Cancel()
+			// Closing a range or clearing the selection comes before leaving
+			// the panel.
+			if m.body.Active() {
+				m.body = m.body.Escape()
 			} else {
 				m.focus = panelPARA
 			}
@@ -343,7 +351,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m, cmd = m.relatedKey(msg)
 			break
 		}
-		if m.focus == panelBody && m.body.Selecting() && key == "enter" {
+		if m.focus == panelBody && m.body.HasSelection() && key == "enter" {
 			m, cmd = m.startExtract()
 			break
 		}
@@ -356,6 +364,10 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m, cmd = m.paraKey(msg)
 		}
 	default:
+		if key == "y" && m.focus == panelBody {
+			m = m.yankBody()
+			break
+		}
 		switch m.focus {
 		case panelPARA:
 			m, cmd = m.paraKey(msg)

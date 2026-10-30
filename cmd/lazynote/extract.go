@@ -27,7 +27,7 @@ type extractState struct {
 func (m model) startExtract() (model, tea.Cmd) {
 	text := m.body.SelectedText()
 	if strings.TrimSpace(text) == "" {
-		return m.notify(popup.Info, "Only blank lines are selected. Select some text first."), nil
+		return m.notify(popup.Info, "Only blank lines are selected. Pick some text first."), nil
 	}
 	var items []picker.Item
 	for _, k := range store.Kinds() {
@@ -54,7 +54,7 @@ func (m model) askExtractTitle(kind store.Kind) (model, tea.Cmd) {
 			return m.finishIntake(res, err), nil
 		}
 		m.extract = nil
-		m.body = m.body.Cancel()
+		m.body = m.body.ClearSelection()
 		return m.finishIntake(res, nil), nil
 	})
 }

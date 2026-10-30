@@ -61,11 +61,15 @@ var helpRelatedBindings = []statusbar.Binding{
 }
 
 var helpBodyBindings = []statusbar.Binding{
-	{Key: "↑/↓", Label: "scroll"},
+	{Key: "↑/↓", Label: "move the cursor line (your place is remembered)"},
 	{Key: "ctrl+d/u", Label: "half page down/up"},
-	{Key: "v", Label: "select lines (↑/↓ extend, v or esc cancel)"},
-	{Key: "enter", Label: "extract the selected lines into a new note"},
-	{Key: "esc/←", Label: "back to PARA"},
+	{Key: "g/G", Label: "first/last line"},
+	{Key: "space", Label: "pick the line and move down"},
+	{Key: "v/V", Label: "select/unselect a range as you move"},
+	{Key: "ctrl+a", Label: "select all"},
+	{Key: "y", Label: "yank (copy) the selection, or the line, to the clipboard"},
+	{Key: "enter", Label: "extract the selection into a new note"},
+	{Key: "esc", Label: "close the range, clear the selection, then leave"},
 }
 
 var helpInfoBindings = []statusbar.Binding{
