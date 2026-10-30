@@ -88,15 +88,12 @@ const (
 	dismissHint = "press any key to dismiss"
 	confirmHint = "(y/enter) confirm  (n/esc) cancel"
 	inputHint   = "(enter) accept  (esc) cancel"
-	formHint    = "(tab) next field  (enter) accept  (esc) cancel"
 	menuHint    = "(↑/↓) select  (enter) pick  (esc) cancel"
 
 	// boxChrome is the columns a box spends on its border and padding.
 	boxChrome = 4
 	// titleLead is how many border characters come before a title.
 	titleLead = 2
-	// formLabelGap separates a form label from its field.
-	formLabelGap = 2
 	// boxPadding is the columns of padding inside a box, left and right.
 	boxPadding = 2
 	// hintTrail is how many border characters follow a right-aligned hint.
@@ -165,39 +162,6 @@ func MenuBox(title string, items []MenuItem, cursor, screenWidth int) string {
 		lines[i] = keyStyle.Render(it.Key) + "  " + it.Label
 	}
 	return renderBox(title, inputColor, menuHint, strings.Join(lines, "\n"), screenWidth)
-}
-
-// FormBox draws a box of labeled one-line fields, one per line, with the
-// label of the focused field picked out. fields are already rendered.
-func FormBox(title string, labels, fields []string, focus, screenWidth int) string {
-	width := labelWidth(labels)
-	focused := lipgloss.NewStyle().Bold(true).Foreground(menuKeyColor)
-	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	lines := make([]string, len(fields))
-	for i, f := range fields {
-		label := labels[i] + strings.Repeat(" ", width-ansi.StringWidth(labels[i]))
-		if i == focus {
-			label = focused.Render(label)
-		} else {
-			label = dim.Render(label)
-		}
-		lines[i] = label + "  " + f
-	}
-	return renderBox(title, inputColor, formHint, strings.Join(lines, "\n"), screenWidth)
-}
-
-// FormFieldWidth is the width to give each text field of a FormBox with the
-// given labels.
-func FormFieldWidth(labels []string, screenWidth int) int {
-	return max(FieldWidth(screenWidth)-labelWidth(labels)-formLabelGap, 1)
-}
-
-func labelWidth(labels []string) int {
-	w := 0
-	for _, l := range labels {
-		w = max(w, ansi.StringWidth(l))
-	}
-	return w
 }
 
 // FieldWidth is the width to give a text field shown in an InputBox on a

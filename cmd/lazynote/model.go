@@ -11,6 +11,7 @@ import (
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/body"
 	"github.com/tkilb/lazynote/internal/ui/info"
+	"github.com/tkilb/lazynote/internal/ui/noteform"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/picker"
@@ -136,6 +137,9 @@ type model struct {
 	pickerOp  pickerOp
 	// pickerKind is the kind the note had when the kind picker opened.
 	pickerKind store.Kind
+	// form is the open quick-capture form; formSave handles its texts.
+	form     *noteform.Model
+	formSave func(model, string, string) model
 	// menu is the open choose-by-key menu, if any.
 	menu *menu
 	// question is a yes/no question owned by the root model, with what to do
@@ -216,6 +220,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		if m.form != nil {
+			f := m.form.Resize(m.width, m.height)
+			m.form = &f
+		}
 		g := computeGrid(m.width, m.height-1)
 		_, rows := panel.InnerSize(g.leftWidth, g.paraHeight)
 		m.para = m.para.Resize(rows)
@@ -245,14 +253,14 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.picker = &p
 			return m, cmd
 		}
+		if m.form != nil {
+			f, cmd := m.form.Blink(msg)
+			m.form = &f
+			return m, cmd
+		}
 		if m.input != nil {
 			var cmd tea.Cmd
 			m.input.field, cmd = m.input.field.Update(msg)
-			if m.input.extra != nil {
-				var extraCmd tea.Cmd
-				*m.input.extra, extraCmd = m.input.extra.Update(msg)
-				cmd = tea.Batch(cmd, extraCmd)
-			}
 			return m, cmd
 		}
 	}
@@ -268,6 +276,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.showingHelp:
 			return m.updateHelp(msg), nil
+		case m.form != nil:
+			return m.formKey(msg)
 		case m.menu != nil:
 			return m.menuKey(key)
 		case m.question != nil:

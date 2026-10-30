@@ -6,24 +6,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/tkilb/lazynote/internal/intake"
 	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/lazynote/internal/ui/noteform"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 )
 
 // captureKinds maps the global capture keys to the kind they create and the
-// title of their prompt.
+// word that names it in the form.
 var captureKinds = map[string]struct {
 	kind  store.Kind
-	title string
+	label string // names the kind in the form: "Fact title"
 }{
-	"F": {store.KindFact, "Quick fact"},
-	"R": {store.KindRumor, "Quick rumor"},
-	"i": {store.KindIdea, "Quick idea"},
+	"F": {store.KindFact, "Fact"},
+	"R": {store.KindRumor, "Rumor"},
+	"i": {store.KindIdea, "Idea"},
 }
 
 // openRootInput opens a one-line prompt whose text goes to accept.
@@ -34,62 +34,43 @@ func (m model) openRootInput(title string, accept func(model, string) (model, te
 	return m, cmd
 }
 
-// openForm opens a two-field prompt, a title and a body, whose texts go to
-// accept.
-func (m model) openForm(title string, accept func(model, string, string) (model, tea.Cmd)) (model, tea.Cmd) {
-	labels := []string{"Title", "Body"}
-	in, cmd := m.openInput(&para.Prompt{Title: title})
-	width := popup.FormFieldWidth(labels, m.width)
-	in.field.Width = width
-	extra := textinput.New()
-	extra.Prompt = ""
-	extra.CharLimit = inputCharLimit
-	extra.Width = width
-	in.extra, in.labels, in.acceptForm = &extra, labels, accept
-	m.input = in
-	return m, cmd
-}
-
-// typeFormKey feeds a key to the open two-field prompt: tab and the vertical
-// arrows move between the fields, enter accepts both, esc cancels.
-func (m model) typeFormKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	in := m.input
-	switch msg.String() {
-	case "esc":
-		m.input = nil
-		return m, nil
-	case "enter":
-		title, body, accept := in.field.Value(), in.extra.Value(), in.acceptForm
-		m.input = nil
-		return accept(m, title, body)
-	case "tab", "shift+tab", "up", "down":
-		in.onExtra = !in.onExtra
-		if in.onExtra {
-			in.field.Blur()
-			return m, in.extra.Focus()
-		}
-		in.extra.Blur()
-		return m, in.field.Focus()
-	}
-	var cmd tea.Cmd
-	if in.onExtra {
-		*in.extra, cmd = in.extra.Update(msg)
-	} else {
-		in.field, cmd = in.field.Update(msg)
-	}
-	return m, cmd
-}
-
 // startCapture opens the quick capture form for the capture key.
 func (m model) startCapture(key string) (model, tea.Cmd) {
 	c := captureKinds[key]
-	return m.openForm(c.title, func(m model, title, body string) (model, tea.Cmd) {
+	form, cmd := noteform.New(c.label, m.width, m.height)
+	m.form = &form
+	m.formSave = func(m model, title, body string) model {
 		if strings.TrimSpace(title) == "" && strings.TrimSpace(body) == "" {
-			return m, nil // nothing typed
+			return m // nothing typed
 		}
 		res, err := intake.Capture(m.store, time.Now(), c.kind, intake.SourceQuick, title, body)
-		return m.finishIntake(res, err), nil
-	})
+		return m.finishIntake(res, err)
+	}
+	return m, cmd
+}
+
+// formKey handles a key while the capture form is open: esc cancels, enter in
+// the title and ctrl+s anywhere save, and everything else edits the form.
+func (m model) formKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	save := func() (tea.Model, tea.Cmd) {
+		title, body, onSave := m.form.Title(), m.form.Body(), m.formSave
+		m.form, m.formSave = nil, nil
+		return onSave(m, title, body), nil
+	}
+	switch msg.String() {
+	case "esc":
+		m.form, m.formSave = nil, nil
+		return m, nil
+	case "ctrl+s":
+		return save()
+	case "enter":
+		if m.form.FocusedField() == noteform.FieldTitle {
+			return save()
+		}
+	}
+	f, cmd := m.form.Update(msg)
+	m.form = &f
+	return m, cmd
 }
 
 // startImport asks for a file path, then whether it is a transcript or a note.

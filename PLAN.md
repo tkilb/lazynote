@@ -493,8 +493,8 @@ listed first like any directory, next to the intake notes.
 
 Confirmed:
 
-- Quick capture prompts, each a two-field form (Title and Body) creating an
-  inbox note: `F` for `kind: fact`, `R` for `kind: rumor`, `i` for
+- Quick capture prompts, each a form with a Title box and a multi-line Body
+  box (see the 9b notes) creating an inbox note: `F` for `kind: fact`, `R` for `kind: rumor`, `i` for
   `kind: idea`. The file name is the title, cleaned (unsafe characters
   removed), plus `.md`, with no timestamp (the day is the `date` property);
   a numeric suffix resolves a collision. The body field is the note body;
@@ -728,9 +728,17 @@ Numbers are kept stable; resolved items were removed.
    quick fact (`F`), quick rumor (`R`), quick idea (`i`), transcript and
    note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
    created on first use. Engine in `internal/intake`, tested.
-   - Quick capture: a form titled "Quick fact", "Quick rumor" or "Quick
-     idea" with two one-line fields, Title and Body; `tab` or `↑`/`↓` move
-     between them and `enter` saves. The note is `inbox/<title>.md`: the
+   - Quick capture: a form ported from lazytask's add-task form
+     (`internal/ui/noteform`): a "Fact title" / "Rumor title" / "Idea title"
+     box and a "Body" box, each its own bordered box with the field name in
+     the border and the focused one highlighted. `tab` and `shift+tab` move
+     between them (the arrows belong to the body's cursor). The body is
+     multi-line and scrolls inside a fixed height of 3 to 8 lines (more on a
+     tall terminal), with the cursor line and total shown at the bottom left
+     once it overflows; `enter` there starts a new line. `enter` in the title
+     and `ctrl+s` in either field save, `esc` cancels. (`ctrl+s` is an
+     addition: lazytask's form can only save from a single-line field.) The
+     note is `inbox/<title>.md`: the
      title with `/ \ : * ? " < > | # [ ] ^` and control characters removed,
      white space collapsed, leading and trailing dots and spaces trimmed, at
      most 80 characters, case kept. It has `uid`, `title` (the file name),
@@ -739,8 +747,7 @@ Numbers are kept stable; resolved items were removed.
      is blank). A name already taken gets ` 2`, ` 3` and so on, and the title
      property follows. Both fields blank does nothing; a body without a
      usable title is an error ("a title is needed"). Undo moves the note to
-     the trash. The body is one line for now; a multi-line body can come
-     later.
+     the trash.
    - Import: `I` asks for a file path (`~` is expanded), then a menu: `t`
      transcript or `n` note. The file is only read: it must be a regular
      file (a symlink to one is fine) of at most 10 MB, and nothing is ever
