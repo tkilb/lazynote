@@ -20,9 +20,9 @@ var styles = map[store.Kind]struct {
 }{
 	store.KindFact:     {"fact", lipgloss.Color("2")},
 	store.KindRumor:    {"rumr", lipgloss.Color("3")},
-	store.KindProposal: {"prop", lipgloss.Color("4")},
+	store.KindProposal: {"prop", lipgloss.Color("6")},
 	store.KindFossil:   {"foss", lipgloss.Color("8")},
-	store.KindIdea:     {"idea", lipgloss.Color("6")},
+	store.KindIdea:     {"idea", lipgloss.Color("4")},
 	store.KindDraft:    {"draf", lipgloss.Color("5")},
 }
 
