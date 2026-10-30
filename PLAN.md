@@ -142,8 +142,17 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   hovered item.
 - The yank or cut buffer persists while you navigate directories and switch
   tabs, so you can cut in Projects and paste in Archives.
-- Cutting clears the buffer after `p`. Whether a yank stays pasteable after
-  `p` (verify): default is to clear it too.
+- Both yank and cut clear the buffer after `p` or `P` (decided; Yazi keeps a
+  yank pasteable). A new `y` or `x` replaces the buffer and clears the
+  selection. `Y` and `X` both empty the buffer. A yanked row shows a green
+  bar and a cut row a red one; both outrank the yellow selection bar, and
+  the footer shows `N yanked` or `N cut` on every tab.
+- A paste is all or nothing: if any name collides, `p` cancels the whole
+  paste and names the count; if a step fails, the steps already done are
+  undone. Cutting into the directory the item is already in does nothing.
+  Sources that no longer exist are dropped and counted in the message.
+  `P` asks first (a status-line prompt, `y`/`enter` or `n`/`esc`) only when
+  something would be replaced.
 - Yank and paste copies the file with its frontmatter unchanged. Cut and
   paste moves it.
 - `p` never overwrites; on a name collision it reports an error. `P`

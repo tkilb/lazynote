@@ -513,3 +513,27 @@ func TestCopyFailureLeavesNothingBehind(t *testing.T) {
 	assert.False(t, exists(filepath.Join(root, "archives")), "partial copy and its new parents are removed")
 	assert.Equal(t, "a", read(t, filepath.Join(root, "projects", "p", "a.md")))
 }
+
+func TestExists(t *testing.T) {
+	root, tmp := newRoot(t)
+	put(t, filepath.Join(root, "inbox", "n.md"), "x")
+	require.NoError(t, os.Symlink(filepath.Join(tmp, "missing"), filepath.Join(root, "dangling")))
+	require.NoError(t, os.Symlink(filepath.Join(tmp, "outside"), filepath.Join(root, "out")))
+	s := NewMarkdown(root)
+
+	for rel, want := range map[string]bool{
+		"inbox/n.md":      true,
+		"inbox":           true,
+		"inbox/gone.md":   false,
+		"inbox/n.md/deep": false,
+		"nothing/at/all":  false,
+	} {
+		got, err := s.Exists(rel)
+		require.NoError(t, err, rel)
+		assert.Equal(t, want, got, rel)
+	}
+	for _, rel := range []string{"", "../outside", "/etc", "out/x", "dangling"} {
+		_, err := s.Exists(rel)
+		assert.Error(t, err, rel)
+	}
+}

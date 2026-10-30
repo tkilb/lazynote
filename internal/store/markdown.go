@@ -132,3 +132,18 @@ func (m *Markdown) ReadNote(rel string) (Note, error) {
 	}
 	return ParseNote(filepath.Base(rel), data), nil
 }
+
+// Exists implements Store. A symlink counts as existing even when dangling.
+func (m *Markdown) Exists(rel string) (bool, error) {
+	path, err := ResolveInRoot(m.root, rel)
+	if err != nil {
+		return false, err
+	}
+	switch _, err := os.Lstat(path); {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, errNotDir):
+		return false, nil
+	}
+	return false, ErrUnreadable
+}

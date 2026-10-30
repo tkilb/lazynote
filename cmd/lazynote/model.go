@@ -68,6 +68,7 @@ var paraBindings = []statusbar.Binding{
 	{Key: "h/l", Label: "up/open"},
 	{Key: "[ ]", Label: "tab"},
 	{Key: "space", Label: "select"},
+	{Key: "y/x/p", Label: "yank/cut/paste"},
 	{Key: "v", Label: "visual"},
 	{Key: ".", Label: "hidden"},
 	{Key: "enter", Label: "open"},
@@ -86,6 +87,8 @@ type model struct {
 	// message is a one-line result shown in place of the key hints until the
 	// next key press.
 	message message
+	// pending is a question waiting for y or n; while set, it takes every key.
+	pending *para.Confirm
 }
 
 // message is a transient status line.
@@ -95,8 +98,9 @@ type message struct {
 }
 
 var (
-	infoStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	confirmStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
 )
 
 func initialModel(s store.Store) model {
@@ -124,6 +128,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	m.message = message{}
+	if m.pending != nil && key != "ctrl+c" {
+		return m.answer(key), nil
+	}
 	switch key {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -144,7 +151,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case panelBody:
 			m.focus = panelPARA
 		case panelPARA:
-			m.para = m.para.Update(msg)
+			m = m.paraKey(msg)
 		}
 	case "enter", "right", "l":
 		if m.focus != panelPARA {
@@ -153,14 +160,64 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if _, ok := m.para.SelectedNote(); ok {
 			m.focus = panelBody
 		} else {
-			m.para = m.para.Update(msg)
+			m = m.paraKey(msg)
 		}
 	default:
 		if m.focus == panelPARA {
-			m.para = m.para.Update(msg)
+			m = m.paraKey(msg)
 		}
 	}
 	return m, nil
+}
+
+// paraKey sends a key to the PARA panel and applies what it asks for.
+func (m model) paraKey(msg tea.KeyMsg) model {
+	var eff para.Effect
+	m.para, eff = m.para.Update(msg)
+	return m.apply(eff)
+}
+
+// apply records an Effect from a panel: the undo action, the message, or
+// the question to ask.
+func (m model) apply(eff para.Effect) model {
+	if eff.Action != nil {
+		m.history.Push(*eff.Action)
+	}
+	switch {
+	case eff.Confirm != nil:
+		m.pending = eff.Confirm
+	case eff.Err != nil:
+		m.message = message{text: capitalize(eff.Err.Error()), isErr: true}
+	case eff.Info != "":
+		m.message = message{text: eff.Info}
+	}
+	return m
+}
+
+// answer handles a key while a question is pending: y or enter accepts, n
+// or esc declines, anything else is ignored.
+func (m model) answer(key string) model {
+	switch key {
+	case "y", "enter":
+		op := m.pending.Op
+		m.pending = nil
+		var eff para.Effect
+		m.para, eff = m.para.ApplyConfirm(op)
+		return m.apply(eff)
+	case "n", "esc":
+		m.pending = nil
+		m.message = message{text: "Cancelled"}
+		return m
+	}
+	m.message = message{}
+	return m
+}
+
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // runHistory runs an undo or redo, reports the result in the status line,
@@ -169,7 +226,7 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 	desc, err := run()
 	switch {
 	case errors.Is(err, undo.ErrNothingToUndo), errors.Is(err, undo.ErrNothingToRedo):
-		m.message = message{text: strings.ToUpper(err.Error()[:1]) + err.Error()[1:]}
+		m.message = message{text: capitalize(err.Error())}
 	case err != nil:
 		m.message = message{text: failed + " failed (" + desc + "): " + err.Error(), isErr: true}
 	default:
@@ -181,6 +238,8 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 
 func (m model) statusLine() string {
 	switch {
+	case m.pending != nil:
+		return confirmStyle.Render(m.pending.Prompt) + "  y/enter confirm  n/esc cancel"
 	case m.message.isErr:
 		return errorStyle.Render(m.message.text)
 	case m.message.text != "":

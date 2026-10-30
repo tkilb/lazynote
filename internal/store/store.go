@@ -50,6 +50,9 @@ type Store interface {
 	// ReadNote reads and parses the note at rel (relative to the root).
 	ReadNote(rel string) (Note, error)
 
+	// Exists reports whether anything is at rel (relative to the root).
+	Exists(rel string) (bool, error)
+
 	// The write operations take names relative to the notebook root, never
 	// overwrite, create missing folders on demand, and return one undo
 	// action for the whole operation.

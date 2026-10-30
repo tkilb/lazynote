@@ -26,9 +26,38 @@ var (
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	selStyle   = lipgloss.NewStyle().Bold(true).Background(panel.SelectedRowBackground)
-	// markerStyle colors the left-edge bar of a selected row, as Yazi does.
-	markerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	// The left-edge bar of a marked row is colored as in Yazi.
+	markerColors = map[mark]lipgloss.Color{
+		markSelected: lipgloss.Color("3"), // yellow
+		markYank:     lipgloss.Color("2"), // green
+		markCut:      lipgloss.Color("1"), // red
+	}
 )
+
+// mark says why a row has a left-edge bar.
+type mark int
+
+const (
+	markNone mark = iota
+	markSelected
+	markYank
+	markCut
+)
+
+// markOf picks a row's marker. The yank buffer outranks the selection,
+// because it is what a paste acts on.
+func (m Model) markOf(t tabState, r row) mark {
+	if m.clip.set[r.entry.Rel] {
+		if m.clip.mode == clipCut {
+			return markCut
+		}
+		return markYank
+	}
+	if t.selected[r.entry.Name] {
+		return markSelected
+	}
+	return markNone
+}
 
 const (
 	// markerBar is drawn in the first column of a selected row.
@@ -59,13 +88,13 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		tabs[i] = panel.Tab{Label: d.label, Active: i == m.active}
 	}
 
-	footer := panel.Footer{Left: "/" + filepath.ToSlash(t.dir), Right: status(t)}
+	footer := panel.Footer{Left: "/" + filepath.ToSlash(t.dir), Right: status(t, m.clip)}
 	return panel.FrameTabs(panelNumber, tabs, m.body(t, width, height, focused), width, height, focused, footer)
 }
 
 // status builds the bottom-right text: the visual-mode flag, the selection
 // count and the cursor position, e.g. "VISUAL 3 sel 4/9".
-func status(t tabState) string {
+func status(t tabState, c clip) string {
 	var parts []string
 	switch t.visual.mode {
 	case visualSelect:
@@ -75,6 +104,12 @@ func status(t tabState) string {
 	}
 	if n := len(t.selected); n > 0 {
 		parts = append(parts, fmt.Sprintf("%d sel", n))
+	}
+	switch c.mode {
+	case clipYank:
+		parts = append(parts, fmt.Sprintf("%d yanked", len(c.rels)))
+	case clipCut:
+		parts = append(parts, fmt.Sprintf("%d cut", len(c.rels)))
 	}
 	if len(t.rows) > 0 {
 		parts = append(parts, fmt.Sprintf("%d/%d", t.cursor+1, len(t.rows)))
@@ -93,19 +128,20 @@ func (m Model) body(t tabState, width, height int, focused bool) string {
 	start, end := panel.ScrollWindow(t.cursor, len(t.rows), height)
 	lines := make([]string, 0, end-start)
 	for i := start; i < end; i++ {
-		lines = append(lines, renderRow(t.rows[i], width, i == t.cursor && focused, t.selected[t.rows[i].entry.Name]))
+		lines = append(lines, renderRow(t.rows[i], width, i == t.cursor && focused, m.markOf(t, t.rows[i])))
 	}
 	return strings.Join(lines, "\n")
 }
 
 // renderRow draws one row: a marker column, a kind badge (blank for
 // directories), the name, and for directories an item count right-aligned.
-// cursor highlights the row; marked draws the selection bar.
-func renderRow(r row, width int, cursor, marked bool) string {
+// cursor highlights the row; mk draws the left-edge bar.
+func renderRow(r row, width int, cursor bool, mk mark) string {
 	bar := " "
-	if marked {
+	if mk != markNone {
 		bar = markerBar
 	}
+	markerStyle := lipgloss.NewStyle().Foreground(markerColors[mk])
 	width -= markerWidth
 
 	badge, badgeColor := strings.Repeat(" ", badgeWidth), lipgloss.Color("")
@@ -125,7 +161,7 @@ func renderRow(r row, width int, cursor, marked bool) string {
 	gap := strings.Repeat(" ", max(width-badgeWidth-1-ansi.StringWidth(name)-len(right), 0))
 
 	if cursor {
-		return selStyle.Foreground(markerStyle.GetForeground()).Render(bar) +
+		return selStyle.Foreground(markerColors[mk]).Render(bar) +
 			selStyle.Render(ansi.Truncate(badge+" "+name+gap+right, width, ""))
 	}
 	nameStyle := lipgloss.NewStyle()

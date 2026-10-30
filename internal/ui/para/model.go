@@ -89,6 +89,8 @@ type Model struct {
 	pageSize   int
 	// pendingG is set after a first "g", waiting for the second of "gg".
 	pendingG bool
+	// clip is the yank/cut buffer, shared by every tab.
+	clip clip
 }
 
 // New returns a panel over s with the first tab loaded.
@@ -145,8 +147,26 @@ func restoreCursor(rows []row, cursor int, keep string) int {
 	return min(cursor, max(len(rows)-1, 0))
 }
 
-// Update handles a key press while the panel has focus.
-func (m Model) Update(msg tea.KeyMsg) Model {
+// Update handles a key press while the panel has focus. The Effect says
+// what the root model must do besides showing the updated panel.
+func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
+	switch msg.String() {
+	case "y":
+		return m.setClip(clipYank)
+	case "x":
+		return m.setClip(clipCut)
+	case "Y", "X":
+		return m.cancelClip()
+	case "p":
+		return m.paste(false, false)
+	case "P":
+		return m.paste(true, false)
+	}
+	return m.navigate(msg), Effect{}
+}
+
+// navigate handles the keys that only move or select.
+func (m Model) navigate(msg tea.KeyMsg) Model {
 	pendingG := m.pendingG
 	m.pendingG = false
 
