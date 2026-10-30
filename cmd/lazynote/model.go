@@ -14,6 +14,7 @@ import (
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 	"github.com/tkilb/lazynote/internal/ui/statusbar"
+	"github.com/tkilb/lazynote/internal/ui/title"
 	"github.com/tkilb/lazynote/internal/undo"
 )
 
@@ -38,8 +39,8 @@ var panelNames = map[panelID]string{
 }
 
 // focusCycle is the Tab/Shift+Tab order: the left column top to bottom,
-// then the right column top to bottom.
-var focusCycle = []panelID{panelNotebook, panelPARA, panelRelated, panelInfo, panelBody}
+// then the right column top to bottom. The Title panel is not in it.
+var focusCycle = []panelID{panelNotebook, panelPARA, panelRelated, panelBody, panelInfo}
 
 func (p panelID) next() panelID { return focusCycle[(p.cycleIndex()+1)%len(focusCycle)] }
 
@@ -99,6 +100,7 @@ type model struct {
 	para          para.Model
 	body          body.Model
 	info          info.Model
+	title         title.Model
 	shown         shownNote
 	width, height int
 	// history is shared by pointer: it holds the session's undo/redo stack.
@@ -125,7 +127,7 @@ type shownNote struct {
 func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
-		body: body.New(), info: info.New(), history: &undo.Stack{},
+		body: body.New(), info: info.New(), title: title.New(), history: &undo.Stack{},
 	}
 }
 
@@ -136,6 +138,7 @@ func (m model) syncSelection() model {
 	entry, ok := m.para.Selected()
 	if !ok {
 		m.body, m.info, m.shown = m.body.Clear(), m.info.Clear(), shownNote{}
+		m.title = m.title.Set("")
 		return m
 	}
 	now := shownNote{rel: entry.Rel, mod: entry.ModTime, items: entry.ItemCount}
@@ -145,16 +148,19 @@ func (m model) syncSelection() model {
 	m.shown = now
 
 	if entry.IsDir {
+		m.title = m.title.Set("")
 		m.body = m.body.Clear()
 		m.info = m.info.ShowDir(entry.Rel, entry.Name, entry.ItemCount)
 		return m
 	}
 	note, err := m.store.ReadNote(entry.Rel)
 	if err != nil {
+		m.title = m.title.Set(entry.Name)
 		m.body = m.body.Fail(entry.Rel, err)
 		m.info = m.info.ShowError(entry.Rel, entry.Name, err)
 		return m
 	}
+	m.title = m.title.SetNote(note.Kind, note.Title)
 	m.body = m.body.Load(entry.Rel, note.Body)
 	m.info = m.info.ShowNote(entry.Rel, note)
 	return m
@@ -306,8 +312,9 @@ func (m model) View() string {
 		render(panelRelated, g.leftWidth, g.relatedHeight),
 	)
 	right := lipgloss.JoinVertical(lipgloss.Left,
-		render(panelInfo, g.rightWidth, g.infoHeight),
+		m.title.View(g.rightWidth, g.titleHeight),
 		render(panelBody, g.rightWidth, g.bodyHeight),
+		render(panelInfo, g.rightWidth, g.infoHeight),
 	)
 	grid := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 	view := lipgloss.JoinVertical(lipgloss.Left, grid, ansi.Truncate(m.statusLine(), m.width, "…"))

@@ -6,7 +6,7 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 ## Layout (from the paper mock)
 
 ```
-┌[1] Notebook──────────────────────────────────┐┌[4] Info────────────────────────────┐
+┌[1] Notebook──────────────────────────────────┐┌Title───────────────────────────────┐
 └──────────────────────────────────────────────┘└────────────────────────────────────┘
 ┌[2] PARA──────────────────────────────────────┐┌[0] Body────────────────────────────┐
 │ Inbox  Projects  Areas  Resources  Archives  ││                                    │
@@ -14,6 +14,8 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 │                                              ││                                    │
 └──────────────────────────────────────────────┘│                                    │
 ┌[3] Related───────────────────────────────────┐│                                    │
+│                                              │└────────────────────────────────────┘
+│                                              │┌[4] Info────────────────────────────┐
 └──────────────────────────────────────────────┘└────────────────────────────────────┘
 ```
 
@@ -22,10 +24,12 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 | `1` | Notebook | Active notebook, chosen from the `notebooks` list in the config file.                                                                                                                             |
 | `2` | PARA     | Tabs: Inbox (first; contains the `daily/` directory) / Projects / Areas / Resources / Archives. Each tab is a Yazi-style directory browser rooted at the tab's folder. Cycle tabs with `[` / `]`. |
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
-| `4` | Info     | Title, file name and every frontmatter property except `uid` of the selected note (Obsidian-style: `tags`, `aliases`, custom keys).                                                               |
+| —   | Title    | Title of the selected note on one line, led by its kind badge. Display only: no number key, not in the focus cycle. |
 | `0` | Body     | Read-only plain-text view of the selected note (frontmatter hidden, lines wrapped).                                                                                                               |
+| `4` | Info     | Kind (highlighted), file name and every frontmatter property except `uid` of the selected note (Obsidian-style: `tags`, `aliases`, custom keys). Sits below Body. |
 
-Focus: `0`-`4`, `Tab`, `Shift+Tab`. Mouse support follows lazytask.
+Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Notebook, PARA, Related, Body, Info and
+back; the Title panel is never focusable. Mouse support follows lazytask.
 
 ## Keybindings (consolidated; keys marked \* are new proposals)
 
@@ -334,8 +338,8 @@ Conflict notes:
   (below). A note without a `uid` gets one the first time lazynote writes
   it for any reason (create, import, rename, kind change, relation edit);
   lazynote never rewrites an untouched note just to add one.
-- Info shows the title, the file name and all properties except `uid`, so no
-  schema is enforced.
+- Info shows the kind, the file name and all properties except `uid`, so no
+  schema is enforced. The title has its own panel above Body.
 - Relations: the `related` frontmatter property, a list of `[[wikilinks]]`
   (for example `related: ["[[Project Alpha]]", "[[Meeting 2026-10-01]]"]`).
   Obsidian reads it natively. Inline body links and shared tags are out of
@@ -382,7 +386,7 @@ Conflict notes:
   listed ones, and the confirm popup says how many unlisted files it holds.
   Cutting and pasting a directory moves everything inside it.
 - Info lists, for the note under the cursor: a highlighted `Kind` row (the
-  badge color, `unset` when missing or unrecognized), `Title`, `File`, then
+  badge color, `unset` when missing or unrecognized), `File`, then
   every frontmatter property except `uid`, in file order, as a label column
   and wrapped values. A scalar shows its text; a list of scalars is one
   comma-separated line (`tags  work, ideas`); other lists show one `- ` item
@@ -394,8 +398,9 @@ Conflict notes:
   shows a red `Properties` row. For a folder, Info shows its name and the
   number of entries it lists; a note that cannot be read shows the error.
   `↑/k` `↓/j` scroll, with a position footer when it overflows, and `esc` or
-  `h` returns to PARA. Info is about a third of the right column (at least
-  7 rows), Body gets the rest.
+  `h` returns to PARA. The right column, top to bottom, is the Title
+  panel (3 rows), Body, and Info (about a third of the height, at least 7
+  rows); Body gets the rest.
 - Body shows the note under the PARA cursor as plain text and follows it as
   the cursor moves; with a directory selected it is empty, and a note that
   cannot be read shows the error (for example "note is too large"). The
@@ -427,8 +432,9 @@ Conflict notes:
   A missing or unrecognized value is shown as `unset` and never
   rewritten silently. Matching on read is case-insensitive.
 
-- Kind is visible in two places: a short badge on each PARA row (colored per
-  class) and a highlighted row at the top of Info.
+- Kind is visible in three places: a short badge on each PARA row (colored per
+  class), the same badge as a colored pill before the title in the Title
+  panel, and a highlighted row at the top of Info.
 - Changing a kind in-app (`K` in PARA) opens a picker listing all six kinds and
   writes only the `kind` property, using the round-trip rules above.
 
@@ -448,8 +454,8 @@ Confirmed:
   `kind: idea`. The filename is `YYYY-MM-DD-HHMMSS slug.md`, where
   the slug is the first few words of the text, lowercased, with unsafe
   characters removed (a numeric suffix resolves a collision). The full
-  text is the note body, and also the `title` property, so Info shows the
-  text instead of the timestamped name. The same scheme applies to
+  text is the note body, and also the `title` property, so the Title panel
+  shows the text instead of the timestamped name. The same scheme applies to
   `lazynote add`, extracted notes and URL clips.
 - Import: `I` prompts for a file path (or `lazynote import <file>`), then one
   key chooses `t` transcript or `n` note (the CLI uses `--type`).
@@ -572,7 +578,8 @@ Numbers are kept stable; resolved items were removed.
    to the link index (8) and hook it to `$EDITOR` returning (9).
 4. Body panel: show the selected note as plain text, frontmatter stripped,
    long lines wrapped, scrollable.
-5. Info panel: title, file name and all frontmatter properties except `uid`,
+5. Info panel (and the display-only Title panel): kind, file name and all
+   frontmatter properties except `uid`,
    rendered generically (scalars, lists, nested values), in file order.
 6. `internal/state`: SQLite persistence and restore on launch, including
    the current directory for each PARA tab.
