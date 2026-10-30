@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	outgoingTitle = "Outgoing"
-	incomingTitle = "Incoming"
+	outgoingTitle = "References"
+	incomingTitle = "Referenced by"
 	unresolved    = "unresolved"
 	noteExt       = ".md"
 	indent        = "  "

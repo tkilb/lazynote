@@ -106,7 +106,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `↑/k` `↓/j`     | Move selection                                   |
 | `enter / space` | Jump PARA to the related note                    |
 | `*+`            | Add relation (fuzzy picker)                      |
-| `d`             | Remove relation (confirm; outgoing entries only) |
+| `d`             | Remove relation (confirm; References entries only)|
 
 **Info (4)**: `↑/k` `↓/j` scroll.
 
@@ -359,8 +359,10 @@ Conflict notes:
   Obsidian reads it natively. Inline body links and shared tags are out of
   scope for now.
 - Related panel is driven by the PARA selection. It shows two groups: the
-  selected note's `related` entries (outgoing), and notes whose `related`
-  lists the selected note (incoming, from a backlink index). Entries that do
+  selected note's `related` entries (**References**), and notes whose `related`
+  lists the selected note (**Referenced by**, from a backlink index). These two
+  names are the user-facing terms everywhere; the engine's `Outgoing` and
+  `Incoming` methods mean the same. Entries that do
   not resolve to a file are shown dimmed as unresolved; they are never
   created from Related, and `enter` on one does nothing except report it as
   unresolved in the status bar. Body always shows the current PARA
@@ -649,12 +651,12 @@ Numbers are kept stable; resolved items were removed.
    note for the restore.
    8a. Link engine (`internal/links`): `Target` parsing, `related` extraction
    (a list, one string, or an unquoted `[[Name]]`), name resolution, and an
-   index with outgoing links and incoming backlinks over the five PARA
+   index with references (`Outgoing`) and backlinks (`Incoming`) over the five PARA
    folders, refreshed by modification time. In memory for now; the SQLite
    cache named in the Decisions (open for the project owner to confirm) is
    added only if startup scans prove slow. Engine tests only.
-8. Related panel, read-only (UI part, after 8a). Built: two groups (Outgoing,
-   Incoming; an empty group is omitted, `(none)` when both are), each entry
+8. Related panel, read-only (UI part, after 8a). Built: two groups (References,
+   Referenced by; an empty group is omitted, `(none)` when both are), each entry
    with its PARA folder at the right, unresolved entries dimmed with
    `unresolved`; `j`/`k` move over entries only; `enter` or `space` jumps
    PARA to the note (tab, directory and cursor) and moves focus to PARA, and
