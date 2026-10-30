@@ -19,8 +19,9 @@ var (
 )
 
 const (
-	dirPerm  = 0o755
-	filePerm = 0o644
+	dirPerm                = 0o755
+	filePerm               = 0o644
+	ownerWrite fs.FileMode = 0o200
 )
 
 // snapshot is what undo compares to notice an outside change. Directories

@@ -7,6 +7,7 @@ import (
 
 const (
 	titleKey  = "title"
+	uidKey    = "uid"
 	fmOpening = "---\n"
 )
 
@@ -52,6 +53,29 @@ func SetTitle(data []byte, title string) ([]byte, error) {
 			return data, nil
 		}
 	}
+	fm.SetString(titleKey, title)
+	return assembleNote(fm, body, bom)
+}
+
+// RenewIdentity returns data with a fresh uid and its title property set to
+// title, leaving the other properties and the body as they are. A note with
+// no properties block gets one holding both. A properties block that cannot
+// be parsed yields ErrFrontmatterInvalid and the note must be left alone.
+func RenewIdentity(data []byte, title string) ([]byte, error) {
+	uid, err := NewUID()
+	if err != nil {
+		return nil, err
+	}
+	bom := bytes.HasPrefix(data, utf8BOM)
+	raw, body, ok := splitFrontmatter(data)
+
+	fm := NewFrontmatter()
+	if ok {
+		if fm, err = ParseFrontmatter(raw); err != nil {
+			return nil, ErrFrontmatterInvalid
+		}
+	}
+	fm.SetString(uidKey, uid)
 	fm.SetString(titleKey, title)
 	return assembleNote(fm, body, bom)
 }

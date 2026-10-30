@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -139,82 +138,115 @@ func (m *Markdown) Trash(rel string) (undo.Action, error) {
 
 // Copy copies the file or folder at src to dst, never overwriting. Folders
 // copy recursively with everything inside, attachments included; symlinks
-// and other special files inside are skipped. Undo moves the copy to the
-// trash.
-func (m *Markdown) Copy(src, dst string) (undo.Action, error) {
+// and other special files inside are skipped. Every note in the copy gets a
+// fresh uid and a title equal to its file name; a note that cannot be
+// rewritten is kept byte for byte and counted in the result. Undo moves the
+// copy to the trash.
+func (m *Markdown) Copy(src, dst string) (undo.Action, CopyResult, error) {
+	var res CopyResult
 	from, to, err := m.resolvePair(src, dst)
 	if err != nil {
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
 	want, err := m.existing(from)
 	if err != nil {
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
 	if err := mustNotExist(to); err != nil {
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
 	if want.isDir && isInside(from, to) {
-		return undo.Action{}, ErrIntoItself
+		return undo.Action{}, res, ErrIntoItself
 	}
 	slot, err := m.newSlot(filepath.Base(to))
 	if err != nil {
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
 	made, err := mkdirAllTracked(filepath.Dir(to))
 	if err != nil {
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
 	var c copier
 	if err := c.copy(from, to); err != nil {
 		c.cleanup()
 		removeEmpty(made)
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
-	if !want.isDir && isNote(to) && filepath.Base(to) != filepath.Base(from) {
-		// The copy has a new name, so its title property must follow it.
-		if err := retitle(to); err != nil {
-			c.cleanup()
-			removeEmpty(made)
-			return undo.Action{}, err
-		}
+	if res.KeptUID, err = c.renewNotes(); err != nil {
+		c.cleanup()
+		removeEmpty(made)
+		return undo.Action{}, res, err
 	}
 	act, err := placed(to, slot, made, "copy "+filepath.Base(from))
 	if err != nil {
 		c.cleanup()
 		removeEmpty(made)
-		return undo.Action{}, err
+		return undo.Action{}, res, err
 	}
-	return act, nil
+	return act, res, nil
 }
 
-// retitle sets the title property of the note at path to its file name. A
-// note whose properties block cannot be parsed, or that is too large to
-// read as a note, is left exactly as it is.
-func retitle(path string) error {
+// CopyResult reports what Copy could not do for the caller to surface.
+type CopyResult struct {
+	// KeptUID counts notes copied byte for byte, so they still carry their
+	// source's uid: their properties could not be parsed or the note was too
+	// large to read.
+	KeptUID int
+}
+
+// renewNotes gives every note the copier wrote a fresh uid and a title
+// equal to its file name. It returns how many notes it had to leave as they
+// are.
+func (c *copier) renewNotes() (kept int, err error) {
+	for _, path := range c.notes {
+		ok, err := renewNote(path)
+		if err != nil {
+			return kept, err
+		}
+		if !ok {
+			kept++
+		}
+	}
+	return kept, nil
+}
+
+// renewNote rewrites the note at path with a fresh uid and its file name as
+// title. It reports false when the note is left exactly as it is.
+func renewNote(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return ErrUnreadable
+		return false, ErrUnreadable
 	}
 	if info.Size() > maxNoteBytes {
-		return nil
+		return false, nil
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return ErrUnreadable
+		return false, ErrUnreadable
 	}
-	out, err := SetTitle(data, noteTitle(filepath.Base(path)))
+	out, err := RenewIdentity(data, noteTitle(filepath.Base(path)))
 	switch {
 	case errors.Is(err, ErrFrontmatterInvalid):
-		return nil
+		return false, nil
 	case err != nil:
-		return ErrUnreadable
-	case bytes.Equal(out, data):
-		return nil
+		return false, ErrUnreadable
 	}
-	if err := os.WriteFile(path, out, info.Mode().Perm()); err != nil {
-		return ErrUnreadable
+	if err := rewriteFile(path, out, info.Mode().Perm()); err != nil {
+		return false, ErrUnreadable
 	}
-	return nil
+	return true, nil
+}
+
+// rewriteFile replaces the contents of path, making a read-only file
+// writable for the write and restoring its mode afterward.
+func rewriteFile(path string, data []byte, perm fs.FileMode) error {
+	if perm&ownerWrite == 0 {
+		if err := os.Chmod(path, perm|ownerWrite); err != nil {
+			return err
+		}
+		defer func() { _ = os.Chmod(path, perm) }()
+	}
+	return os.WriteFile(path, data, perm)
 }
 
 // placed builds the undo action for an item just written at path: undo
@@ -286,6 +318,7 @@ func writeNewFile(path string, data []byte) error {
 // anything another process put there.
 type copier struct {
 	created []string
+	notes   []string // the .md files among them
 }
 
 // copy copies a regular file or a directory tree from to to. The top item
@@ -341,6 +374,9 @@ func (c *copier) copyFile(from, to string, perm fs.FileMode) error {
 		return ErrUnreadable
 	}
 	c.created = append(c.created, to)
+	if isNote(to) {
+		c.notes = append(c.notes, to)
+	}
 	if _, err := io.Copy(out, in); err != nil {
 		out.Close()
 		return ErrUnreadable

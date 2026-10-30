@@ -161,10 +161,12 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   undone. Cutting into the directory the item is already in does nothing.
   Sources that no longer exist are dropped and counted in the message.
   `P` asks first (a confirm popup) only when something would be replaced.
-- Yank and paste copies the file with its frontmatter unchanged, except that a
-  copy with a new name gets its `title` updated (chunk 5b also gives every
-  copy a fresh `uid`). Cut and
-  paste moves it.
+- Yank and paste copies the file, but every note in the copy (the one file, or
+  each `.md` inside a copied folder) gets a fresh `uid` and its `title` set
+  to its file name; other properties and the body are untouched, and other
+  files are copied verbatim. A note whose frontmatter cannot be parsed is
+  copied byte for byte and a warning popup says it kept its source's `uid`.
+  Cut and paste moves it and keeps the `uid`.
 - `p` never overwrites; on a name collision it reports an error. `P`
   overwrites after a confirm: each replaced file or directory goes to
   `.lazynote/trash/` first, so `u` restores it, and the overwrite and the

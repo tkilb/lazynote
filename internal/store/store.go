@@ -67,8 +67,9 @@ type Store interface {
 	MakeDir(rel string) (undo.Action, error)
 	// Move renames a file or directory.
 	Move(src, dst string) (undo.Action, error)
-	// Copy copies a file or a directory tree.
-	Copy(src, dst string) (undo.Action, error)
+	// Copy copies a file or a directory tree, giving every note in the copy
+	// a fresh uid and a title equal to its file name.
+	Copy(src, dst string) (undo.Action, CopyResult, error)
 	// Trash moves a file or directory into .lazynote/trash.
 	Trash(rel string) (undo.Action, error)
 }

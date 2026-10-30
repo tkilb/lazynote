@@ -140,7 +140,7 @@ func TestMoveFile(t *testing.T) {
 
 func TestMoveDirectoryKeepsContents(t *testing.T) {
 	root, _ := newRoot(t)
-	put(t, filepath.Join(root, "projects", "p", "a.md"), "a")
+	put(t, filepath.Join(root, "projects", "p", "a.md"), "body-a")
 	put(t, filepath.Join(root, "projects", "p", "sub", "pic.png"), "png")
 	s := NewMarkdown(root)
 
@@ -149,7 +149,7 @@ func TestMoveDirectoryKeepsContents(t *testing.T) {
 	assert.Equal(t, "png", read(t, filepath.Join(root, "archives", "p", "sub", "pic.png")))
 
 	require.NoError(t, act.Undo())
-	assert.Equal(t, "a", read(t, filepath.Join(root, "projects", "p", "a.md")))
+	assert.Equal(t, "body-a", read(t, filepath.Join(root, "projects", "p", "a.md")))
 }
 
 func TestMoveRejections(t *testing.T) {
@@ -291,9 +291,11 @@ func TestCopyFile(t *testing.T) {
 	put(t, filepath.Join(root, "inbox", "n.md"), "---\nkind: fact\n---\nbody")
 	s := NewMarkdown(root)
 
-	act, err := s.Copy("inbox/n.md", "areas/n.md")
+	act, _, err := s.Copy("inbox/n.md", "areas/n.md")
 	require.NoError(t, err)
-	assert.Equal(t, read(t, filepath.Join(root, "inbox", "n.md")), read(t, filepath.Join(root, "areas", "n.md")))
+	got := ParseNote("n.md", []byte(read(t, filepath.Join(root, "areas", "n.md"))))
+	assert.Equal(t, "fact", got.Frontmatter.Get("kind").Value)
+	assert.Equal(t, "body", got.Body)
 
 	require.NoError(t, act.Undo())
 	assert.False(t, exists(filepath.Join(root, "areas")))
@@ -306,19 +308,19 @@ func TestCopyFile(t *testing.T) {
 
 func TestCopyDirectoryTree(t *testing.T) {
 	root, tmp := newRoot(t)
-	put(t, filepath.Join(root, "projects", "p", "a.md"), "a")
+	put(t, filepath.Join(root, "projects", "p", "a.md"), "body-a")
 	put(t, filepath.Join(root, "projects", "p", "sub", "pic.png"), "png")
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "projects", "p", "empty"), 0o755))
 	require.NoError(t, os.Symlink(filepath.Join(tmp, "outside"), filepath.Join(root, "projects", "p", "link")))
 	s := NewMarkdown(root)
 
-	_, err := s.Copy("projects/p", "archives/p")
+	_, _, err := s.Copy("projects/p", "archives/p")
 	require.NoError(t, err)
-	assert.Equal(t, "a", read(t, filepath.Join(root, "archives", "p", "a.md")))
+	assert.Equal(t, "body-a", ParseNote("a.md", []byte(read(t, filepath.Join(root, "archives", "p", "a.md")))).Body)
 	assert.Equal(t, "png", read(t, filepath.Join(root, "archives", "p", "sub", "pic.png")), "attachments are copied")
 	assert.DirExists(t, filepath.Join(root, "archives", "p", "empty"))
 	assert.False(t, exists(filepath.Join(root, "archives", "p", "link")), "nested symlinks are skipped")
-	assert.Equal(t, "a", read(t, filepath.Join(root, "projects", "p", "a.md")))
+	assert.Equal(t, "body-a", read(t, filepath.Join(root, "projects", "p", "a.md")))
 }
 
 func TestCopyRejections(t *testing.T) {
@@ -344,7 +346,7 @@ func TestCopyRejections(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := s.Copy(tt.src, tt.dst)
+			_, _, err := s.Copy(tt.src, tt.dst)
 			assert.ErrorIs(t, err, tt.want)
 		})
 	}
@@ -407,7 +409,7 @@ func TestCopyOrMoveIntoItselfOnCaseInsensitiveFS(t *testing.T) {
 	}
 	s := NewMarkdown(root)
 
-	_, err := s.Copy("projects/Dir", "projects/dir/sub")
+	_, _, err := s.Copy("projects/Dir", "projects/dir/sub")
 	assert.ErrorIs(t, err, ErrIntoItself)
 	_, err = s.Move("projects/Dir", "projects/dir/sub")
 	assert.ErrorIs(t, err, ErrIntoItself)
@@ -489,9 +491,9 @@ func TestCopyReadOnlyDirectory(t *testing.T) {
 		_ = os.Chmod(filepath.Join(root, "archives", "ro"), 0o755)
 	})
 
-	_, err := NewMarkdown(root).Copy("projects/ro", "archives/ro")
+	_, _, err := NewMarkdown(root).Copy("projects/ro", "archives/ro")
 	require.NoError(t, err)
-	assert.Equal(t, "a", read(t, filepath.Join(root, "archives", "ro", "a.md")))
+	assert.Equal(t, "a", ParseNote("a.md", []byte(read(t, filepath.Join(root, "archives", "ro", "a.md")))).Body)
 	info, err := os.Stat(filepath.Join(root, "archives", "ro"))
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o555), info.Mode().Perm(), "the source mode is applied after the copy")
@@ -502,16 +504,16 @@ func TestCopyFailureLeavesNothingBehind(t *testing.T) {
 		t.Skip("root can read any file")
 	}
 	root, _ := newRoot(t)
-	put(t, filepath.Join(root, "projects", "p", "a.md"), "a")
+	put(t, filepath.Join(root, "projects", "p", "a.md"), "body-a")
 	put(t, filepath.Join(root, "projects", "p", "z-secret.md"), "z")
 	secret := filepath.Join(root, "projects", "p", "z-secret.md")
 	require.NoError(t, os.Chmod(secret, 0o000))
 	t.Cleanup(func() { _ = os.Chmod(secret, 0o644) })
 
-	_, err := NewMarkdown(root).Copy("projects/p", "archives/deep/p")
+	_, _, err := NewMarkdown(root).Copy("projects/p", "archives/deep/p")
 	assert.ErrorIs(t, err, ErrUnreadable)
 	assert.False(t, exists(filepath.Join(root, "archives")), "partial copy and its new parents are removed")
-	assert.Equal(t, "a", read(t, filepath.Join(root, "projects", "p", "a.md")))
+	assert.Equal(t, "body-a", read(t, filepath.Join(root, "projects", "p", "a.md")))
 }
 
 func TestExists(t *testing.T) {

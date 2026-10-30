@@ -1,6 +1,9 @@
 package store
 
 import (
+	"bytes"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -89,24 +92,27 @@ func TestCopyUpdatesTheTitleOfARenamedCopy(t *testing.T) {
 	put(t, src, "---\nuid: u1\ntitle: a\ntags: [x]\n---\nbody\n")
 	s := NewMarkdown(root)
 
-	_, err := s.Copy("inbox/a.md", "inbox/a_1.md")
+	_, _, err := s.Copy("inbox/a.md", "inbox/a_1.md")
 	require.NoError(t, err)
 
 	n := ParseNote("a_1.md", []byte(read(t, filepath.Join(root, "inbox", "a_1.md"))))
 	assert.Equal(t, "a_1", n.Frontmatter.Get("title").Value, "the copy's title follows its new name")
-	assert.Equal(t, "u1", n.Frontmatter.Get("uid").Value)
+	assert.NotEqual(t, "u1", n.Frontmatter.Get("uid").Value, "the copy gets a fresh uid")
 	assert.Equal(t, "body\n", n.Body)
 	assert.Equal(t, "---\nuid: u1\ntitle: a\ntags: [x]\n---\nbody\n", read(t, src), "the source is untouched")
 }
 
-func TestCopyKeepsBytesWhenTheNameIsUnchanged(t *testing.T) {
+func TestCopyWithTheSameNameStillGetsAFreshUIDAndTitle(t *testing.T) {
 	root, _ := newRoot(t)
 	content := "---\nuid:   u1\ntitle:   other\n---\nbody\n"
 	put(t, filepath.Join(root, "inbox", "a.md"), content)
 
-	_, err := NewMarkdown(root).Copy("inbox/a.md", "areas/a.md")
+	_, _, err := NewMarkdown(root).Copy("inbox/a.md", "areas/a.md")
 	require.NoError(t, err)
-	assert.Equal(t, content, read(t, filepath.Join(root, "areas", "a.md")), "same name: a plain byte-for-byte copy")
+	n := ParseNote("a.md", []byte(read(t, filepath.Join(root, "areas", "a.md"))))
+	assert.NotEqual(t, "u1", n.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "a", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, content, read(t, filepath.Join(root, "inbox", "a.md")), "the source is untouched")
 }
 
 func TestCopyLeavesInvalidFrontmatterAlone(t *testing.T) {
@@ -114,30 +120,103 @@ func TestCopyLeavesInvalidFrontmatterAlone(t *testing.T) {
 	content := "---\nkind: [oops\n---\nbody\n"
 	put(t, filepath.Join(root, "inbox", "a.md"), content)
 
-	_, err := NewMarkdown(root).Copy("inbox/a.md", "inbox/a_1.md")
+	_, res, err := NewMarkdown(root).Copy("inbox/a.md", "inbox/a_1.md")
 	require.NoError(t, err)
 	assert.Equal(t, content, read(t, filepath.Join(root, "inbox", "a_1.md")))
+	assert.Equal(t, 1, res.KeptUID, "the caller is told the copy kept its source's uid")
 }
 
-func TestCopyOfAFolderRetitlesNothingInside(t *testing.T) {
+func TestCopyOfAFolderRenewsEveryNoteInside(t *testing.T) {
 	root, _ := newRoot(t)
-	content := "---\ntitle: n\n---\nx\n"
-	put(t, filepath.Join(root, "projects", "p", "n.md"), content)
+	put(t, filepath.Join(root, "projects", "p", "n.md"), "---\nuid: u1\ntitle: n\n---\nx\n")
+	put(t, filepath.Join(root, "projects", "p", "sub", "m.MD"), "plain\n")
+	put(t, filepath.Join(root, "projects", "p", "pic.png"), "png")
 
-	_, err := NewMarkdown(root).Copy("projects/p", "projects/p_1")
+	_, _, err := NewMarkdown(root).Copy("projects/p", "projects/p_1")
 	require.NoError(t, err)
-	assert.Equal(t, content, read(t, filepath.Join(root, "projects", "p_1", "n.md")), "inner notes keep their names, so their titles stay")
+	n := ParseNote("n.md", []byte(read(t, filepath.Join(root, "projects", "p_1", "n.md"))))
+	assert.NotEqual(t, "u1", n.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "n", n.Frontmatter.Get("title").Value, "inner notes keep their names")
+	m := ParseNote("m.MD", []byte(read(t, filepath.Join(root, "projects", "p_1", "sub", "m.MD"))))
+	assert.Equal(t, "m", m.Frontmatter.Get("title").Value, "a note with no frontmatter gets a block")
+	assert.NotEmpty(t, m.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "plain\n", m.Body)
+	assert.Equal(t, "png", read(t, filepath.Join(root, "projects", "p_1", "pic.png")), "other files are verbatim")
 }
 
-func TestCopyUndoRestoresNothingBrokenAfterRetitle(t *testing.T) {
+func TestCopiesNeverShareAUID(t *testing.T) {
 	root, _ := newRoot(t)
-	put(t, filepath.Join(root, "inbox", "a.md"), "---\ntitle: a\n---\nb\n")
-	act, err := NewMarkdown(root).Copy("inbox/a.md", "inbox/a_1.md")
+	put(t, filepath.Join(root, "inbox", "a.md"), "---\nuid: u1\n---\nb\n")
+	s := NewMarkdown(root)
+	seen := map[string]bool{"u1": true}
+	for i := 0; i < 50; i++ {
+		dst := fmt.Sprintf("areas/c%d.md", i)
+		_, _, err := s.Copy("inbox/a.md", dst)
+		require.NoError(t, err)
+		uid := ParseNote("c.md", []byte(read(t, filepath.Join(root, dst)))).Frontmatter.Get("uid").Value
+		require.False(t, seen[uid], "uid %q repeated", uid)
+		seen[uid] = true
+	}
+}
+
+func TestCopyUndoAndRedoKeepTheSameNewUID(t *testing.T) {
+	root, _ := newRoot(t)
+	put(t, filepath.Join(root, "inbox", "a.md"), "---\nuid: u1\n---\nb\n")
+	act, _, err := NewMarkdown(root).Copy("inbox/a.md", "inbox/a_1.md")
 	require.NoError(t, err)
+	dst := filepath.Join(root, "inbox", "a_1.md")
+	before := read(t, dst)
 
 	require.NoError(t, act.Undo())
-	assert.False(t, exists(filepath.Join(root, "inbox", "a_1.md")))
 	require.NoError(t, act.Redo())
-	got := ParseNote("a_1.md", []byte(read(t, filepath.Join(root, "inbox", "a_1.md"))))
-	assert.Equal(t, "a_1", got.Frontmatter.Get("title").Value, "redo brings back the retitled copy")
+	assert.Equal(t, before, read(t, dst))
+}
+
+func TestCopyOfAReadOnlyNoteStillGetsAFreshUID(t *testing.T) {
+	root, _ := newRoot(t)
+	src := filepath.Join(root, "inbox", "a.md")
+	put(t, src, "---\nuid: u1\n---\nb\n")
+	require.NoError(t, os.Chmod(src, 0o444))
+
+	_, res, err := NewMarkdown(root).Copy("inbox/a.md", "areas/a.md")
+	require.NoError(t, err)
+	assert.Zero(t, res.KeptUID)
+	dst := filepath.Join(root, "areas", "a.md")
+	assert.NotEqual(t, "u1", ParseNote("a.md", []byte(read(t, dst))).Frontmatter.Get("uid").Value)
+	info, err := os.Stat(dst)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o444), info.Mode().Perm(), "the source mode is kept")
+}
+
+func TestRenewIdentityKeepsTheBOM(t *testing.T) {
+	for _, in := range []string{"\xef\xbb\xbf---\nuid: u1\n---\nb\n", "\xef\xbb\xbfplain\n"} {
+		out, err := RenewIdentity([]byte(in), "n")
+		require.NoError(t, err)
+		assert.True(t, bytes.HasPrefix(out, utf8BOM), "BOM kept for %q", in)
+		n := ParseNote("n.md", out)
+		assert.Equal(t, "n", n.Frontmatter.Get("title").Value)
+		assert.NotEqual(t, "u1", n.Frontmatter.Get("uid").Value)
+	}
+}
+
+func TestCopyOfAFolderCountsOnlyTheNotesItCouldNotRewrite(t *testing.T) {
+	root, _ := newRoot(t)
+	bad := "---\nkind: [oops\n---\nbody\n"
+	put(t, filepath.Join(root, "projects", "p", "bad.md"), bad)
+	put(t, filepath.Join(root, "projects", "p", "ok.md"), "---\nuid: u1\n---\nx\n")
+	good := read(t, filepath.Join(root, "projects", "p", "ok.md"))
+
+	act, res, err := NewMarkdown(root).Copy("projects/p", "projects/p_1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.KeptUID)
+	assert.Equal(t, bad, read(t, filepath.Join(root, "projects", "p_1", "bad.md")))
+	okCopy := filepath.Join(root, "projects", "p_1", "ok.md")
+	assert.NotEqual(t, "u1", ParseNote("ok.md", []byte(read(t, okCopy))).Frontmatter.Get("uid").Value)
+
+	before := read(t, okCopy)
+	require.NoError(t, act.Undo())
+	require.NoError(t, act.Redo())
+	assert.Equal(t, before, read(t, okCopy), "redo of a folder copy keeps the new uids")
+	assert.Equal(t, good, read(t, filepath.Join(root, "projects", "p", "ok.md")), "the source folder is untouched")
+	assert.Equal(t, bad, read(t, filepath.Join(root, "projects", "p", "bad.md")))
 }

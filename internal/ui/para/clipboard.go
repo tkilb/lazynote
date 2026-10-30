@@ -184,26 +184,28 @@ func (m Model) paste(overwrite, confirmed bool) (Model, Effect) {
 		}
 	}
 
-	actions, err := m.execute(plan)
+	actions, kept, err := m.execute(plan)
 	if err != nil {
 		return m, Effect{Err: fmt.Errorf("paste failed: %w", err)}
 	}
 	m.clip = clip{}
 	m = m.Reload()
-	return m, pasteResult(plan, actions)
+	return m, pasteResult(plan, actions, kept)
 }
 
 // execute runs the plan, trashing replaced items first. On the first error
 // it undoes what it already did, so a failed paste changes nothing.
-func (m Model) execute(plan pastePlan) ([]undo.Action, error) {
+// It also returns how many copied notes kept their source's uid.
+func (m Model) execute(plan pastePlan) ([]undo.Action, int, error) {
 	var done []undo.Action
-	fail := func(err error) ([]undo.Action, error) {
+	var kept int
+	fail := func(err error) ([]undo.Action, int, error) {
 		if len(done) > 0 {
 			if rbErr := undo.Group("rollback", done...).Undo(); rbErr != nil {
 				err = errors.Join(err, fmt.Errorf("rollback: %w", rbErr))
 			}
 		}
-		return nil, err
+		return nil, 0, err
 	}
 	for _, it := range plan.items {
 		if it.collides {
@@ -213,26 +215,33 @@ func (m Model) execute(plan pastePlan) ([]undo.Action, error) {
 			}
 			done = append(done, a)
 		}
-		op := m.store.Copy
+		var a undo.Action
+		var err error
 		if m.clip.mode == clipCut {
-			op = m.store.Move
+			a, err = m.store.Move(it.src, it.dst)
+		} else {
+			var res store.CopyResult
+			a, res, err = m.store.Copy(it.src, it.dst)
+			kept += res.KeptUID
 		}
-		a, err := op(it.src, it.dst)
 		if err != nil {
 			return fail(err)
 		}
 		done = append(done, a)
 	}
-	return done, nil
+	return done, kept, nil
 }
 
-func pasteResult(plan pastePlan, actions []undo.Action) Effect {
+func pasteResult(plan pastePlan, actions []undo.Action, kept int) Effect {
 	var warn string
 	if plan.missing > 0 {
 		warn = fmt.Sprintf("%s no longer exist and were dropped from the paste.", count(plan.missing))
 		if plan.missing == 1 {
 			warn = "1 item no longer exists and was dropped from the paste."
 		}
+	}
+	if kept > 0 {
+		warn = strings.TrimSpace(warn + " " + keptUIDWarning(kept))
 	}
 	if len(plan.items) == 0 {
 		if plan.skipped > 0 {
@@ -271,6 +280,14 @@ func alreadyExist(n int) string {
 		return "1 item already exists"
 	}
 	return fmt.Sprintf("%d items already exist", n)
+}
+
+// keptUIDWarning explains that some copies could not be given a new uid.
+func keptUIDWarning(n int) string {
+	if n == 1 {
+		return "1 copied note could not be rewritten, so it kept its source's uid."
+	}
+	return fmt.Sprintf("%d copied notes could not be rewritten, so they kept their source's uid.", n)
 }
 
 func count(n int) string {
