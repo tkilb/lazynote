@@ -206,6 +206,11 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m.askRename()
 	case "K":
 		return m.askKind()
+	case "m":
+		if e, ok := m.SelectedNote(); ok {
+			return m, Effect{Move: e.Rel}
+		}
+		return m, Effect{}
 	case "e":
 		if e, ok := m.SelectedNote(); ok {
 			return m, Effect{Edit: e.Rel}

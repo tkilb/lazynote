@@ -20,6 +20,9 @@ type Effect struct {
 	Rename *RenameRequest
 	// SetKind, when set, asks the root model to pick a kind for a note.
 	SetKind *KindRequest
+	// Move, when set, is the root-relative path of the note to move: the
+	// root model shows the destination menu.
+	Move string
 	// Confirm, when set, asks the user before anything changes.
 	Confirm *Confirm
 	// Prompt, when set, asks the user to type a line of text.

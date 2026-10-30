@@ -88,6 +88,7 @@ const (
 	dismissHint = "press any key to dismiss"
 	confirmHint = "(y/enter) confirm  (n/esc) cancel"
 	inputHint   = "(enter) accept  (esc) cancel"
+	menuHint    = "(esc) cancel"
 
 	// boxChrome is the columns a box spends on its border and padding.
 	boxChrome = 4
@@ -104,6 +105,8 @@ var (
 	// hard or impossible to undo.
 	dangerColor = Error.color()
 	inputColor  = lipgloss.Color("39")
+	// menuKeyColor is the cyan of the key column in the help popup.
+	menuKeyColor = lipgloss.Color("6")
 )
 
 // Box draws msg as a bordered box with a title colored per severity and a
@@ -131,6 +134,22 @@ func InputBox(title, label, field string, screenWidth int) string {
 		body = label + "\n" + field
 	}
 	return renderBox(title, inputColor, inputHint, body, screenWidth)
+}
+
+// MenuItem is one choice of a MenuBox: the key that picks it and its label.
+type MenuItem struct {
+	Key, Label string
+}
+
+// MenuBox draws a box listing keys and what they do, for a menu where the
+// next key press chooses.
+func MenuBox(title string, items []MenuItem, screenWidth int) string {
+	keyStyle := lipgloss.NewStyle().Bold(true).Foreground(menuKeyColor)
+	lines := make([]string, len(items))
+	for i, it := range items {
+		lines[i] = keyStyle.Render(it.Key) + "  " + it.Label
+	}
+	return renderBox(title, inputColor, menuHint, strings.Join(lines, "\n"), screenWidth)
 }
 
 // FieldWidth is the width to give a text field shown in an InputBox on a

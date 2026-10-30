@@ -710,13 +710,21 @@ Numbers are kept stable; resolved items were removed.
    title, or skipped as a referrer, and a warning popup says so; a note with
    invalid properties is not seen as a referrer at all, so a link in it is
    not rewritten. The cursor lands on the renamed item.
-9. Remaining actions: set kind (`K` picker, done) and the `m` move popup.
+9. Remaining actions: set kind (`K` picker, done) and the `m` move popup (done).
    `K` on a note opens the fuzzy picker titled "Set kind" with the six kinds
    and their meanings, the highlight on the current one; `enter` writes only
    the `kind` property through `Store.Edit` (so a missing `uid` is added and
    the title set, as for any write), as one undo entry; choosing the current
    kind changes nothing; on a folder `K` does nothing. The daily-note rule
-   (9e) is still to come. Cut/paste, delete, create and undo are already
+   (9e) is still to come.
+   `m` on a note opens a "Move to" menu (`i` Inbox, `p` Projects, `a` Areas,
+   `r` Resources, `A` Archives); the next key moves the note at once to the
+   root of that tab, keeping its name and `uid`, as one undo entry; `esc`
+   cancels and other keys are ignored. A dated daily note moved with `A`
+   goes to `archives/daily/` (`store.MoveDestination`). A note already at the
+   destination root says so; a name collision shows an error and moves
+   nothing. `m` on a folder does nothing (cut and paste moves folders). The
+   rule that a daily accepts only `A` is still to come (9e). Cut/paste, delete, create and undo are already
    in chunks 3e to 3g.
    9b. Intake core: quick fact (`F`), quick rumor (`R`), quick idea
    (`i`), transcript and note import (`I` and `lazynote import`). The Inbox
