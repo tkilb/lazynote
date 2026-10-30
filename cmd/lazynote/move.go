@@ -28,12 +28,17 @@ var moveDestinations = []moveDestination{
 
 // openMoveMenu asks where to move the note at rel.
 func (m model) openMoveMenu(rel string) model {
-	items := make([]popup.MenuItem, len(moveDestinations))
-	for i, d := range moveDestinations {
+	dests := moveDestinations
+	if _, daily := store.DailyDate(rel); daily {
+		// A daily note is scratch space: digest it, then archive it.
+		dests = moveDestinations[len(moveDestinations)-1:]
+	}
+	items := make([]popup.MenuItem, len(dests))
+	for i, d := range dests {
 		items[i] = popup.MenuItem{Key: d.key, Label: d.label}
 	}
 	return m.openMenu(moveTitle, items, func(m model, key string) model {
-		for _, d := range moveDestinations {
+		for _, d := range dests {
 			if d.key == key {
 				return m.moveTo(rel, d)
 			}

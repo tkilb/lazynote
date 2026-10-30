@@ -59,3 +59,30 @@ func DailyDate(rel string) (string, bool) {
 	}
 	return name[:len(name)-len(noteExt)], true
 }
+
+// IsUndigestedDaily reports whether rel is a dated daily note still in
+// inbox/daily, waiting to be digested and archived.
+func IsUndigestedDaily(rel string) bool {
+	_, ok := DailyDate(rel)
+	return ok && path.Dir(rel) == path.Join(tabInbox, dailyDir)
+}
+
+// DailyOverdue reports whether the dated daily note at rel is still in
+// inbox/daily although its date is retentionDays or more calendar days
+// before today: it should have been digested and archived by now. A
+// retention of zero or less never marks anything.
+func DailyOverdue(rel string, retentionDays int, today time.Time) bool {
+	if retentionDays <= 0 || !IsUndigestedDaily(rel) {
+		return false
+	}
+	date, _ := DailyDate(rel)
+	day, err := time.Parse(dateLayout, date)
+	if err != nil {
+		return false
+	}
+	y, m, d := today.Date()
+	todayDay := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	return int(todayDay.Sub(day).Hours()/hoursPerDay) >= retentionDays
+}
+
+const hoursPerDay = 24

@@ -17,5 +17,8 @@ func (m Model) askKind() (Model, Effect) {
 		return m, Effect{}
 	}
 	r := t.rows[t.cursor]
+	if _, daily := store.DailyDate(r.entry.Rel); daily {
+		return m, Effect{Info: "A daily note has no kind: digest it into notes, then archive it."}
+	}
 	return m, Effect{SetKind: &KindRequest{Rel: r.entry.Rel, Current: r.kind}}
 }

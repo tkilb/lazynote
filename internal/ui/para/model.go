@@ -7,6 +7,7 @@ import (
 	"maps"
 	"path/filepath"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -29,6 +30,8 @@ var tabDefs = []tabDef{
 type row struct {
 	entry store.Entry
 	kind  store.Kind // notes only
+	// overdue marks a daily note that should have been archived by now.
+	overdue bool
 }
 
 // defaultPageSize is the page length until the first Resize.
@@ -105,11 +108,22 @@ type Model struct {
 	pendingG bool
 	// clip is the yank/cut buffer, shared by every tab.
 	clip clip
+	// retentionDays is how old an undigested daily note may get before its
+	// row is marked overdue (zero never marks), measured against now.
+	retentionDays int
+	now           func() time.Time
 }
 
 // New returns a panel over s with the first tab loaded.
 func New(s store.Store) Model {
-	return Model{store: s, pageSize: defaultPageSize}.load(0)
+	return Model{store: s, pageSize: defaultPageSize, now: time.Now}.load(0)
+}
+
+// WithRetention marks undigested daily notes whose date is days or more before
+// today as overdue, and reloads so the marks show.
+func (m Model) WithRetention(days int, now func() time.Time) Model {
+	m.retentionDays, m.now = days, now
+	return m.Reload()
 }
 
 // Resize sets the number of visible list rows, used for paging.
@@ -136,6 +150,7 @@ func (m Model) load(i int) Model {
 	for j, e := range entries {
 		rows[j] = row{entry: e, kind: store.KindUnset}
 		if !e.IsDir {
+			rows[j].overdue = m.now != nil && store.DailyOverdue(e.Rel, m.retentionDays, m.now())
 			if n, err := m.store.ReadNote(e.Rel); err == nil {
 				rows[j].kind = n.Kind
 			}

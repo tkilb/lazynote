@@ -2,6 +2,7 @@ package store
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -53,4 +54,44 @@ func TestDailyDate(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestDailyOverdue(t *testing.T) {
+	today := time.Date(2026, 10, 30, 15, 45, 0, 0, time.Local)
+	tests := []struct {
+		name string
+		rel  string
+		days int
+		want bool
+	}{
+		{"exactly the retention period old", "inbox/daily/2026-09-30.md", 30, true},
+		{"one day short", "inbox/daily/2026-10-01.md", 30, false},
+		{"older", "inbox/daily/2026-01-15.md", 30, true},
+		{"today", "inbox/daily/2026-10-30.md", 30, false},
+		{"a future date", "inbox/daily/2026-12-01.md", 30, false},
+		{"seven day retention", "inbox/daily/2026-10-23.md", 7, true},
+		{"one day retention", "inbox/daily/2026-10-29.md", 1, true},
+		{"already archived is not overdue", "archives/daily/2025-01-01.md", 30, false},
+		{"not a daily name", "inbox/daily/notes.md", 30, false},
+		{"not in the daily folder", "inbox/2025-01-01.md", 30, false},
+		{"zero retention never marks", "inbox/daily/2020-01-01.md", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, DailyOverdue(tt.rel, tt.days, today))
+		})
+	}
+	// Calendar days, not 24-hour spans: a late-evening "today" does not tip a
+	// note over early.
+	late := time.Date(2026, 10, 30, 23, 59, 0, 0, time.Local)
+	assert.True(t, DailyOverdue("inbox/daily/2026-09-30.md", 30, late))
+	early := time.Date(2026, 10, 30, 0, 1, 0, 0, time.Local)
+	assert.True(t, DailyOverdue("inbox/daily/2026-09-30.md", 30, early))
+	assert.False(t, DailyOverdue("inbox/daily/2026-10-01.md", 30, early))
+}
+
+func TestIsUndigestedDaily(t *testing.T) {
+	assert.True(t, IsUndigestedDaily("inbox/daily/2026-10-30.md"))
+	assert.False(t, IsUndigestedDaily("archives/daily/2026-10-30.md"))
+	assert.False(t, IsUndigestedDaily("inbox/daily/notes.md"))
 }

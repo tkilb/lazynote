@@ -23,7 +23,10 @@ var (
 	dimStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	selStyle   = lipgloss.NewStyle().Bold(true).Background(panel.SelectedRowBackground)
+	// overdueColor is the name color of a daily note past its retention that
+	// has not been archived.
+	overdueColor = lipgloss.Color("208")
+	selStyle     = lipgloss.NewStyle().Bold(true).Background(panel.SelectedRowBackground)
 	// The left-edge bar of a marked row is colored as in Yazi.
 	markerColors = map[mark]lipgloss.Color{
 		markSelected: lipgloss.Color("3"), // yellow
@@ -152,12 +155,19 @@ func renderRow(r row, width int, cursor bool, mk mark, query string) string {
 	gap := strings.Repeat(" ", max(width-badgeWidth-1-ansi.StringWidth(name)-len(right), 0))
 
 	if cursor {
+		nameSel := selStyle
+		if r.overdue {
+			nameSel = selStyle.Foreground(overdueColor)
+		}
 		return selStyle.Foreground(markerColors[mk]).Render(bar) +
-			selStyle.Render(badge+" ") + highlight(name, query, selStyle, true) + selStyle.Render(gap+right)
+			selStyle.Render(badge+" ") + highlight(name, query, nameSel, true) + selStyle.Render(gap+right)
 	}
 	nameStyle := lipgloss.NewStyle()
-	if r.entry.IsDir {
+	switch {
+	case r.entry.IsDir:
 		nameStyle = dirStyle
+	case r.overdue:
+		nameStyle = lipgloss.NewStyle().Foreground(overdueColor)
 	}
 	return markerStyle.Render(bar) + lipgloss.NewStyle().Foreground(badgeColor).Render(badge) + " " +
 		highlight(name, query, nameStyle, false) + gap + dimStyle.Render(right)

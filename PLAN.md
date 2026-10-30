@@ -847,8 +847,17 @@ Numbers are kept stable; resolved items were removed.
      back (this covers transcripts); if the origin's name holds `| # [ ] ^`
      the note is made without the link and a warning says so.
    - Undo moves the new note to the trash.
-   9e. Overdue marker for undigested dailies, and the daily-note rules for
-   `K` and `m` (only `A`).
+   9e. Daily-note rules (done; `store.DailyDate`, `store.DailyOverdue`, tested):
+   - Overdue marker: a dated daily note (`YYYY-MM-DD.md`) still in
+     `inbox/daily/` whose date is `retention.daily` or more calendar days
+     before today shows its name in orange in the PARA list (also on the
+     cursor row). Archived dailies, notes with other names and notes outside
+     `inbox/daily/` are never marked. The days come from the config, read at
+     startup. Nothing is deleted or moved automatically.
+   - `K` on a daily note (inbox or archive) does nothing but say that a daily
+     has no kind.
+   - `m` on a daily note offers only `A` (Archives), where it goes to
+     `archives/daily/`; the other keys are ignored.
    9f. URL clip (title fetch needs a network call; confirm design first).
    9g. Daily note append.
    9h. Daily retention: purge archived dailies past `retention.daily`.

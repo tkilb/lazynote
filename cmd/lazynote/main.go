@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,24 +17,34 @@ import (
 	"github.com/tkilb/lazynote/internal/version"
 )
 
-// openStore loads the config and opens the first available notebook,
-// returning it, its root path and the config's Quick Add sources. The
+// startup is what the config gives the interface and the shell commands.
+type startup struct {
+	store         store.Store
+	root          string
+	sources       []string
+	retentionDays int
+}
+
+// openStore loads the config and opens the first available notebook. The
 // Notebook panel (a later chunk) will replace this with a real selection.
-func openStore() (store.Store, string, []string, error) {
+func openStore() (startup, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
-		return nil, "", nil, err
+		return startup{}, err
 	}
 	cfg, err := config.Load(path)
 	if err != nil {
-		return nil, "", nil, err
+		return startup{}, err
 	}
 	for _, nb := range cfg.Notebooks {
 		if nb.Available {
-			return store.NewMarkdown(nb.Path), nb.Path, cfg.Sources, nil
+			return startup{
+				store: store.NewMarkdown(nb.Path), root: nb.Path,
+				sources: cfg.Sources, retentionDays: cfg.Retention.DailyDays,
+			}, nil
 		}
 	}
-	return nil, "", nil, errors.New("none of the configured notebooks is an existing directory")
+	return startup{}, errors.New("none of the configured notebooks is an existing directory")
 }
 
 // isVersionArg reports whether args (os.Args[1:]) ask for the version
@@ -55,24 +66,25 @@ func main() {
 		return
 	}
 	open := func() (store.Store, []string, error) {
-		st, _, sources, err := openStore()
-		return st, sources, err
+		st, err := openStore()
+		return st.store, st.sources, err
 	}
 	if handled, code := cli.Run(os.Args[1:], cli.SystemEnv(open, clipboard.ReadAll)); handled {
 		os.Exit(code)
 	}
 
-	st, root, sources, err := openStore()
+	boot, err := openStore()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "lazynote: %v\n", err)
 		os.Exit(1)
 	}
-	sess, sessErr := openSession(root)
+	sess, sessErr := openSession(boot.root)
 	if sess.db != nil {
 		defer sess.db.Close()
 	}
-	start := initialModel(st)
-	start.sources = sources
+	start := initialModel(boot.store)
+	start.sources = boot.sources
+	start.para = start.para.WithRetention(boot.retentionDays, time.Now)
 	if sessErr != nil {
 		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
 	}
