@@ -493,13 +493,14 @@ listed first like any directory, next to the intake notes.
 
 Confirmed:
 
-- Quick capture prompts, each a one-line prompt creating an inbox note:
-  `F` for `kind: fact`, `R` for `kind: rumor`, `i` for
-  `kind: idea`. The filename is `YYYY-MM-DD-HHMMSS slug.md`, where
-  the slug is the first few words of the text, lowercased, with unsafe
-  characters removed (a numeric suffix resolves a collision). The full
-  text is the note body; the title is the file name, as for every note. The
-  same scheme applies to `lazynote add`, extracted notes and URL clips.
+- Quick capture prompts, each a two-field form (Title and Body) creating an
+  inbox note: `F` for `kind: fact`, `R` for `kind: rumor`, `i` for
+  `kind: idea`. The file name is the title, cleaned (unsafe characters
+  removed), plus `.md`, with no timestamp (the day is the `date` property);
+  a numeric suffix resolves a collision. The body field is the note body;
+  the title is the file name, as for every note. The same naming applies to
+  `lazynote add`, extracted notes and URL clips (named from their own
+  title) and to imported transcripts (named from the file).
 - Import: `I` prompts for a file path (or `lazynote import <file>`), then one
   key chooses `t` transcript or `n` note (the CLI uses `--type`).
   A transcript becomes a note with the text as body, `source: transcript`,
@@ -727,19 +728,24 @@ Numbers are kept stable; resolved items were removed.
    quick fact (`F`), quick rumor (`R`), quick idea (`i`), transcript and
    note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
    created on first use. Engine in `internal/intake`, tested.
-   - Quick capture: a one-line prompt ("Quick fact", "Quick rumor", "Quick
-     idea"). The note is `inbox/YYYY-MM-DD-HHMMSS slug.md` (the slug is the
-     first six words, lowercased, at most 40 characters, with `/ \ : * ? " <
-     > | # [ ] ^` and control characters removed; none when empty), with
-     `uid`, `title` (the file name), `kind`, `source: quick`, `date`
-     (`YYYY-MM-DD`, unquoted so Obsidian reads a date) and an empty `tags`
-     list, and the text as its body. A name already taken gets ` 2`, ` 3` and
-     so on. Blank text does nothing. Undo moves the note to the trash.
+   - Quick capture: a form titled "Quick fact", "Quick rumor" or "Quick
+     idea" with two one-line fields, Title and Body; `tab` or `↑`/`↓` move
+     between them and `enter` saves. The note is `inbox/<title>.md`: the
+     title with `/ \ : * ? " < > | # [ ] ^` and control characters removed,
+     white space collapsed, leading and trailing dots and spaces trimmed, at
+     most 80 characters, case kept. It has `uid`, `title` (the file name),
+     `kind`, `source: quick`, `date` (`YYYY-MM-DD`, unquoted so Obsidian reads
+     a date) and an empty `tags` list, and the body text (none when the body
+     is blank). A name already taken gets ` 2`, ` 3` and so on, and the title
+     property follows. Both fields blank does nothing; a body without a
+     usable title is an error ("a title is needed"). Undo moves the note to
+     the trash. The body is one line for now; a multi-line body can come
+     later.
    - Import: `I` asks for a file path (`~` is expanded), then a menu: `t`
      transcript or `n` note. The file is only read: it must be a regular
      file (a symlink to one is fine) of at most 10 MB, and nothing is ever
-     written outside the notebook. A transcript becomes a capture-style note
-     named from the file's name, with the whole text unmodified as its body,
+     written outside the notebook. A transcript becomes a note named from
+     the file's name (without its extension, cleaned the same way), with the whole text unmodified as its body,
      `source: transcript` and `kind: rumor`. A note must be a `.md` file; it
      is copied under its own name (numbered on a collision) with its
      properties kept, `source: import` and `date` added only when missing or

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/tkilb/lazynote/internal/intake"
@@ -33,12 +34,61 @@ func (m model) openRootInput(title string, accept func(model, string) (model, te
 	return m, cmd
 }
 
-// startCapture opens the quick capture prompt for the capture key.
+// openForm opens a two-field prompt, a title and a body, whose texts go to
+// accept.
+func (m model) openForm(title string, accept func(model, string, string) (model, tea.Cmd)) (model, tea.Cmd) {
+	labels := []string{"Title", "Body"}
+	in, cmd := m.openInput(&para.Prompt{Title: title})
+	width := popup.FormFieldWidth(labels, m.width)
+	in.field.Width = width
+	extra := textinput.New()
+	extra.Prompt = ""
+	extra.CharLimit = inputCharLimit
+	extra.Width = width
+	in.extra, in.labels, in.acceptForm = &extra, labels, accept
+	m.input = in
+	return m, cmd
+}
+
+// typeFormKey feeds a key to the open two-field prompt: tab and the vertical
+// arrows move between the fields, enter accepts both, esc cancels.
+func (m model) typeFormKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	in := m.input
+	switch msg.String() {
+	case "esc":
+		m.input = nil
+		return m, nil
+	case "enter":
+		title, body, accept := in.field.Value(), in.extra.Value(), in.acceptForm
+		m.input = nil
+		return accept(m, title, body)
+	case "tab", "shift+tab", "up", "down":
+		in.onExtra = !in.onExtra
+		if in.onExtra {
+			in.field.Blur()
+			return m, in.extra.Focus()
+		}
+		in.extra.Blur()
+		return m, in.field.Focus()
+	}
+	var cmd tea.Cmd
+	if in.onExtra {
+		*in.extra, cmd = in.extra.Update(msg)
+	} else {
+		in.field, cmd = in.field.Update(msg)
+	}
+	return m, cmd
+}
+
+// startCapture opens the quick capture form for the capture key.
 func (m model) startCapture(key string) (model, tea.Cmd) {
 	c := captureKinds[key]
-	return m.openRootInput(c.title, func(m model, text string) (model, tea.Cmd) {
-		res, err := intake.Capture(m.store, time.Now(), c.kind, intake.SourceQuick, text)
-		return m.finishIntake(res, err, true), nil
+	return m.openForm(c.title, func(m model, title, body string) (model, tea.Cmd) {
+		if strings.TrimSpace(title) == "" && strings.TrimSpace(body) == "" {
+			return m, nil // nothing typed
+		}
+		res, err := intake.Capture(m.store, time.Now(), c.kind, intake.SourceQuick, title, body)
+		return m.finishIntake(res, err), nil
 	})
 }
 
@@ -55,22 +105,19 @@ func (m model) startImport() (model, tea.Cmd) {
 		}, func(m model, key string) model {
 			if key == "t" {
 				res, err := intake.ImportTranscript(m.store, time.Now(), path)
-				return m.finishIntake(res, err, false)
+				return m.finishIntake(res, err)
 			}
 			res, err := intake.ImportNote(m.store, time.Now(), path)
-			return m.finishIntake(res, err, false)
+			return m.finishIntake(res, err)
 		}), nil
 	})
 }
 
 // finishIntake records the undo entry for a created note and refreshes the
 // panels. Nothing is said when the new note shows in the current list; when
-// it does not, a notice says where it went. Typing nothing is not an error.
-func (m model) finishIntake(res intake.Result, err error, quiet bool) model {
-	switch {
-	case err != nil && quiet && err == intake.ErrEmpty:
-		return m
-	case err != nil:
+// it does not, a notice says where it went.
+func (m model) finishIntake(res intake.Result, err error) model {
+	if err != nil {
 		return m.notify(popup.Error, capitalize(fmt.Sprintf("could not add the note: %s.", err)))
 	}
 	m.history.Push(res.Action)

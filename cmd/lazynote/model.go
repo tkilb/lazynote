@@ -248,6 +248,11 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.input != nil {
 			var cmd tea.Cmd
 			m.input.field, cmd = m.input.field.Update(msg)
+			if m.input.extra != nil {
+				var extraCmd tea.Cmd
+				*m.input.extra, extraCmd = m.input.extra.Update(msg)
+				cmd = tea.Batch(cmd, extraCmd)
+			}
 			return m, cmd
 		}
 	}

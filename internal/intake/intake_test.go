@@ -15,31 +15,32 @@ import (
 
 var now = time.Date(2026, 10, 30, 14, 30, 5, 0, time.Local)
 
-func TestSlug(t *testing.T) {
+func TestCleanTitle(t *testing.T) {
 	tests := []struct{ in, want string }{
-		{"Call Mum about the thing", "call mum about the thing"},
-		{"one two three four five six seven eight", "one two three four five six"},
+		{"Call Mum about the thing", "Call Mum about the thing"},
 		{"  spaced   out   words  ", "spaced out words"},
 		{`a/b\c:d*e?f"g<h>i|j`, "abcdefghij"},
-		{"C# [notes] ^caret #tag", "c notes caret tag"},
+		{"C# [notes] ^caret #tag", "C notes caret tag"},
 		{"..hidden", "hidden"},
-		{"héllo wörld", "héllo wörld"},
+		{"trailing dots...", "trailing dots"},
+		{"Héllo Wörld", "Héllo Wörld"},
 		{"", ""},
 		{"///", ""},
-		{strings.Repeat("x", 100), strings.Repeat("x", 40)},
+		{strings.Repeat("x", 200), strings.Repeat("x", 80)},
 		{"tab\tand\nnewline", "tab and newline"},
 		{"nul\x00byte", "nulbyte"},
+		{"keeps case AND punctuation, ok!", "keeps case AND punctuation, ok!"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			assert.Equal(t, tt.want, Slug(tt.in))
+			assert.Equal(t, tt.want, CleanTitle(tt.in))
 		})
 	}
 }
 
 func TestName(t *testing.T) {
-	assert.Equal(t, "2026-10-30-143005 call mum.md", Name(now, "Call Mum"))
-	assert.Equal(t, "2026-10-30-143005.md", Name(now, "///"), "no slug, no trailing space")
+	assert.Equal(t, "Call Mum.md", Name("Call Mum"))
+	assert.Equal(t, "", Name("///"), "nothing usable, no name")
 }
 
 func newStore(t *testing.T) (string, store.Store) {
@@ -51,17 +52,18 @@ func newStore(t *testing.T) (string, store.Store) {
 func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 	root, s := newStore(t)
 
-	res, err := Capture(s, now, store.KindFact, SourceQuick, "Water boils at 100C")
+	res, err := Capture(s, now, store.KindFact, SourceQuick, "Water boils", "At 100C at sea level")
 	require.NoError(t, err)
-	assert.Equal(t, "inbox/2026-10-30-143005 water boils at 100c.md", res.Rel)
+	assert.Equal(t, "inbox/Water boils.md", res.Rel, "named from the title, no timestamp")
 
 	data, err := os.ReadFile(filepath.Join(root, res.Rel))
 	require.NoError(t, err)
 	n := store.ParseNote("x.md", data)
 	assert.Equal(t, store.KindFact, n.Kind)
 	assert.Equal(t, "quick", n.Frontmatter.Get("source").Value)
-	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
-	assert.Equal(t, "Water boils at 100C\n", n.Body)
+	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value, "the date lives in the properties")
+	assert.Equal(t, "Water boils", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, "At 100C at sea level\n", n.Body)
 
 	require.NoError(t, res.Action.Undo())
 	assert.NoFileExists(t, filepath.Join(root, res.Rel))
@@ -69,37 +71,47 @@ func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 	assert.FileExists(t, filepath.Join(root, res.Rel))
 }
 
-func TestCaptureNumbersACollidingName(t *testing.T) {
-	_, s := newStore(t)
-	a, err := Capture(s, now, store.KindIdea, SourceQuick, "same words")
+func TestCaptureWithoutABodyMakesAnEmptyBody(t *testing.T) {
+	root, s := newStore(t)
+	res, err := Capture(s, now, store.KindIdea, SourceQuick, "Just a title", "  ")
 	require.NoError(t, err)
-	b, err := Capture(s, now, store.KindIdea, SourceQuick, "same words")
-	require.NoError(t, err)
-	c, err := Capture(s, now, store.KindIdea, SourceQuick, "same words")
-	require.NoError(t, err)
-
-	assert.Equal(t, "inbox/2026-10-30-143005 same words.md", a.Rel)
-	assert.Equal(t, "inbox/2026-10-30-143005 same words 2.md", b.Rel)
-	assert.Equal(t, "inbox/2026-10-30-143005 same words 3.md", c.Rel)
+	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
+	assert.Empty(t, store.ParseNote("x.md", data).Body)
 }
 
-func TestCaptureRejectsBlankText(t *testing.T) {
+func TestCaptureNumbersACollidingName(t *testing.T) {
+	root, s := newStore(t)
+	a, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "one")
+	require.NoError(t, err)
+	b, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "two")
+	require.NoError(t, err)
+	c, err := Capture(s, now, store.KindIdea, SourceQuick, "Same", "three")
+	require.NoError(t, err)
+
+	assert.Equal(t, "inbox/Same.md", a.Rel)
+	assert.Equal(t, "inbox/Same 2.md", b.Rel)
+	assert.Equal(t, "inbox/Same 3.md", c.Rel)
+	data, _ := os.ReadFile(filepath.Join(root, c.Rel))
+	assert.Equal(t, "Same 3", store.ParseNote("x.md", data).Frontmatter.Get("title").Value, "the title follows the numbered name")
+}
+
+func TestCaptureRejectsAMissingTitle(t *testing.T) {
 	_, s := newStore(t)
-	for _, text := range []string{"", "   ", "\t"} {
-		_, err := Capture(s, now, store.KindFact, SourceQuick, text)
-		assert.ErrorIs(t, err, ErrEmpty, "%q", text)
+	for _, title := range []string{"", "   ", "\t", "///", "#"} {
+		_, err := Capture(s, now, store.KindFact, SourceQuick, title, "has a body")
+		assert.ErrorIs(t, err, ErrEmpty, "%q", title)
 	}
 }
 
-func TestCaptureKeepsTheTextVerbatimInTheBody(t *testing.T) {
+func TestCaptureKeepsTheBodyVerbatim(t *testing.T) {
 	root, s := newStore(t)
-	text := "---\nnot: frontmatter [[link]] # heading"
-	res, err := Capture(s, now, store.KindRumor, SourceQuick, text)
+	body := "---\nnot: frontmatter [[link]] # heading"
+	res, err := Capture(s, now, store.KindRumor, SourceQuick, "T", body)
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	n := store.ParseNote("x.md", data)
 	require.NoError(t, n.FrontmatterErr)
-	assert.Equal(t, text+"\n", n.Body)
+	assert.Equal(t, body+"\n", n.Body)
 }
 
 func writeTemp(t *testing.T, name, content string) string {
@@ -116,7 +128,7 @@ func TestImportTranscript(t *testing.T) {
 
 	res, err := ImportTranscript(s, now, src)
 	require.NoError(t, err)
-	assert.Equal(t, "inbox/2026-10-30-143005 standup notes.md", res.Rel)
+	assert.Equal(t, "inbox/standup notes.md", res.Rel)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	n := store.ParseNote("x.md", data)
 	assert.Equal(t, store.KindRumor, n.Kind, "raw and unconfirmed until reviewed")

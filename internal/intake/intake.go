@@ -26,18 +26,18 @@ const (
 	SourceTranscript = "transcript"
 
 	inboxDir      = "inbox"
-	stampLayout   = "2006-01-02-150405"
 	dayLayout     = "2006-01-02"
 	noteExt       = ".md"
-	slugWords     = 6
-	slugMaxRunes  = 40
+	titleMaxRunes = 80
 	maxNameTries  = 1000
-	slugDropChars = `/\:*?"<>|#[]^`
+	// unsafeChars are removed from a title: unsafe in a file name, or unable
+	// to appear in a wikilink.
+	unsafeChars = `/\:*?"<>|#[]^`
 )
 
 // Errors never echo a path, because they are shown in the interface.
 var (
-	ErrEmpty      = errors.New("nothing to capture")
+	ErrEmpty      = errors.New("a title is needed")
 	ErrNotFound   = errors.New("file not found")
 	ErrNotFile    = errors.New("not a regular file")
 	ErrNotNote    = errors.New("not a markdown note")
@@ -57,78 +57,72 @@ type Result struct {
 	Unchanged bool
 }
 
-// Slug returns the first few words of text for a file name: lowercase,
-// without characters that are unsafe in a file name or a link, spaces
-// collapsed, at most slugMaxRunes long. It may be empty.
-func Slug(text string) string {
+// CleanTitle turns text into a title that is safe as a file name and as a
+// link target: characters that are unsafe in either are removed, runs of
+// white space collapse to one space, leading and trailing dots and spaces go,
+// and it is cut at titleMaxRunes. Case and punctuation are kept. It may be
+// empty.
+func CleanTitle(text string) string {
 	var words []string
 	for _, w := range strings.Fields(text) {
-		if w = cleanWord(w); w != "" {
+		w = strings.Map(func(r rune) rune {
+			if unicode.IsControl(r) || strings.ContainsRune(unsafeChars, r) {
+				return -1
+			}
+			return r
+		}, w)
+		if w != "" {
 			words = append(words, w)
 		}
-		if len(words) == slugWords {
-			break
-		}
 	}
-	slug := strings.Trim(strings.Join(words, " "), ". ")
-	if r := []rune(slug); len(r) > slugMaxRunes {
-		slug = strings.TrimRight(string(r[:slugMaxRunes]), ". ")
+	title := strings.Trim(strings.Join(words, " "), ". ")
+	if r := []rune(title); len(r) > titleMaxRunes {
+		title = strings.TrimRight(string(r[:titleMaxRunes]), ". ")
 	}
-	return slug
+	return title
 }
 
-func cleanWord(w string) string {
-	return strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) || strings.ContainsRune(slugDropChars, r) {
-			return -1
-		}
-		return unicode.ToLower(r)
-	}, w)
-}
-
-// Name returns the file name of an intake note made at now from text:
-// "YYYY-MM-DD-HHMMSS slug.md", or without the slug when there is none.
-func Name(now time.Time, text string) string {
-	name := now.Format(stampLayout)
-	if slug := Slug(text); slug != "" {
-		name += " " + slug
+// Name returns the file name of an intake note titled title: the cleaned
+// title with .md, or "" when nothing usable is left.
+func Name(title string) string {
+	clean := CleanTitle(title)
+	if clean == "" {
+		return ""
 	}
-	return name + noteExt
+	return clean + noteExt
 }
 
-// Capture creates an inbox note holding text as its body, with the given kind
-// and source.
-func Capture(s store.Store, now time.Time, kind store.Kind, source, text string) (Result, error) {
-	text = strings.TrimSpace(text)
-	if text == "" {
+// Capture creates an inbox note named after its title, holding body, with the
+// given kind and source. A missing title is ErrEmpty.
+func Capture(s store.Store, now time.Time, kind store.Kind, source, title, body string) (Result, error) {
+	name := Name(title)
+	if name == "" {
 		return Result{}, ErrEmpty
 	}
-	name := Name(now, text)
-	data, err := store.IntakeNote(name, kind, source, now.Format(dayLayout), text+"\n")
-	if err != nil {
-		return Result{}, err
+	text := ""
+	if body = strings.TrimSpace(body); body != "" {
+		text = body + "\n"
 	}
 	return createUnique(s, name, func(final string) ([]byte, error) {
-		return rename(data, name, final)
+		return store.IntakeNote(final, kind, source, now.Format(dayLayout), text)
 	})
 }
 
-// ImportTranscript reads the file at path and creates an inbox note whose
-// body is its text, unmodified, with source transcript and kind rumor (raw
-// and unconfirmed until reviewed).
+// ImportTranscript reads the file at path and creates an inbox note, named
+// after the file, whose body is its text, unmodified, with source transcript
+// and kind rumor (raw and unconfirmed until reviewed).
 func ImportTranscript(s store.Store, now time.Time, path string) (Result, error) {
 	text, err := readSource(path)
 	if err != nil {
 		return Result{}, err
 	}
 	base := filepath.Base(expandHome(path))
-	name := Name(now, strings.TrimSuffix(base, filepath.Ext(base)))
-	data, err := store.IntakeNote(name, store.KindRumor, SourceTranscript, now.Format(dayLayout), string(text))
-	if err != nil {
-		return Result{}, err
+	name := Name(strings.TrimSuffix(base, filepath.Ext(base)))
+	if name == "" {
+		name = Name(SourceTranscript)
 	}
 	return createUnique(s, name, func(final string) ([]byte, error) {
-		return rename(data, name, final)
+		return store.IntakeNote(final, store.KindRumor, SourceTranscript, now.Format(dayLayout), string(text))
 	})
 }
 
@@ -157,15 +151,6 @@ func ImportNote(s store.Store, now time.Time, path string) (Result, error) {
 	})
 	res.Unchanged = unchanged
 	return res, err
-}
-
-// rename sets the title of the note data to final's name when a collision
-// gave it a different name than the one it was made for.
-func rename(data []byte, made, final string) ([]byte, error) {
-	if made == final {
-		return data, nil
-	}
-	return store.SetTitle(data, strings.TrimSuffix(final, noteExt))
 }
 
 // createUnique creates an inbox note named name, or "name 2", "name 3" and

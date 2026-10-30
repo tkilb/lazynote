@@ -26,6 +26,12 @@ type input struct {
 	// accept, when set, handles the text on enter instead of the PARA
 	// panel: for prompts the root model owns.
 	accept func(model, string) (model, tea.Cmd)
+	// extra, when set, is a second field below the first, with labels for
+	// both; onExtra says it has the focus. acceptForm handles both texts.
+	extra      *textinput.Model
+	labels     []string
+	onExtra    bool
+	acceptForm func(model, string, string) (model, tea.Cmd)
 }
 
 // inlinePrompt is the prefix of an inline prompt, as in lazygit.
@@ -102,6 +108,9 @@ func (m model) openInput(p *para.Prompt) (*input, tea.Cmd) {
 
 // typeKey feeds a key to the open prompt: enter accepts, esc cancels.
 func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.input.extra != nil {
+		return m.typeFormKey(msg)
+	}
 	switch msg.String() {
 	case "esc":
 		in := m.input
@@ -199,6 +208,14 @@ func (m model) overlayModals(view string) string {
 		view = popup.Overlay(view, popup.ConfirmBox(m.question.prompt, m.width), m.width, m.height)
 	case m.input != nil && m.input.inline:
 		// Drawn in the status row by statusLine instead.
+	case m.input != nil && m.input.extra != nil:
+		in := m.input
+		focus := 0
+		if in.onExtra {
+			focus = 1
+		}
+		box := popup.FormBox(in.title, in.labels, []string{in.field.View(), in.extra.View()}, focus, m.width)
+		view = popup.Overlay(view, box, m.width, m.height)
 	case m.input != nil:
 		box := popup.InputBox(m.input.title, m.input.label, m.input.field.View(), m.width)
 		view = popup.Overlay(view, box, m.width, m.height)
