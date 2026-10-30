@@ -1,0 +1,134 @@
+package store
+
+import (
+	"errors"
+	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// obsidianDir is Obsidian's settings directory; it is never listed.
+const obsidianDir = ".obsidian"
+
+// Markdown is a Store backed by a directory of markdown files.
+type Markdown struct {
+	root string
+}
+
+var _ Store = (*Markdown)(nil)
+
+// NewMarkdown returns a store rooted at the notebook directory root.
+func NewMarkdown(root string) *Markdown {
+	return &Markdown{root: root}
+}
+
+// List implements Store.
+func (m *Markdown) List(dir string, opts ListOptions) ([]Entry, error) {
+	return m.list(dir, opts, true)
+}
+
+func (m *Markdown) list(dir string, opts ListOptions, counts bool) ([]Entry, error) {
+	abs, err := ResolveInRoot(m.root, dir)
+	if err != nil {
+		return nil, err
+	}
+	des, err := os.ReadDir(abs)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, ErrUnreadable
+	}
+
+	rel := filepath.Clean(dir)
+	var entries []Entry
+	for _, de := range des {
+		e, ok := m.entry(filepath.Join(rel, de.Name()), de, opts)
+		if !ok {
+			continue
+		}
+		if e.IsDir && counts {
+			children, _ := m.list(e.Rel, opts, false)
+			e.ItemCount = len(children)
+		}
+		entries = append(entries, e)
+	}
+	sortEntries(entries)
+	return entries, nil
+}
+
+// entry turns a directory entry into a listing row, reporting false for
+// anything that must not be listed: hidden names, .obsidian, non-notes,
+// special files, and symlinks that leave the notebook or cannot be read.
+func (m *Markdown) entry(rel string, de fs.DirEntry, opts ListOptions) (Entry, bool) {
+	name := de.Name()
+	if name == obsidianDir || (!opts.ShowHidden && strings.HasPrefix(name, ".")) {
+		return Entry{}, false
+	}
+
+	info, err := de.Info()
+	if err != nil {
+		return Entry{}, false
+	}
+	if de.Type()&fs.ModeSymlink != 0 {
+		resolved, err := ResolveInRoot(m.root, rel)
+		if err != nil {
+			return Entry{}, false
+		}
+		if info, err = os.Stat(resolved); err != nil {
+			return Entry{}, false
+		}
+	}
+
+	isDir := info.IsDir()
+	if !isDir && (!info.Mode().IsRegular() || !isNote(name)) {
+		return Entry{}, false
+	}
+	return Entry{Name: name, Rel: rel, IsDir: isDir, ModTime: info.ModTime()}, true
+}
+
+// sortEntries orders directories before notes, each case-insensitively by
+// name, with the exact name as the tie-break.
+func sortEntries(entries []Entry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		a, b := entries[i], entries[j]
+		if a.IsDir != b.IsDir {
+			return a.IsDir
+		}
+		if la, lb := strings.ToLower(a.Name), strings.ToLower(b.Name); la != lb {
+			return la < lb
+		}
+		return a.Name < b.Name
+	})
+}
+
+// ReadNote implements Store.
+func (m *Markdown) ReadNote(rel string) (Note, error) {
+	abs, err := ResolveInRoot(m.root, rel)
+	if err != nil {
+		return Note{}, err
+	}
+	f, err := os.Open(abs)
+	if errors.Is(err, fs.ErrNotExist) {
+		return Note{}, ErrNotFound
+	}
+	if err != nil {
+		return Note{}, ErrUnreadable
+	}
+	defer f.Close()
+
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() {
+		return Note{}, ErrUnreadable
+	}
+	data, err := io.ReadAll(io.LimitReader(f, maxNoteBytes+1))
+	if err != nil {
+		return Note{}, ErrUnreadable
+	}
+	if len(data) > maxNoteBytes {
+		return Note{}, ErrTooLarge
+	}
+	return ParseNote(filepath.Base(rel), data), nil
+}

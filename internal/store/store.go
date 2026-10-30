@@ -1,0 +1,46 @@
+package store
+
+import (
+	"errors"
+	"time"
+)
+
+// Errors returned by Store implementations. Like the path-safety errors,
+// they never echo paths because they are shown in the status bar.
+var (
+	ErrNotFound   = errors.New("not found")
+	ErrUnreadable = errors.New("cannot read")
+	ErrTooLarge   = errors.New("note is too large")
+)
+
+// maxNoteBytes bounds how much of a single note is read into memory.
+const maxNoteBytes = 10 << 20
+
+// Entry is one row of a directory listing.
+type Entry struct {
+	Name string
+	// Rel is the path relative to the notebook root.
+	Rel     string
+	IsDir   bool
+	ModTime time.Time
+	// ItemCount is the number of entries the directory would list under the
+	// same options; it is zero for notes.
+	ItemCount int
+}
+
+// ListOptions controls which entries List returns.
+type ListOptions struct {
+	// ShowHidden includes names starting with ".". The .obsidian directory
+	// is never listed.
+	ShowHidden bool
+}
+
+// Store is the notes backend: a notebook of markdown files.
+type Store interface {
+	// List returns the directories and .md notes in dir (relative to the
+	// notebook root): directories first, then notes, each sorted by name. A
+	// missing directory lists as empty.
+	List(dir string, opts ListOptions) ([]Entry, error)
+	// ReadNote reads and parses the note at rel (relative to the root).
+	ReadNote(rel string) (Note, error)
+}
