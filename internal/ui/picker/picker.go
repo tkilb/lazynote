@@ -170,7 +170,7 @@ func (m Model) View(screenWidth, screenHeight int) string {
 			lines = append(lines, m.row(m.matches[i], inner, i == m.cursor))
 		}
 	}
-	footer := panel.Footer{Left: hint}
+	footer := panel.Footer{Left: hint, Tint: true}
 	if len(m.matches) > 0 {
 		footer.Right = strings.Join([]string{itoa(m.cursor + 1), itoa(len(m.matches))}, "/")
 	}

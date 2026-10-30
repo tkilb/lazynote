@@ -196,7 +196,7 @@ func Box(sections []Section, screenWidth, screenHeight, scrollOffset int) string
 	if maxScroll > 0 {
 		hint = fmt.Sprintf("%d-%d/%d  \u2191/\u2193 scroll  ", scrollOffset+1, end, len(lines)) + hint
 	}
-	footer := panel.Footer{Right: hint}
+	footer := panel.Footer{Right: hint, Tint: true}
 
 	body := strings.Join(visible, "\n")
 	// focused=true: the help popup is the actively focused panel while

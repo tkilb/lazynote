@@ -80,6 +80,9 @@ func Frame(title, body string, width, height int, focused bool, footer ...Footer
 // Footer is text embedded in a panel's bottom border line.
 type Footer struct {
 	Left, Right string
+	// Tint draws the text in the border's color instead of the terminal's
+	// default, for key hints that should read as part of the border.
+	Tint bool
 }
 
 func firstFooter(footer []Footer) Footer {
@@ -183,8 +186,14 @@ func bottomBorder(footer Footer, width int, lineStyle lipgloss.Style) string {
 	left := truncateHead(footer.Left, width-2*cornerDashes-rightWidth)
 
 	fill := max(width-2*cornerDashes-lipgloss.Width(left)-lipgloss.Width(right), 0)
-	return lineStyle.Render("╰"+strings.Repeat("─", cornerDashes)) + left +
-		lineStyle.Render(strings.Repeat("─", fill)) + right +
+	paint := func(s string) string {
+		if footer.Tint {
+			return lineStyle.Render(s)
+		}
+		return s
+	}
+	return lineStyle.Render("╰"+strings.Repeat("─", cornerDashes)) + paint(left) +
+		lineStyle.Render(strings.Repeat("─", fill)) + paint(right) +
 		lineStyle.Render(strings.Repeat("─", cornerDashes)+"╯")
 }
 
