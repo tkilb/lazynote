@@ -13,6 +13,7 @@ import (
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 	"github.com/tkilb/lazynote/internal/ui/para"
+	"github.com/tkilb/lazynote/internal/ui/picker"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 	"github.com/tkilb/lazynote/internal/ui/related"
 	"github.com/tkilb/lazynote/internal/ui/statusbar"
@@ -89,6 +90,8 @@ var paraBindings = []statusbar.Binding{
 
 var relatedBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "move"},
+	{Key: "l", Label: "add reference"},
+	{Key: "d", Label: "remove reference"},
 	{Key: "enter", Label: "jump to note"},
 	{Key: "esc/←", Label: "back to PARA"},
 }
@@ -125,6 +128,11 @@ type model struct {
 	pending *para.Confirm
 	// input is an open one-line text prompt.
 	input *input
+	// picker is the open fuzzy picker for adding a reference to the note at
+	// pickerFor; removal is a pending question about removing one.
+	picker    *picker.Model
+	pickerFor string
+	removal   *removal
 	// session saves and restores the position between runs.
 	session session
 	// showingHelp is set while the help popup is open, scrolled by helpScroll.
@@ -224,6 +232,11 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateKey(msg)
 	default:
 		// Cursor blink and similar messages belong to the open prompt.
+		if m.picker != nil {
+			p, cmd, _ := m.picker.Update(msg)
+			m.picker = &p
+			return m, cmd
+		}
 		if m.input != nil {
 			var cmd tea.Cmd
 			m.input.field, cmd = m.input.field.Update(msg)
@@ -242,6 +255,10 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.showingHelp:
 			return m.updateHelp(msg), nil
+		case m.removal != nil:
+			return m.answerRemoval(key)
+		case m.picker != nil:
+			return m.pickerKey(msg)
 		case m.pending != nil:
 			return m.answer(key)
 		case m.input != nil:

@@ -181,3 +181,78 @@ func TestANilIndexAnswersEmpty(t *testing.T) {
 	assert.Empty(t, x.References("inbox/a.md"))
 	assert.Empty(t, x.ReferencedBy("inbox/a.md"))
 }
+
+func fmOf(t *testing.T, yamlText string) *store.Frontmatter {
+	t.Helper()
+	fm, err := store.ParseFrontmatter([]byte(yamlText))
+	require.NoError(t, err)
+	return fm
+}
+
+func marshal(t *testing.T, fm *store.Frontmatter) string {
+	t.Helper()
+	out, err := fm.Marshal()
+	require.NoError(t, err)
+	return string(out)
+}
+
+func TestAddReference(t *testing.T) {
+	tests := []struct {
+		name, in, add, want string
+		changed             bool
+	}{
+		{"creates the property", "kind: fact\n", "Alpha", "kind: fact\nrelated:\n  - \"[[Alpha]]\"\n", true},
+		{"appends to a list", "related:\n  - \"[[A]]\"\n", "B", "related:\n  - \"[[A]]\"\n  - \"[[B]]\"\n", true},
+		{"appends to a flow list", "related: [\"[[A]]\"]\n", "B", "related: [\"[[A]]\", \"[[B]]\"]\n", true},
+		{"turns a single string into a list", "related: \"[[A]]\"\n", "B", "related:\n  - \"[[A]]\"\n  - \"[[B]]\"\n", true},
+		{"already there, ignoring case and alias", "related: [\"[[alpha|x]]\"]\n", "Alpha", "related: [\"[[alpha|x]]\"]\n", false},
+		{"keeps other entries", "related: [\"[[A]]\", \"free text\", 5]\n", "B", "related: [\"[[A]]\", \"free text\", 5, \"[[B]]\"]\n", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := fmOf(t, tt.in)
+			assert.Equal(t, tt.changed, AddReference(fm, tt.add))
+			assert.Equal(t, tt.want, marshal(t, fm))
+		})
+	}
+}
+
+func TestRemoveReference(t *testing.T) {
+	tests := []struct {
+		name, in, remove, want string
+		changed                bool
+	}{
+		{"removes one entry", "related:\n  - \"[[A]]\"\n  - \"[[B]]\"\n", "A", "related:\n  - \"[[B]]\"\n", true},
+		{"matches ignoring case, alias and heading", "related: [\"[[a#h|x]]\", \"[[B]]\"]\n", "A", "related: [\"[[B]]\"]\n", true},
+		{"removes every spelling of the same note", "related: [\"[[A]]\", \"[[a|again]]\"]\n", "A", "", true},
+		{"drops the property when it empties", "kind: fact\nrelated: [\"[[A]]\"]\n", "A", "kind: fact\n", true},
+		{"removes a matching single string", "related: \"[[A]]\"\n", "A", "", true},
+		{"removes an unquoted nested link", "related: [[A]]\n", "A", "", true},
+		{"absent name changes nothing", "related: [\"[[A]]\"]\n", "Z", "related: [\"[[A]]\"]\n", false},
+		{"no property changes nothing", "kind: fact\n", "A", "kind: fact\n", false},
+		{"keeps entries it does not own", "related: [\"[[A]]\", \"free text\", 5]\n", "A", "related: [\"free text\", 5]\n", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := fmOf(t, tt.in)
+			assert.Equal(t, tt.changed, RemoveReference(fm, tt.remove))
+			assert.Equal(t, tt.want, marshal(t, fm))
+		})
+	}
+}
+
+func TestNotesListsOneNotePerNameSortedIgnoringCase(t *testing.T) {
+	root := t.TempDir()
+	put(t, root, "inbox/beta.md", "x")
+	put(t, root, "areas/Alpha.md", "x")
+	put(t, root, "projects/deeper/Alpha.md", "x")
+	put(t, root, "archives/alpha.md", "x")
+	x := build(t, root)
+
+	assert.Equal(t, []Note{
+		{Name: "Alpha", Rel: "areas/Alpha.md"},
+		{Name: "beta", Rel: "inbox/beta.md"},
+	}, x.Notes(), "one per case-insensitive name: the one a link would resolve to")
+	var nilIndex *Index
+	assert.Empty(t, nilIndex.Notes())
+}

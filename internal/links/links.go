@@ -240,3 +240,31 @@ func relatedTargets(fm *store.Frontmatter) []string {
 	}
 	return names
 }
+
+// Note is a note a link can name.
+type Note struct {
+	// Name is the file name without .md.
+	Name string
+	// Rel is the note's path relative to the notebook root.
+	Rel string
+}
+
+// Notes returns every note a link can name, one per distinct name (the one a
+// link to that name resolves to), sorted by name ignoring case.
+func (x *Index) Notes() []Note {
+	if x == nil {
+		return nil
+	}
+	notes := make([]Note, 0, len(x.byName))
+	for _, rel := range x.byName {
+		notes = append(notes, Note{Name: nameOf(rel), Rel: rel})
+	}
+	sort.Slice(notes, func(i, j int) bool {
+		a, b := strings.ToLower(notes[i].Name), strings.ToLower(notes[j].Name)
+		if a != b {
+			return a < b
+		}
+		return notes[i].Rel < notes[j].Rel
+	})
+	return notes
+}

@@ -105,7 +105,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | --------------- | ------------------------------------------------ |
 | `↑` `↓`     | Move selection                                   |
 | `enter`         | Jump PARA to the related note                    |
-| `*` (undecided) | Add relation (fuzzy picker); key to be chosen    |
+| `*l`            | Add reference (fuzzy picker of notes)            |
 | `d`             | Remove relation (confirm; References entries only)|
 
 **Info (4)**: `↑` `↓` scroll.
@@ -216,9 +216,8 @@ lists in `cmd/lazynote/help.go` (and the status bar hints in `model.go`).
 Conflict notes:
 
 - `a` creates a note or directory in PARA only (as in Yazi); it is not a
-  global key. The key for adding a relation in Related is
-  undecided (open decision 2); `space` is not used for it, and `+` is
-  reserved for panel zoom.
+  global key. Related uses `l` for adding a reference; `space` is not used
+  for it, and `+` is reserved for panel zoom.
 - `←`/`→` navigate directories in PARA only; other panels use `↑`/`↓`.
 - Movement uses the arrow keys only. `h`, `j`, `k` and `l` are not bound (the
   project owner uses arrows on a split keyboard), so they are free to be
@@ -260,9 +259,12 @@ Conflict notes:
   out to `pbpaste` on macOS and to `xclip`, `xsel` or `wl-paste` on Linux, so
   a missing tool must produce a clear error that names the tool. Verify
   the module's current status before adding it.
-- Fuzzy matching (relation picker): `github.com/sahilm/fuzzy`. Approved by you,
-  but verify the module exists and check its maintenance status before
-  adding it; if it is stale, the fallback is a small in-repo matcher.
+- Fuzzy matching (relation picker): `github.com/sahilm/fuzzy` v0.1.1 (added in chunk 8b).
+  Approved by you. Checked before use: last release 2023-05-30 (no newer
+  version), one 254-line file importing only `sort`, `unicode` and
+  `unicode/utf8`, so it does no I/O and no network at run time. The download
+  was a one-time network fetch you approved. The picker is
+  `internal/ui/picker`.
 - Editing: open in `$EDITOR` (reuse the lazytask `editor` approach).
 - Session state (selected notebook, tab, note, focused panel): SQLite via
   `modernc.org/sqlite` (pure Go, no cgo). Verify the dependency before adding.
@@ -547,9 +549,6 @@ Also confirmed:
 
 Numbers are kept stable; resolved items were removed.
 
-2. Creating a relation in-app. Default: a key in the Related panel (to be chosen; not `space` or `+`) opens a
-   fuzzy picker over all notes and appends the choice to the selected note's
-   `related` property. Removing: `d` on a Related row (confirm).
 3. Fossil drift. Default: `fossil` is set manually; no automatic aging and no
    `verified` date. A later chunk could add a `verified` property and flag
    old facts as fossil candidates.
@@ -683,8 +682,19 @@ Numbers are kept stable; resolved items were removed.
    focus, the editor returning, and every undoable change or undo/redo.
    Original description: `related` parsing, wikilink resolution,
    backlink index, panel follows PARA selection, `enter`/`space` to jump.
-   8b. Related panel, editing: add (fuzzy picker) and remove relations, writing
-   the `related` property without disturbing other frontmatter.
+   8b. Related panel, editing (done): `l` opens a fuzzy picker of every note
+   except the shown one and those it already references, and appends
+   `[[Name]]` to its `related` property; `d` on a References entry asks to
+   confirm, then removes every spelling of that name (a Referenced by entry
+   only explains that the link lives in the other note). Edits go through
+   `Store.Edit`, which changes only the named property and adds a `uid` and
+   the `title` when missing (a list is rewritten as quoted strings; entries it
+   does not own stay; the property is dropped when it empties). A note with
+   invalid frontmatter is refused and left untouched. Each edit is one undo
+   entry that restores the exact previous bytes, including the modification
+   time, so stacked edits of one note undo in order; undo refuses if the note
+   changed on disk meanwhile. A link names a note by file name only, so with
+   duplicate names it resolves to the shortest path.
    8c. Rename (`r`): rename the hovered item and rewrite matching `related`
    entries in other notes (open decision 8), undoable as one operation.
    It follows the link index, so it cannot come earlier.

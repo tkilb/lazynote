@@ -70,6 +70,13 @@ type Store interface {
 	MakeDir(rel string) (undo.Action, error)
 	// Move renames a file or directory.
 	Move(src, dst string) (undo.Action, error)
+	// Edit changes the properties of the note at rel: edit modifies them,
+	// then the note gets a uid when it has none and its title set to its
+	// file name, and everything else is kept. A note whose properties cannot
+	// be parsed yields ErrFrontmatterInvalid and is left untouched. Undo
+	// restores the exact previous bytes, and refuses (ErrChanged) when the
+	// note was changed meanwhile.
+	Edit(rel string, edit func(*Frontmatter)) (undo.Action, error)
 	// Copy copies a file or a directory tree, giving every note in the copy
 	// a fresh uid and a title equal to its file name.
 	Copy(src, dst string) (undo.Action, CopyResult, error)

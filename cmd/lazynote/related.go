@@ -18,6 +18,12 @@ func (m model) relatedKey(msg tea.KeyMsg) (model, tea.Cmd) {
 	if eff.Info != "" {
 		m = m.notify(popup.Info, eff.Info)
 	}
+	switch {
+	case eff.Add:
+		return m.openReferencePicker()
+	case eff.Remove != "":
+		return m.askRemoval(m.related.Subject(), eff.Remove), nil
+	}
 	if eff.Jump != "" {
 		para, ok := m.para.Reveal(eff.Jump)
 		if !ok {

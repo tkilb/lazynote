@@ -35,6 +35,9 @@ type line struct {
 	name, rel string
 	// where is the note's folder, shown dim at the right.
 	where string
+	// reference is set on entries of the selected note's own related
+	// property, the only ones removable from here.
+	reference bool
 }
 
 // Effect is what a key press asks the root model to do.
@@ -43,6 +46,11 @@ type Effect struct {
 	Jump string
 	// Info is a notice to show as a popup.
 	Info string
+	// Add asks to pick a note to reference from the shown note.
+	Add bool
+	// Remove, when set, is the name of the reference to remove from the
+	// shown note, after the root model confirms.
+	Remove string
 }
 
 // Model is the Related panel state. Methods return updated copies.
@@ -58,6 +66,9 @@ func New() Model { return Model{} }
 // Clear empties the panel.
 func (m Model) Clear() Model { return Model{} }
 
+// Subject is the note the panel is showing, or "" when it shows none.
+func (m Model) Subject() string { return m.subject }
+
 // Show lists the references and the referenced-by notes of the note at rel.
 // The cursor stays where it was when rel is already shown.
 func (m Model) Show(rel string, references []links.Link, referencedBy []string) Model {
@@ -65,7 +76,7 @@ func (m Model) Show(rel string, references []links.Link, referencedBy []string) 
 	if len(references) > 0 {
 		lines = append(lines, line{header: true, name: referencesTitle})
 		for _, l := range references {
-			e := line{name: l.Name, rel: l.Rel}
+			e := line{name: l.Name, rel: l.Rel, reference: true}
 			if l.Rel != "" {
 				e.where = folder(l.Rel)
 			} else {
@@ -139,6 +150,19 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m.move(-1), Effect{}
 	case "down":
 		return m.move(1), Effect{}
+	case "l":
+		if m.subject == "" {
+			return m, Effect{}
+		}
+		return m, Effect{Add: true}
+	case "d":
+		if len(m.lines) == 0 || m.lines[m.cursor].header {
+			return m, Effect{}
+		}
+		if l := m.lines[m.cursor]; l.reference {
+			return m, Effect{Remove: l.name}
+		}
+		return m, Effect{Info: "Only references can be removed here. A referenced-by link is stored in the other note."}
 	case "enter":
 		if len(m.lines) == 0 || m.lines[m.cursor].header {
 			return m, Effect{}

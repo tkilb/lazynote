@@ -150,6 +150,10 @@ func (m model) overlayModals(view string) string {
 	switch {
 	case m.showingHelp:
 		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll), m.width, m.height)
+	case m.picker != nil:
+		view = popup.Overlay(view, m.picker.View(m.width, m.height), m.width, m.height)
+	case m.removal != nil:
+		view = popup.Overlay(view, popup.ConfirmBox(removalPrompt(m.removal), m.width), m.width, m.height)
 	case m.input != nil && m.input.inline:
 		// Drawn in the status row by statusLine instead.
 	case m.input != nil:

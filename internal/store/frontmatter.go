@@ -67,6 +67,39 @@ func (f *Frontmatter) SetString(key, value string) {
 		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, val)
 }
 
+// SetStringList sets key to a list of strings, in place when the key exists
+// and appended otherwise. Every item is a double-quoted YAML string, so text
+// such as [[Link]] is never read as a nested list. The comments the old
+// value carried are kept.
+func (f *Frontmatter) SetStringList(key string, items []string) {
+	val := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	for _, item := range items {
+		val.Content = append(val.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Style: yaml.DoubleQuotedStyle, Value: item})
+	}
+	for i := 0; i+1 < len(f.node.Content); i += 2 {
+		if k := f.node.Content[i]; k.Kind == yaml.ScalarNode && k.Value == key {
+			old := f.node.Content[i+1]
+			val.HeadComment, val.LineComment, val.FootComment = old.HeadComment, old.LineComment, old.FootComment
+			f.node.Content[i+1] = val
+			return
+		}
+	}
+	f.node.Content = append(f.node.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, val)
+}
+
+// Delete removes key and its value, reporting whether it was there.
+func (f *Frontmatter) Delete(key string) bool {
+	for i := 0; i+1 < len(f.node.Content); i += 2 {
+		if k := f.node.Content[i]; k.Kind == yaml.ScalarNode && k.Value == key {
+			f.node.Content = append(f.node.Content[:i], f.node.Content[i+2:]...)
+			return true
+		}
+	}
+	return false
+}
+
 // Get returns the value node for key, or nil when the key is absent.
 func (f *Frontmatter) Get(key string) *yaml.Node {
 	for i := 0; i+1 < len(f.node.Content); i += 2 {

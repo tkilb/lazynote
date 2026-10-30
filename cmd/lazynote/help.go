@@ -50,6 +50,8 @@ var helpParaBindings = []statusbar.Binding{
 var helpRelatedBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "move"},
 	{Key: "enter", Label: "jump to the note"},
+	{Key: "l", Label: "add a reference (pick a note)"},
+	{Key: "d", Label: "remove the selected reference"},
 	{Key: "esc/←", Label: "back to PARA"},
 }
 

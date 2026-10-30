@@ -182,3 +182,19 @@ func TestFrontmatterSetStringKeepsStringTypeForTrickyValues(t *testing.T) {
 		assert.Equal(t, v, got.Value, v)
 	}
 }
+
+func TestSetStringListAndDelete(t *testing.T) {
+	fm, err := ParseFrontmatter([]byte("a: 1\nlist: [old]\nz: 2\n"))
+	require.NoError(t, err)
+
+	fm.SetStringList("list", []string{"[[X]]", "plain"})
+	fm.SetStringList("fresh", []string{"1"})
+	out, err := fm.Marshal()
+	require.NoError(t, err)
+	assert.Equal(t, "a: 1\nlist:\n  - \"[[X]]\"\n  - \"plain\"\nz: 2\nfresh:\n  - \"1\"\n", string(out), "in place when present, appended when new, always quoted strings")
+
+	assert.True(t, fm.Delete("list"))
+	assert.False(t, fm.Delete("list"))
+	assert.Nil(t, fm.Get("list"))
+	assert.NotNil(t, fm.Get("z"))
+}
