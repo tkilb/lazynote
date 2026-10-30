@@ -1,0 +1,197 @@
+// Package popup provides the blocking-modal widgets: notification popups
+// that surface errors, warnings and information (queued, shown one at a
+// time and dismissed by any key), yes/no confirmation boxes, and a text
+// input box. Ported from lazytask.
+package popup
+
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
+)
+
+// Severity controls a popup's border and title color and label.
+type Severity int
+
+const (
+	Info Severity = iota
+	Warning
+	Error
+)
+
+// String returns the label shown in the popup's title bar.
+func (s Severity) String() string {
+	switch s {
+	case Warning:
+		return "Warning"
+	case Error:
+		return "Error"
+	default:
+		return "Info"
+	}
+}
+
+func (s Severity) color() lipgloss.Color {
+	switch s {
+	case Warning:
+		return lipgloss.Color("214") // orange
+	case Error:
+		return lipgloss.Color("196") // red
+	default:
+		return lipgloss.Color("39") // blue
+	}
+}
+
+// Message is a single queued popup.
+type Message struct {
+	Severity Severity
+	Text     string
+}
+
+// Model holds a FIFO queue of pending popup messages. The zero value is a
+// ready-to-use empty queue.
+type Model struct {
+	queue []Message
+}
+
+// Push enqueues msg, returning the updated model.
+func (m Model) Push(msg Message) Model {
+	m.queue = append(append([]Message{}, m.queue...), msg)
+	return m
+}
+
+// Active reports whether a popup is pending display.
+func (m Model) Active() bool { return len(m.queue) > 0 }
+
+// Current returns the front-of-queue message, if any.
+func (m Model) Current() (Message, bool) {
+	if len(m.queue) == 0 {
+		return Message{}, false
+	}
+	return m.queue[0], true
+}
+
+// Dismiss removes the front-of-queue message, revealing the next one.
+func (m Model) Dismiss() Model {
+	if len(m.queue) == 0 {
+		return m
+	}
+	m.queue = m.queue[1:]
+	return m
+}
+
+const (
+	minBoxWidth = 30
+	maxBoxWidth = 60
+
+	dismissHint = "press any key to dismiss"
+	confirmHint = "(y/enter) confirm   (n/esc) cancel"
+	inputHint   = "(enter) accept   (esc) cancel"
+
+	// boxChrome is the columns a box spends on its border and padding.
+	boxChrome = 4
+)
+
+var (
+	// confirmColor is orange, the same as Warning.
+	confirmColor = lipgloss.Color("214")
+	// dangerColor is the red of Error popups, for confirmations that are
+	// hard or impossible to undo.
+	dangerColor = Error.color()
+	inputColor  = lipgloss.Color("39")
+)
+
+// Box draws msg as a bordered box with a title colored per severity and a
+// dismiss hint at the bottom, sized to fit within screenWidth.
+func Box(msg Message, screenWidth int) string {
+	return renderBox(msg.Severity.String(), msg.Severity.color(), dismissHint, msg.Text, screenWidth)
+}
+
+// ConfirmBox draws a yes/no confirmation box.
+func ConfirmBox(text string, screenWidth int) string {
+	return renderBox("Confirm", confirmColor, confirmHint, text, screenWidth)
+}
+
+// DangerConfirmBox draws a yes/no box in red, for actions that cannot be
+// undone, so the elevated risk is obvious.
+func DangerConfirmBox(text string, screenWidth int) string {
+	return renderBox("Confirm", dangerColor, confirmHint, text, screenWidth)
+}
+
+// InputBox draws a box holding a label and an already rendered input field.
+func InputBox(title, label, field string, screenWidth int) string {
+	return renderBox(title, inputColor, inputHint, label+"\n"+field, screenWidth)
+}
+
+// FieldWidth is the width to give a text field shown in an InputBox on a
+// screen screenWidth wide.
+func FieldWidth(screenWidth int) int {
+	return max(boxWidth(screenWidth)-boxChrome-1, 1)
+}
+
+func boxWidth(screenWidth int) int {
+	w := maxBoxWidth
+	if screenWidth > 0 && screenWidth-4 < w {
+		w = screenWidth - 4
+	}
+	return max(w, minBoxWidth)
+}
+
+// renderBox lays out a bordered box with a colored title, body text and a
+// hint line at the bottom.
+func renderBox(titleText string, color lipgloss.Color, hintText, bodyText string, screenWidth int) string {
+	title := lipgloss.NewStyle().Bold(true).Foreground(color).Render(titleText)
+	hint := lipgloss.NewStyle().Faint(true).Render(hintText)
+	body := lipgloss.JoinVertical(lipgloss.Left, title, "", bodyText, "", hint)
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(color).
+		Padding(0, 1).
+		Width(boxWidth(screenWidth)).
+		Render(body)
+}
+
+// Overlay composites box on top of background, centered within a
+// screenWidth x screenHeight area, keeping whatever of background falls
+// outside the box. Both may contain ANSI styling; splicing is ANSI- and
+// wide-rune-aware so escape sequences are not torn.
+func Overlay(background, box string, screenWidth, screenHeight int) string {
+	if screenWidth <= 0 || screenHeight <= 0 {
+		return box
+	}
+
+	bgLines := strings.Split(background, "\n")
+	for len(bgLines) < screenHeight {
+		bgLines = append(bgLines, "")
+	}
+
+	boxLines := strings.Split(box, "\n")
+	width := 0
+	for _, l := range boxLines {
+		width = max(width, ansi.StringWidth(l))
+	}
+
+	startRow := max((screenHeight-len(boxLines))/2, 0)
+	startCol := max((screenWidth-width)/2, 0)
+
+	out := make([]string, len(bgLines))
+	copy(out, bgLines)
+
+	for i, boxLine := range boxLines {
+		row := startRow + i
+		if row >= len(out) {
+			continue
+		}
+		bgLine := out[row]
+		if w := ansi.StringWidth(bgLine); w < screenWidth {
+			bgLine += strings.Repeat(" ", screenWidth-w)
+		}
+		if w := ansi.StringWidth(boxLine); w < width {
+			boxLine += strings.Repeat(" ", width-w)
+		}
+		out[row] = ansi.Cut(bgLine, 0, startCol) + boxLine + ansi.Cut(bgLine, startCol+width, screenWidth)
+	}
+	return strings.Join(out, "\n")
+}

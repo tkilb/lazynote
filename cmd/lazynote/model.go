@@ -1,10 +1,6 @@
 package main
 
 import (
-	"errors"
-	"strings"
-
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
@@ -12,6 +8,7 @@ import (
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 	"github.com/tkilb/lazynote/internal/ui/para"
+	"github.com/tkilb/lazynote/internal/ui/popup"
 	"github.com/tkilb/lazynote/internal/ui/statusbar"
 	"github.com/tkilb/lazynote/internal/undo"
 )
@@ -88,37 +85,14 @@ type model struct {
 	width, height int
 	// history is shared by pointer: it holds the session's undo/redo stack.
 	history *undo.Stack
-	// message is a one-line result shown in place of the key hints until the
-	// next key press.
-	message message
-	// pending is a question waiting for y or n; while set, it takes every key.
+	// popups queues notifications; the front one blocks input until a key
+	// dismisses it.
+	popups popup.Model
+	// pending is a yes/no question waiting for an answer.
 	pending *para.Confirm
-	// input is a one-line text prompt; while set, it takes every key.
+	// input is an open one-line text prompt.
 	input *input
 }
-
-// input is an open text prompt.
-type input struct {
-	label string
-	op    para.InputOp
-	field textinput.Model
-}
-
-// inputCharLimit bounds what the prompt accepts.
-const inputCharLimit = 255
-
-// message is a transient status line.
-type message struct {
-	text  string
-	isErr bool
-}
-
-var (
-	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	confirmStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
-	dangerStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("1"))
-)
 
 func initialModel(s store.Store) model {
 	return model{focus: panelPARA, para: para.New(s), history: &undo.Stack{}}
@@ -151,12 +125,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
-	m.message = message{}
 	if key != "ctrl+c" {
-		if m.pending != nil {
+		switch {
+		case m.popups.Active():
+			m.popups = m.popups.Dismiss()
+			return m, nil
+		case m.pending != nil:
 			return m.answer(key)
-		}
-		if m.input != nil {
+		case m.input != nil:
 			return m.typeKey(msg)
 		}
 	}
@@ -207,111 +183,6 @@ func (m model) paraKey(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m.apply(eff)
 }
 
-// apply records an Effect from a panel: the undo action, the message, or
-// the question to ask.
-func (m model) apply(eff para.Effect) (model, tea.Cmd) {
-	if eff.Action != nil {
-		m.history.Push(*eff.Action)
-	}
-	var cmd tea.Cmd
-	switch {
-	case eff.Prompt != nil:
-		m.input, cmd = openInput(eff.Prompt)
-	case eff.Confirm != nil:
-		m.pending = eff.Confirm
-	case eff.Err != nil:
-		m.message = message{text: capitalize(eff.Err.Error()), isErr: true}
-	case eff.Info != "":
-		m.message = message{text: eff.Info}
-	}
-	return m, cmd
-}
-
-// openInput starts a text prompt and returns the command that blinks its
-// cursor.
-func openInput(p *para.Prompt) (*input, tea.Cmd) {
-	field := textinput.New()
-	field.Prompt = ""
-	field.CharLimit = inputCharLimit
-	field.Focus()
-	return &input{label: p.Label, op: p.Op, field: field}, textinput.Blink
-}
-
-// typeKey feeds a key to the open prompt: enter submits, esc cancels.
-func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.input = nil
-		m.message = message{text: "Cancelled"}
-		return m, nil
-	case "enter":
-		op, text := m.input.op, m.input.field.Value()
-		m.input = nil
-		var eff para.Effect
-		m.para, eff = m.para.ApplyInput(op, text)
-		return m.apply(eff)
-	}
-	var cmd tea.Cmd
-	m.input.field, cmd = m.input.field.Update(msg)
-	return m, cmd
-}
-
-// answer handles a key while a question is pending: y or enter accepts, n
-// or esc declines, anything else is ignored.
-func (m model) answer(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "y", "enter":
-		op := m.pending.Op
-		m.pending = nil
-		var eff para.Effect
-		m.para, eff = m.para.ApplyConfirm(op)
-		return m.apply(eff)
-	case "n", "esc":
-		m.pending = nil
-		m.message = message{text: "Cancelled"}
-	}
-	return m, nil
-}
-
-func capitalize(s string) string {
-	if s == "" {
-		return s
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
-}
-
-// runHistory runs an undo or redo, reports the result in the status line,
-// and reloads the listing because files may have moved.
-func (m model) runHistory(done, failed string, run func() (string, error)) model {
-	desc, err := run()
-	switch {
-	case errors.Is(err, undo.ErrNothingToUndo), errors.Is(err, undo.ErrNothingToRedo):
-		m.message = message{text: capitalize(err.Error())}
-	case err != nil:
-		m.message = message{text: failed + " failed (" + desc + "): " + err.Error(), isErr: true}
-	default:
-		m.message = message{text: done + ": " + desc}
-	}
-	m.para = m.para.Reload()
-	return m
-}
-
-func (m model) statusLine() string {
-	switch {
-	case m.input != nil:
-		return m.input.label + m.input.field.View()
-	case m.pending != nil && m.pending.Danger:
-		return dangerStyle.Render("(y/n) " + m.pending.Prompt)
-	case m.pending != nil:
-		return confirmStyle.Render("(y/n) " + m.pending.Prompt)
-	case m.message.isErr:
-		return errorStyle.Render(m.message.text)
-	case m.message.text != "":
-		return infoStyle.Render(m.message.text)
-	}
-	return statusbar.Render(m.bindings())
-}
-
 func (m model) bindings() []statusbar.Binding {
 	var local []statusbar.Binding
 	switch m.focus {
@@ -346,5 +217,6 @@ func (m model) View() string {
 		render(panelBody, g.rightWidth, g.bodyHeight),
 	)
 	grid := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
-	return lipgloss.JoinVertical(lipgloss.Left, grid, ansi.Truncate(m.statusLine(), m.width, "…"))
+	view := lipgloss.JoinVertical(lipgloss.Left, grid, ansi.Truncate(statusbar.Render(m.bindings()), m.width, "…"))
+	return m.overlayModals(view)
 }

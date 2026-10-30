@@ -20,7 +20,7 @@ func (m Model) askDelete(op ConfirmOp) (Model, Effect) {
 	if err != nil {
 		return m, Effect{Err: fmt.Errorf("inspect: %w", err)}
 	}
-	return m, Effect{Confirm: &Confirm{Prompt: prompt, Op: op, Danger: op == OpDelete}}
+	return m, Effect{Confirm: &Confirm{Prompt: prompt, Op: op, Danger: true}}
 }
 
 // deletePrompt words the question, e.g. "Trash folder alpha/ (12 items
@@ -98,8 +98,7 @@ func (m Model) trash() (Model, Effect) {
 	}
 	desc := "trash " + describe(len(targets), targets[0].Name)
 	group := undo.Group(desc, done...)
-	m = m.clearSelection().Reload()
-	return m, Effect{Action: &group, Info: "Trashed " + describe(len(targets), targets[0].Name)}
+	return m.clearSelection().Reload(), Effect{Action: &group}
 }
 
 // deletePermanently removes the targets for good. It stops at the first
@@ -111,8 +110,7 @@ func (m Model) deletePermanently() (Model, Effect) {
 			return m.Reload(), Effect{Err: fmt.Errorf("delete failed after %d of %d: %w", i, len(targets), err)}
 		}
 	}
-	m = m.clearSelection().Reload()
-	return m, Effect{Info: "Deleted " + describe(len(targets), targets[0].Name) + " permanently"}
+	return m.clearSelection().Reload(), Effect{}
 }
 
 // ApplyInput carries out a Prompt with the text the user typed.
@@ -145,7 +143,7 @@ func (m Model) create(text string) (Model, Effect) {
 		return m, Effect{Err: fmt.Errorf("create failed: %w", err)}
 	}
 	m.tabs[m.active].keep = name
-	return m.Reload(), Effect{Action: &act, Info: "Created " + name}
+	return m.Reload(), Effect{Action: &act}
 }
 
 // reloaded re-reads the active tab, keeping each tab's directory.

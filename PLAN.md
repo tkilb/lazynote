@@ -151,21 +151,21 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   paste and names the count; if a step fails, the steps already done are
   undone. Cutting into the directory the item is already in does nothing.
   Sources that no longer exist are dropped and counted in the message.
-  `P` asks first (a status-line prompt, `y`/`enter` or `n`/`esc`) only when
-  something would be replaced.
+  `P` asks first (a confirm popup) only when something would be replaced.
 - Yank and paste copies the file with its frontmatter unchanged. Cut and
   paste moves it.
 - `p` never overwrites; on a name collision it reports an error. `P`
   overwrites after a confirm: each replaced file or directory goes to
   `.lazynote/trash/` first, so `u` restores it, and the overwrite and the
   paste undo together as one operation.
-- `a` opens a one-line prompt in the status bar. A note name gets `.md`
+- `a` opens an input popup. A note name gets `.md`
   appended unless it already ends with it; a name ending in `/` makes a
   folder; any other `/`, empty names, `.` and `..` are rejected. A new note
   holds frontmatter with only a fresh `uid` (kind stays unset). The cursor
   moves to the new item, and `u` removes it again (to the trash).
-- `d` and `D` ask first with a status-line question (`y`/`enter` confirms,
-  `n`/`esc` cancels; `D` is shown in red and says it cannot be undone). For a
+- `d` and `D` ask first with a confirm popup (`y`/`enter` confirms,
+  `n`/`esc` cancels; both are drawn in red, and `D` also says it cannot be
+  undone). For a
   folder the question gives the item count and how many items are not shown,
   counted from disk, so attachments and hidden files are included. A
   multi-item `d` is one undo entry and undoes the earlier items if a later
@@ -213,6 +213,16 @@ Conflict notes:
   move popup.
 
 ## Decisions
+
+- Notifications follow lazytask: errors, warnings and informational results
+  appear as modal popups (`internal/ui/popup`, ported), queued and shown
+  one at a time, each dismissed (and the key consumed) by any key, with a
+  colored title: Info blue, Warning orange, Error red. Confirmations are
+  popups too (orange; red for trash and delete), and text
+  prompts are input popups. Routine successes (yank, cut, paste, create,
+  trash, delete) show no popup because the list and markers already show
+  them; undo and redo always report, including "Nothing to undo". The
+  status bar shows only key hints.
 
 - Stack: Go 1.24, bubbletea, bubbles, lipgloss, testify, YAML config.
 - Clipboard (`lazynote add --clipboard`): `github.com/atotto/clipboard`, the

@@ -175,7 +175,7 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 	case "D":
 		return m.askDelete(OpDelete)
 	case "a":
-		return m, Effect{Prompt: &Prompt{Label: "New note (end with / for a folder): ", Op: OpCreate}}
+		return m, Effect{Prompt: &Prompt{Title: "New", Label: "Name (end with / for a folder):", Op: OpCreate}}
 	}
 	return m.navigate(msg), Effect{}
 }

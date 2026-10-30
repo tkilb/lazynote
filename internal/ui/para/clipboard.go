@@ -61,17 +61,13 @@ func (m Model) setClip(mode clipMode) (Model, Effect) {
 	m.clip = newClip(mode, entries)
 	t := &m.tabs[m.active]
 	t.selected, t.visual = nil, visualState{}
-	verb := map[clipMode]string{clipYank: "Yanked", clipCut: "Cut"}[mode]
-	return m, Effect{Info: verb + " " + describe(len(entries), entries[0].Name)}
+	return m, Effect{}
 }
 
 // cancelClip empties the buffer.
 func (m Model) cancelClip() (Model, Effect) {
-	if m.clip.mode == clipNone {
-		return m, Effect{}
-	}
 	m.clip = clip{}
-	return m, Effect{Info: "Cleared the yank buffer"}
+	return m, Effect{}
 }
 
 // currentDir is the notebook-relative path of the directory on screen.
@@ -134,7 +130,7 @@ func (m Model) planPaste() (pastePlan, error) {
 // whole paste is one undo entry.
 func (m Model) paste(overwrite, confirmed bool) (Model, Effect) {
 	if m.clip.mode == clipNone {
-		return m, Effect{Info: "Nothing to paste"}
+		return m, Effect{Info: "Nothing to paste."}
 	}
 	plan, err := m.planPaste()
 	if err != nil {
@@ -144,7 +140,7 @@ func (m Model) paste(overwrite, confirmed bool) (Model, Effect) {
 	if n := plan.collisions(); n > 0 {
 		switch {
 		case !overwrite:
-			return m, Effect{Err: fmt.Errorf("paste cancelled: %s already exist here (P overwrites)", count(n))}
+			return m, Effect{Err: fmt.Errorf("paste cancelled: %s here (P overwrites)", alreadyExist(n))}
 		case !confirmed:
 			return m, Effect{Confirm: &Confirm{
 				Prompt: fmt.Sprintf("Overwrite %s? Replaced items go to the trash.", count(n)),
@@ -196,19 +192,21 @@ func (m Model) execute(plan pastePlan) ([]undo.Action, error) {
 }
 
 func pasteResult(plan pastePlan, actions []undo.Action) Effect {
-	var note string
+	var warn string
 	if plan.missing > 0 {
-		note = fmt.Sprintf(" (%d no longer exist, dropped)", plan.missing)
+		warn = fmt.Sprintf("%s no longer exist and were dropped from the paste.", count(plan.missing))
+		if plan.missing == 1 {
+			warn = "1 item no longer exists and was dropped from the paste."
+		}
 	}
 	if len(plan.items) == 0 {
 		if plan.skipped > 0 {
-			return Effect{Info: "Already in this directory"}
+			return Effect{Info: "Already in this directory.", Warn: warn}
 		}
-		return Effect{Info: "Nothing pasted" + note}
+		return Effect{Info: "Nothing was pasted.", Warn: warn}
 	}
-	name := filepath.Base(plan.items[0].dst)
-	group := undo.Group("paste "+describe(len(plan.items), name), actions...)
-	return Effect{Action: &group, Info: "Pasted " + describe(len(plan.items), name) + note}
+	group := undo.Group("paste "+describe(len(plan.items), filepath.Base(plan.items[0].dst)), actions...)
+	return Effect{Action: &group, Warn: warn}
 }
 
 // ApplyConfirm carries out an accepted Confirm.
@@ -230,6 +228,14 @@ func describe(n int, first string) string {
 		return first
 	}
 	return count(n)
+}
+
+// alreadyExist words n collisions, e.g. "1 item already exists".
+func alreadyExist(n int) string {
+	if n == 1 {
+		return "1 item already exists"
+	}
+	return fmt.Sprintf("%d items already exist", n)
 }
 
 func count(n int) string {

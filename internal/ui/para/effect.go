@@ -7,8 +7,10 @@ import "github.com/tkilb/lazynote/internal/undo"
 type Effect struct {
 	// Action, when set, is pushed onto the undo history.
 	Action *undo.Action
-	// Info is a result message; Err, when set, is shown as an error instead.
+	// Info, Warn and Err are notices shown as popups. Routine successes set
+	// none of them: the list already shows what happened.
 	Info string
+	Warn string
 	Err  error
 	// Confirm, when set, asks the user before anything changes.
 	Confirm *Confirm
@@ -33,7 +35,7 @@ const (
 type Confirm struct {
 	Prompt string
 	Op     ConfirmOp
-	// Danger marks an action that cannot be undone.
+	// Danger draws the question in red, for actions that remove items.
 	Danger bool
 }
 
@@ -45,9 +47,11 @@ const (
 	OpCreate InputOp = iota + 1
 )
 
-// Prompt asks for one line of text. The root model shows Label with an
-// input field and, on enter, calls Model.ApplyInput with Op and the text.
+// Prompt asks for one line of text. The root model shows an input box
+// titled Title, with Label above the field, and on enter calls
+// Model.ApplyInput with Op and the text.
 type Prompt struct {
+	Title string
 	Label string
 	Op    InputOp
 }
