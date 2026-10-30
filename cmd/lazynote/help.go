@@ -10,6 +10,8 @@ import (
 // helpGlobalBindings are the keys that work whatever panel has focus. Panel
 // switching is movement, so it is under Navigation, as in lazygit.
 var helpGlobalBindings = []statusbar.Binding{
+	{Key: "F/R/i", Label: "quick fact, rumor or idea into the inbox"},
+	{Key: "I", Label: "import a file (transcript or note)"},
 	{Key: "u", Label: "undo"},
 	{Key: "ctrl+r", Label: "redo"},
 	{Key: "ctrl+l", Label: "refresh from disk"},

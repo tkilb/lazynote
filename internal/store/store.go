@@ -22,6 +22,9 @@ var errNotDir = syscall.ENOTDIR
 // maxNoteBytes bounds how much of a single note is read into memory.
 const maxNoteBytes = 10 << 20
 
+// MaxNoteBytes is the largest file lazynote reads as a note.
+const MaxNoteBytes = maxNoteBytes
+
 // Entry is one row of a directory listing.
 type Entry struct {
 	Name string

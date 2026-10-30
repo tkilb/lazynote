@@ -565,10 +565,6 @@ Numbers are kept stable; resolved items were removed.
    and omit the Yazi behavior.
 11. Trash retention. Items trashed with `d` sit in `.lazynote/trash/` and
     accumulate. Default: no automatic purge yet.
-12. Import and `uid` (chunk 9b). An imported markdown note is copied into the
-    inbox with its frontmatter preserved. Default: it gets a fresh `uid` and
-    its `title` set to its new file name, as copies do in chunk 5b, because
-    the same `uid` would otherwise exist twice.
 
 ## Future enhancements
 
@@ -640,7 +636,7 @@ Numbers are kept stable; resolved items were removed.
    duplicated before this chunk are not repaired, because lazynote never
    rewrites a note on read. Engine tests: file, folder tree, no frontmatter,
    invalid frontmatter, undo and redo stability, source untouched, uniqueness
-   across many copies. Import (9b) follows the same rule (open decision 12).
+   across many copies. Import (9b) follows the same rule.
    5c. Standard metadata rows in Info (confirmed layout, see the Info
    decision): Kind | Source | Date on row 1, Tags on row 2, Aliases on row 3,
    other properties scrolling below, `related` hidden, Info 3 content rows.
@@ -727,9 +723,33 @@ Numbers are kept stable; resolved items were removed.
    nothing. `m` on a folder does nothing (cut and paste moves folders). The
    rule that a daily accepts only `A` is still to come (9e). Cut/paste, delete, create and undo are already
    in chunks 3e to 3g.
-   9b. Intake core: quick fact (`F`), quick rumor (`R`), quick idea
-   (`i`), transcript and note import (`I` and `lazynote import`). The Inbox
-   tab already exists from chunk 3; `inbox/` is created on first use.
+   9b. Intake core (done for the TUI; `lazynote import` comes with 9c):
+   quick fact (`F`), quick rumor (`R`), quick idea (`i`), transcript and
+   note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
+   created on first use. Engine in `internal/intake`, tested.
+   - Quick capture: a one-line prompt ("Quick fact", "Quick rumor", "Quick
+     idea"). The note is `inbox/YYYY-MM-DD-HHMMSS slug.md` (the slug is the
+     first six words, lowercased, at most 40 characters, with `/ \ : * ? " <
+     > | # [ ] ^` and control characters removed; none when empty), with
+     `uid`, `title` (the file name), `kind`, `source: quick`, `date`
+     (`YYYY-MM-DD`, unquoted so Obsidian reads a date) and an empty `tags`
+     list, and the text as its body. A name already taken gets ` 2`, ` 3` and
+     so on. Blank text does nothing. Undo moves the note to the trash.
+   - Import: `I` asks for a file path (`~` is expanded), then a menu: `t`
+     transcript or `n` note. The file is only read: it must be a regular
+     file (a symlink to one is fine) of at most 10 MB, and nothing is ever
+     written outside the notebook. A transcript becomes a capture-style note
+     named from the file's name, with the whole text unmodified as its body,
+     `source: transcript` and `kind: rumor`. A note must be a `.md` file; it
+     is copied under its own name (numbered on a collision) with its
+     properties kept, `source: import` and `date` added only when missing or
+     blank, `kind` left as it is, a fresh `uid` and `title` set to its new
+     name (the original `uid` would otherwise exist twice, as with copies in
+     5b). A note whose properties cannot be parsed is saved byte for byte and
+     a warning says it keeps its original `uid`.
+   - When the new note is not in the list on screen (another tab or folder),
+     a notice says it was saved to the Inbox; otherwise there is no popup.
+   - The popup menus (`m` move, import) share one menu widget.
    9c. Shell capture: `lazynote add` with `--kind`, `--source`, stdin and
    `--clipboard`.
    9d. Extract: select Body lines (`v`, `enter`), pick a kind, create a note in

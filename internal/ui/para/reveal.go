@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// Shows reports whether the directory the panel is looking at is the one
+// that holds the note at rel.
+func (m Model) Shows(rel string) bool {
+	dir := filepath.Join(tabDefs[m.active].dir, m.tabs[m.active].dir)
+	return filepath.Dir(filepath.ToSlash(rel)) == filepath.ToSlash(dir)
+}
+
 // Reveal selects the note at rel (relative to the notebook root): it
 // switches to the tab holding it, enters its directory and puts the cursor
 // on it. It reports false, changing nothing, when rel is not inside a tab

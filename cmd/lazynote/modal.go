@@ -23,6 +23,9 @@ type input struct {
 	// popup. cancelOp, when set, is applied on esc.
 	inline   bool
 	cancelOp para.InputOp
+	// accept, when set, handles the text on enter instead of the PARA
+	// panel: for prompts the root model owns.
+	accept func(model, string) (model, tea.Cmd)
 }
 
 // inlinePrompt is the prefix of an inline prompt, as in lazygit.
@@ -56,7 +59,7 @@ func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case eff.Move != "":
-		m.moving, m.moveCursor = eff.Move, 0
+		m = m.openMoveMenu(eff.Move)
 	case eff.SetKind != nil:
 		m, cmd = m.openKindPicker(eff.SetKind)
 	case eff.Edit != "":
@@ -110,8 +113,11 @@ func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "enter":
-		op, text := m.input.op, m.input.field.Value()
+		op, text, accept := m.input.op, m.input.field.Value(), m.input.accept
 		m.input = nil
+		if accept != nil {
+			return accept(m, text)
+		}
 		var eff para.Effect
 		m.para, eff = m.para.ApplyInput(op, text)
 		return m.apply(eff)
@@ -187,8 +193,8 @@ func (m model) overlayModals(view string) string {
 		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll), m.width, m.height)
 	case m.picker != nil:
 		view = popup.Overlay(view, m.picker.View(m.width, m.height), m.width, m.height)
-	case m.moving != "":
-		view = popup.Overlay(view, popup.MenuBox(moveTitle, moveMenu(), m.moveCursor, m.width), m.width, m.height)
+	case m.menu != nil:
+		view = popup.Overlay(view, popup.MenuBox(m.menu.title, m.menu.items, m.menu.cursor, m.width), m.width, m.height)
 	case m.question != nil:
 		view = popup.Overlay(view, popup.ConfirmBox(m.question.prompt, m.width), m.width, m.height)
 	case m.input != nil && m.input.inline:

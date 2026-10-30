@@ -67,6 +67,28 @@ func (f *Frontmatter) SetString(key, value string) {
 		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, val)
 }
 
+// SetDate sets key to a calendar date written as YYYY-MM-DD, unquoted, so
+// Obsidian reads it as a date. It keeps the key's place when it exists.
+func (f *Frontmatter) SetDate(key, day string) {
+	val := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!timestamp", Value: day}
+	for i := 0; i+1 < len(f.node.Content); i += 2 {
+		if k := f.node.Content[i]; k.Kind == yaml.ScalarNode && k.Value == key {
+			old := f.node.Content[i+1]
+			val.HeadComment, val.LineComment, val.FootComment = old.HeadComment, old.LineComment, old.FootComment
+			f.node.Content[i+1] = val
+			return
+		}
+	}
+	f.node.Content = append(f.node.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, val)
+}
+
+// blank reports whether key is missing, empty or null.
+func (f *Frontmatter) blank(key string) bool {
+	v := f.Get(key)
+	return v == nil || (v.Kind == yaml.ScalarNode && strings.TrimSpace(v.Value) == "")
+}
+
 // SetStringList sets key to a list of strings, in place when the key exists
 // and appended otherwise. Every item is a double-quoted YAML string, so text
 // such as [[Link]] is never read as a nested list. The comments the old

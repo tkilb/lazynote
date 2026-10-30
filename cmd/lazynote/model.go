@@ -136,10 +136,8 @@ type model struct {
 	pickerOp  pickerOp
 	// pickerKind is the kind the note had when the kind picker opened.
 	pickerKind store.Kind
-	// moving is the note a destination menu is open for ("" for none), and
-	// moveCursor the highlighted row.
-	moving     string
-	moveCursor int
+	// menu is the open choose-by-key menu, if any.
+	menu *menu
 	// question is a yes/no question owned by the root model, with what to do
 	// on yes (the para panel's own questions use pending instead).
 	question *question
@@ -265,8 +263,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.showingHelp:
 			return m.updateHelp(msg), nil
-		case m.moving != "":
-			return m.moveKey(key)
+		case m.menu != nil:
+			return m.menuKey(key)
 		case m.question != nil:
 			return m.answerQuestion(key)
 		case m.picker != nil:
@@ -284,6 +282,10 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "?":
 		m.showingHelp = true
+	case "F", "R", "i":
+		m, cmd = m.startCapture(key)
+	case "I":
+		m, cmd = m.startImport()
 	case "ctrl+z":
 		return m.saveOrWarn(), tea.Suspend
 	case "ctrl+l":

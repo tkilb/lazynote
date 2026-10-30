@@ -26,40 +26,20 @@ var moveDestinations = []moveDestination{
 	{"A", "archives", "Archives"},
 }
 
-func moveMenu() []popup.MenuItem {
+// openMoveMenu asks where to move the note at rel.
+func (m model) openMoveMenu(rel string) model {
 	items := make([]popup.MenuItem, len(moveDestinations))
 	for i, d := range moveDestinations {
 		items[i] = popup.MenuItem{Key: d.key, Label: d.label}
 	}
-	return items
-}
-
-// moveKey handles a key while the move menu is open: a destination key moves
-// the note at once, the arrows highlight a row and enter moves to it, esc
-// closes the menu, and other keys are ignored.
-func (m model) moveKey(key string) (tea.Model, tea.Cmd) {
-	pick := func(d moveDestination) (tea.Model, tea.Cmd) {
-		rel := m.moving
-		m.moving = ""
-		return m.moveTo(rel, d), nil
-	}
-	switch key {
-	case "esc":
-		m.moving = ""
-	case "up":
-		m.moveCursor = max(m.moveCursor-1, 0)
-	case "down":
-		m.moveCursor = min(m.moveCursor+1, len(moveDestinations)-1)
-	case "enter":
-		return pick(moveDestinations[m.moveCursor])
-	default:
+	return m.openMenu(moveTitle, items, func(m model, key string) model {
 		for _, d := range moveDestinations {
 			if d.key == key {
-				return pick(d)
+				return m.moveTo(rel, d)
 			}
 		}
-	}
-	return m, nil
+		return m
+	})
 }
 
 // moveTo moves the note at rel to the root of the destination tab, as one
@@ -76,4 +56,46 @@ func (m model) moveTo(rel string, d moveDestination) model {
 	m.history.Push(act)
 	m.para = m.para.Reload()
 	return m.refreshLinks()
+}
+
+// menu is a small box of choices: the next key press picks one, or the
+// arrows highlight a row and enter picks it.
+type menu struct {
+	title  string
+	items  []popup.MenuItem
+	cursor int
+	// pick runs with the key of the chosen item.
+	pick func(model, string) model
+}
+
+func (m model) openMenu(title string, items []popup.MenuItem, pick func(model, string) model) model {
+	m.menu = &menu{title: title, items: items, pick: pick}
+	return m
+}
+
+// menuKey handles a key while a menu is open: an item's key picks it, the
+// arrows highlight and enter picks, esc closes, other keys are ignored.
+func (m model) menuKey(key string) (tea.Model, tea.Cmd) {
+	mn := m.menu
+	choose := func(k string) (tea.Model, tea.Cmd) {
+		m.menu = nil
+		return mn.pick(m, k), nil
+	}
+	switch key {
+	case "esc":
+		m.menu = nil
+	case "up":
+		mn.cursor = max(mn.cursor-1, 0)
+	case "down":
+		mn.cursor = min(mn.cursor+1, len(mn.items)-1)
+	case "enter":
+		return choose(mn.items[mn.cursor].Key)
+	default:
+		for _, it := range mn.items {
+			if it.Key == key {
+				return choose(key)
+			}
+		}
+	}
+	return m, nil
 }
