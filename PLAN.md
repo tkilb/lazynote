@@ -162,7 +162,8 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
   Sources that no longer exist are dropped and counted in the message.
   `P` asks first (a confirm popup) only when something would be replaced.
 - Yank and paste copies the file with its frontmatter unchanged, except that a
-  copy with a new name gets its `title` updated. Cut and
+  copy with a new name gets its `title` updated (chunk 5b also gives every
+  copy a fresh `uid`). Cut and
   paste moves it.
 - `p` never overwrites; on a name collision it reports an error. `P`
   overwrites after a confirm: each replaced file or directory goes to
@@ -542,6 +543,15 @@ Numbers are kept stable; resolved items were removed.
    and omit the Yazi behavior.
 11. Trash retention. Items trashed with `d` sit in `.lazynote/trash/` and
     accumulate. Default: no automatic purge yet.
+12. Import and `uid` (chunk 9b). An imported markdown note is copied into the
+    inbox with its frontmatter preserved. Default: it gets a fresh `uid` and
+    its `title` set to its new file name, as copies do in chunk 5b, because
+    the same `uid` would otherwise exist twice.
+13. The standard metadata fields and their order (chunk 5c). Default until
+    answered: `kind` (highlighted row), `date`, `source`, `tags`, `aliases`,
+    `related`, then any other properties in file order. Hidden: `uid`, and
+    `title` when it equals the file name. Only the fields a note has are
+    drawn, with no blank slots. Needs your confirmation or changes before 5c.
 
 ## Future enhancements
 
@@ -596,6 +606,33 @@ Numbers are kept stable; resolved items were removed.
 5. Info panel (and the display-only Title panel): kind and all
    frontmatter properties except `uid`,
    rendered generically (scalars, lists, nested values), in file order.
+   5b. Interrupt, next: unique note identity. The link index (chunk 8) keys
+   on `uid`, so no two notes may share one, yet a copy made with `y` then
+   `p`/`P` (including the `_N` duplicate) currently repeats its source's
+   `uid`. From this chunk on, every note a copy writes gets a fresh `uid` and
+   its `title` set to its file name: the one note for a file copy, and every
+   `.md` note inside a copied folder (other files are copied verbatim). A
+   note with no frontmatter gets a block holding both; a note whose
+   frontmatter cannot be parsed is copied byte for byte and a warning popup
+   says it kept its source's `uid`. Cut, move and `m` keep the `uid` (the
+   note is the same note). Undo and redo of a copy bring back the same copy
+   with the same new `uid`, and the source is never touched. The yank and
+   paste rule in "Yazi parity" is reworded to match. Notes already
+   duplicated before this chunk are not repaired, because lazynote never
+   rewrites a note on read. Engine tests: file, folder tree, no frontmatter,
+   invalid frontmatter, undo and redo stability, source untouched, uniqueness
+   across many copies. Import (9b) follows the same rule (open decision 12).
+   5c. Standardize the metadata fields and their positions in Info. The
+   standard set and its order are defined once in `internal/store`, like the
+   kinds, and Info draws the present standard fields first, in that order,
+   then any other properties in file order, so a field sits in the same place
+   from note to note. `uid` stays hidden, `title` stays hidden when it equals
+   the file name, and `kind` stays the highlighted first row. The same order
+   is used when lazynote writes the frontmatter of a new note; an existing
+   note keeps its file order when lazynote rewrites it (the round-trip rule),
+   and only Info's display order is standardized. The field set and order
+   must be confirmed before the chunk starts (open decision 13). Engine
+   tests for the ordering; manual QA note for Info.
 6. `internal/state`: SQLite persistence and restore on launch, including
    the current directory for each PARA tab.
 7. Notebook panel: list the configured notebooks, switch with `enter`, mark
