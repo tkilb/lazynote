@@ -66,7 +66,7 @@ func build(t *testing.T, root string) *Index {
 	return x
 }
 
-func TestOutgoingResolvesByNameIgnoringCaseAliasAndHeading(t *testing.T) {
+func TestReferencesResolvesByNameIgnoringCaseAliasAndHeading(t *testing.T) {
 	root := t.TempDir()
 	put(t, root, "inbox/a.md", note("[[PROJECT alpha|x]]", "[[Meeting#Notes]]", "[[Nope]]"))
 	put(t, root, "projects/Project Alpha.md", "---\nuid: p\n---\n")
@@ -77,7 +77,7 @@ func TestOutgoingResolvesByNameIgnoringCaseAliasAndHeading(t *testing.T) {
 		{Name: "PROJECT alpha", Rel: "projects/Project Alpha.md"},
 		{Name: "Meeting", Rel: "areas/Meeting.md"},
 		{Name: "Nope", Rel: ""},
-	}, x.Outgoing("inbox/a.md"))
+	}, x.References("inbox/a.md"))
 }
 
 func TestDuplicateNamesResolveToTheShortestPath(t *testing.T) {
@@ -88,10 +88,10 @@ func TestDuplicateNamesResolveToTheShortestPath(t *testing.T) {
 	put(t, root, "archives/Dup.md", "x")
 	x := build(t, root)
 
-	assert.Equal(t, "areas/Dup.md", x.Outgoing("inbox/a.md")[0].Rel, "shortest, then alphabetical")
+	assert.Equal(t, "areas/Dup.md", x.References("inbox/a.md")[0].Rel, "shortest, then alphabetical")
 }
 
-func TestIncomingListsNotesThatLinkHere(t *testing.T) {
+func TestReferencedByListsNotesThatLinkHere(t *testing.T) {
 	root := t.TempDir()
 	put(t, root, "projects/Hub.md", "x")
 	put(t, root, "inbox/b.md", note("[[hub]]", "[[Hub|again]]"))
@@ -100,10 +100,10 @@ func TestIncomingListsNotesThatLinkHere(t *testing.T) {
 	put(t, root, "inbox/self.md", note("[[self]]"))
 	x := build(t, root)
 
-	assert.Equal(t, []string{"inbox/a.md", "inbox/b.md", "projects/Hub2.md"}, x.Incoming("projects/Hub.md"),
+	assert.Equal(t, []string{"inbox/a.md", "inbox/b.md", "projects/Hub2.md"}, x.ReferencedBy("projects/Hub.md"),
 		"sorted, one entry per note")
-	assert.Empty(t, x.Incoming("inbox/self.md"), "a note linking itself is not its own backlink")
-	assert.Empty(t, x.Incoming("inbox/a.md"))
+	assert.Empty(t, x.ReferencedBy("inbox/self.md"), "a note linking itself is not its own backlink")
+	assert.Empty(t, x.ReferencedBy("inbox/a.md"))
 }
 
 func TestRelatedValueShapes(t *testing.T) {
@@ -118,12 +118,12 @@ func TestRelatedValueShapes(t *testing.T) {
 	x := build(t, root)
 
 	want := []Link{{Name: "X", Rel: "areas/X.md"}}
-	assert.Equal(t, want, x.Outgoing("inbox/scalar.md"))
-	assert.Equal(t, want, x.Outgoing("inbox/unquoted.md"), "an unquoted [[X]] parses as a nested list")
-	assert.Equal(t, want, x.Outgoing("inbox/mixed.md"), "only wikilink strings count")
-	assert.Empty(t, x.Outgoing("inbox/none.md"))
-	assert.Empty(t, x.Outgoing("inbox/bad.md"))
-	assert.Empty(t, x.Outgoing("inbox/plain.md"), "inline body links are out of scope")
+	assert.Equal(t, want, x.References("inbox/scalar.md"))
+	assert.Equal(t, want, x.References("inbox/unquoted.md"), "an unquoted [[X]] parses as a nested list")
+	assert.Equal(t, want, x.References("inbox/mixed.md"), "only wikilink strings count")
+	assert.Empty(t, x.References("inbox/none.md"))
+	assert.Empty(t, x.References("inbox/bad.md"))
+	assert.Empty(t, x.References("inbox/plain.md"), "inline body links are out of scope")
 }
 
 func TestHiddenFoldersAreNotIndexed(t *testing.T) {
@@ -135,7 +135,7 @@ func TestHiddenFoldersAreNotIndexed(t *testing.T) {
 	put(t, root, "inbox/a.md", note("[[Ghost]]"))
 	x := build(t, root)
 
-	assert.Equal(t, []Link{{Name: "Ghost"}}, x.Outgoing("inbox/a.md"))
+	assert.Equal(t, []Link{{Name: "Ghost"}}, x.References("inbox/a.md"))
 }
 
 func TestRefreshPicksUpChangesAndRemovals(t *testing.T) {
@@ -145,7 +145,7 @@ func TestRefreshPicksUpChangesAndRemovals(t *testing.T) {
 	put(t, root, "areas/B.md", "x")
 	x, err := Build(s)
 	require.NoError(t, err)
-	require.Equal(t, "areas/B.md", x.Outgoing("inbox/a.md")[0].Rel)
+	require.Equal(t, "areas/B.md", x.References("inbox/a.md")[0].Rel)
 
 	// a changes target, B disappears, C appears.
 	require.NoError(t, os.WriteFile(a, []byte(note("[[C]]", "[[B]]")), 0o644))
@@ -155,13 +155,13 @@ func TestRefreshPicksUpChangesAndRemovals(t *testing.T) {
 	put(t, root, "projects/C.md", "x")
 	require.NoError(t, x.Refresh(s))
 
-	assert.Equal(t, []Link{{Name: "C", Rel: "projects/C.md"}, {Name: "B"}}, x.Outgoing("inbox/a.md"))
-	assert.Equal(t, []string{"inbox/a.md"}, x.Incoming("projects/C.md"))
+	assert.Equal(t, []Link{{Name: "C", Rel: "projects/C.md"}, {Name: "B"}}, x.References("inbox/a.md"))
+	assert.Equal(t, []string{"inbox/a.md"}, x.ReferencedBy("projects/C.md"))
 
 	require.NoError(t, os.Remove(a))
 	require.NoError(t, x.Refresh(s))
-	assert.Empty(t, x.Outgoing("inbox/a.md"))
-	assert.Empty(t, x.Incoming("projects/C.md"))
+	assert.Empty(t, x.References("inbox/a.md"))
+	assert.Empty(t, x.ReferencedBy("projects/C.md"))
 }
 
 func TestAnUnreadableNoteDoesNotStopTheIndex(t *testing.T) {
@@ -172,12 +172,12 @@ func TestAnUnreadableNoteDoesNotStopTheIndex(t *testing.T) {
 	require.NoError(t, os.Truncate(big, 11<<20))
 	x := build(t, root)
 
-	assert.Equal(t, "areas/T.md", x.Outgoing("inbox/ok.md")[0].Rel)
-	assert.Empty(t, x.Outgoing("inbox/big.md"))
+	assert.Equal(t, "areas/T.md", x.References("inbox/ok.md")[0].Rel)
+	assert.Empty(t, x.References("inbox/big.md"))
 }
 
 func TestANilIndexAnswersEmpty(t *testing.T) {
 	var x *Index
-	assert.Empty(t, x.Outgoing("inbox/a.md"))
-	assert.Empty(t, x.Incoming("inbox/a.md"))
+	assert.Empty(t, x.References("inbox/a.md"))
+	assert.Empty(t, x.ReferencedBy("inbox/a.md"))
 }

@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	outgoingTitle = "References"
-	incomingTitle = "Referenced by"
-	unresolved    = "unresolved"
-	noteExt       = ".md"
-	indent        = "  "
+	referencesTitle   = "References"
+	referencedByTitle = "Referenced by"
+	unresolved        = "unresolved"
+	noteExt           = ".md"
+	indent            = "  "
 )
 
 var (
@@ -58,13 +58,13 @@ func New() Model { return Model{} }
 // Clear empties the panel.
 func (m Model) Clear() Model { return Model{} }
 
-// Show lists the outgoing links and the incoming notes of the note at rel.
+// Show lists the references and the referenced-by notes of the note at rel.
 // The cursor stays where it was when rel is already shown.
-func (m Model) Show(rel string, outgoing []links.Link, incoming []string) Model {
+func (m Model) Show(rel string, references []links.Link, referencedBy []string) Model {
 	var lines []line
-	if len(outgoing) > 0 {
-		lines = append(lines, line{header: true, name: outgoingTitle})
-		for _, l := range outgoing {
+	if len(references) > 0 {
+		lines = append(lines, line{header: true, name: referencesTitle})
+		for _, l := range references {
 			e := line{name: l.Name, rel: l.Rel}
 			if l.Rel != "" {
 				e.where = folder(l.Rel)
@@ -74,9 +74,9 @@ func (m Model) Show(rel string, outgoing []links.Link, incoming []string) Model 
 			lines = append(lines, e)
 		}
 	}
-	if len(incoming) > 0 {
-		lines = append(lines, line{header: true, name: incomingTitle})
-		for _, r := range incoming {
+	if len(referencedBy) > 0 {
+		lines = append(lines, line{header: true, name: referencedByTitle})
+		for _, r := range referencedBy {
 			lines = append(lines, line{name: nameOf(r), rel: r, where: folder(r)})
 		}
 	}

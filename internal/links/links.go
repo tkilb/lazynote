@@ -1,5 +1,5 @@
 // Package links indexes the wikilinks in notes' related property: which
-// notes a note points to (outgoing) and which notes point to it (incoming).
+// notes a note references and which notes it is referenced by (backlinks).
 // Names resolve as in Obsidian: by file name without .md, case-insensitive,
 // ignoring a |alias and a #heading, and a duplicate name resolves to the
 // shortest path. Only the related property counts; links in the body and
@@ -27,7 +27,7 @@ const (
 // shows as tabs. The index covers what is under them.
 var Roots = []string{"inbox", "projects", "areas", "resources", "archives"}
 
-// Link is one outgoing link of a note.
+// Link is one reference of a note.
 type Link struct {
 	// Name is the target as written, without any |alias or #heading.
 	Name string
@@ -66,9 +66,9 @@ type noteInfo struct {
 
 // Index answers link queries for one notebook. Refresh brings it up to date.
 type Index struct {
-	notes    map[string]noteInfo // by rel
-	byName   map[string]string   // lowercased name -> rel
-	incoming map[string][]string // rel -> sorted rels linking to it
+	notes        map[string]noteInfo // by rel
+	byName       map[string]string   // lowercased name -> rel
+	referencedBy map[string][]string // rel -> sorted rels linking to it
 }
 
 // Build indexes every note in s.
@@ -149,14 +149,14 @@ func (x *Index) resolveAll() {
 			sets[to][rel] = true
 		}
 	}
-	x.incoming = make(map[string][]string, len(sets))
+	x.referencedBy = make(map[string][]string, len(sets))
 	for to, set := range sets {
 		rels := make([]string, 0, len(set))
 		for rel := range set {
 			rels = append(rels, rel)
 		}
 		sort.Strings(rels)
-		x.incoming[to] = rels
+		x.referencedBy[to] = rels
 	}
 }
 
@@ -178,9 +178,9 @@ func nameOf(rel string) string {
 	return name
 }
 
-// Outgoing returns the links of the note at rel, in the order written, one
+// References returns the links of the note at rel, in the order written, one
 // per distinct name.
-func (x *Index) Outgoing(rel string) []Link {
+func (x *Index) References(rel string) []Link {
 	if x == nil {
 		return nil
 	}
@@ -195,13 +195,13 @@ func (x *Index) Outgoing(rel string) []Link {
 	return out
 }
 
-// Incoming returns the notes whose related property links to the note at
+// ReferencedBy returns the notes whose related property links to the note at
 // rel, sorted, excluding the note itself.
-func (x *Index) Incoming(rel string) []string {
+func (x *Index) ReferencedBy(rel string) []string {
 	if x == nil {
 		return nil
 	}
-	return x.incoming[rel]
+	return x.referencedBy[rel]
 }
 
 // relatedTargets reads the note names out of the related property: a list of

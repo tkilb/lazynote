@@ -171,7 +171,7 @@ func (m model) syncSelection() model {
 		m.info = m.info.ShowDir(entry.Rel, entry.Name, entry.ItemCount)
 		return m
 	}
-	m.related = m.related.Show(entry.Rel, m.links.Outgoing(entry.Rel), m.links.Incoming(entry.Rel))
+	m.related = m.related.Show(entry.Rel, m.links.References(entry.Rel), m.links.ReferencedBy(entry.Rel))
 	note, err := m.store.ReadNote(entry.Rel)
 	if err != nil {
 		m.title = m.title.Set(entry.Name)
