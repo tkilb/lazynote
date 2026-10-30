@@ -93,6 +93,8 @@ const (
 	boxChrome = 4
 	// titleLead is how many border characters come before a title.
 	titleLead = 2
+	// hintTrail is how many border characters follow a right-aligned hint.
+	hintTrail = 1
 )
 
 var (
@@ -176,16 +178,16 @@ func titleBorder(title string, color lipgloss.Color, width int) string {
 }
 
 // hintBorder is the bottom border line of a box width columns wide, with the
-// key hint after one border character: "╰─(y) confirm────╯".
+// key hint right-aligned, one border character from the corner, in the
+// border's color: "╰────────(y) confirm─╯".
 func hintBorder(hint string, color lipgloss.Color, width int) string {
 	b := lipgloss.RoundedBorder()
-	lead := b.BottomLeft + b.Bottom
-	room := max(width-ansi.StringWidth(lead)-ansi.StringWidth(b.BottomRight), 0)
+	room := max(width-ansi.StringWidth(b.BottomLeft)-ansi.StringWidth(b.BottomRight)-hintTrail, 0)
 	hint = ansi.Truncate(hint, room, "…")
 	fill := strings.Repeat(b.Bottom, max(room-ansi.StringWidth(hint), 0))
 
 	line := lipgloss.NewStyle().Foreground(color)
-	return line.Render(lead) + lipgloss.NewStyle().Faint(true).Render(hint) + line.Render(fill+b.BottomRight)
+	return line.Render(b.BottomLeft + fill + hint + strings.Repeat(b.Bottom, hintTrail) + b.BottomRight)
 }
 
 // Overlay composites box on top of background, centered within a
