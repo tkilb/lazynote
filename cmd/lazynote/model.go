@@ -112,6 +112,7 @@ var bodyBindings = []statusbar.Binding{
 	{Key: "space", Label: "pick line"},
 	{Key: "v", Label: "select lines"},
 	{Key: "y", Label: "yank"},
+	{Key: "r", Label: "rename"},
 	{Key: "enter", Label: "extract"},
 	{Key: "esc/←", Label: "back to PARA"},
 }
@@ -366,6 +367,12 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		if key == "y" && m.focus == panelBody {
 			m = m.yankBody()
+			break
+		}
+		if key == "r" && m.focus == panelBody {
+			// Body shows the note under the PARA cursor, so renaming it is
+			// PARA's rename.
+			m, cmd = m.paraKey(msg)
 			break
 		}
 		switch m.focus {

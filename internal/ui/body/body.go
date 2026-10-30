@@ -130,6 +130,21 @@ func (m Model) Clear() Model {
 	return m.reset()
 }
 
+// Renamed moves the remembered place of the note at oldRel to newRel, so a
+// note keeps your place when it is renamed. Call it before the panel loads
+// the note under its new name.
+func (m Model) Renamed(oldRel, newRel string) Model {
+	m = m.remember()
+	if place, ok := m.places[oldRel]; ok {
+		m.places[newRel] = place
+		delete(m.places, oldRel)
+	}
+	if m.rel == oldRel {
+		m.rel = newRel
+	}
+	return m
+}
+
 // remember keeps the cursor of the note shown for later.
 func (m Model) remember() Model {
 	if m.rel != "" && m.err == nil {

@@ -31,8 +31,10 @@ func (m model) doRename(req *para.RenameRequest) model {
 		return m.notify(popup.Error, capitalize(fmt.Sprintf("rename failed: %s.", err)))
 	}
 	m.history.Push(act)
+	newRel := filepath.Join(filepath.Dir(req.Rel), req.Name)
+	m.body = m.body.Renamed(req.Rel, newRel)
 	m.para = m.para.Reload()
-	if p, ok := m.para.Reveal(filepath.Join(filepath.Dir(req.Rel), req.Name)); ok {
+	if p, ok := m.para.Reveal(newRel); ok {
 		m.para = p
 	}
 	m = m.refreshLinks()
@@ -68,6 +70,7 @@ func (m model) followTitle(rel string) model {
 		return m
 	}
 	m.history.Push(got.Action)
+	m.body = m.body.Renamed(rel, got.Rel)
 	m.para = m.para.Reload()
 	if p, ok := m.para.Reveal(got.Rel); ok {
 		m.para = p

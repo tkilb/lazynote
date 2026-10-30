@@ -69,6 +69,7 @@ var helpBodyBindings = []statusbar.Binding{
 	{Key: "ctrl+a", Label: "select all"},
 	{Key: "y", Label: "yank (copy) the selection, or the line, to the clipboard"},
 	{Key: "enter", Label: "extract the selection into a new note"},
+	{Key: "r", Label: "rename this note (updates references)"},
 	{Key: "esc", Label: "close the range, clear the selection, then leave"},
 }
 
