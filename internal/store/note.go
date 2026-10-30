@@ -20,6 +20,8 @@ type Note struct {
 	// FrontmatterErr is set when a properties block exists but cannot be
 	// used. The block is still removed from Body and left untouched on disk.
 	FrontmatterErr error
+	// Kind is the kind property, or KindUnset.
+	Kind Kind
 	// Body is the note text after the frontmatter, unmodified.
 	Body string
 }
@@ -33,6 +35,7 @@ func ParseNote(name string, data []byte) Note {
 		n.Frontmatter, n.FrontmatterErr = ParseFrontmatter(raw)
 	}
 	n.Title = noteTitle(name, n.Frontmatter)
+	n.Kind = KindOf(n.Frontmatter)
 	return n
 }
 
