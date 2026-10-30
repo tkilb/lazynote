@@ -181,6 +181,9 @@ func nameOf(rel string) string {
 // Outgoing returns the links of the note at rel, in the order written, one
 // per distinct name.
 func (x *Index) Outgoing(rel string) []Link {
+	if x == nil {
+		return nil
+	}
 	info, ok := x.notes[rel]
 	if !ok {
 		return nil
@@ -195,6 +198,9 @@ func (x *Index) Outgoing(rel string) []Link {
 // Incoming returns the notes whose related property links to the note at
 // rel, sorted, excluding the note itself.
 func (x *Index) Incoming(rel string) []string {
+	if x == nil {
+		return nil
+	}
 	return x.incoming[rel]
 }
 

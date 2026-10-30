@@ -653,7 +653,15 @@ Numbers are kept stable; resolved items were removed.
    folders, refreshed by modification time. In memory for now; the SQLite
    cache named in the Decisions (open for the project owner to confirm) is
    added only if startup scans prove slow. Engine tests only.
-8. Related panel, read-only (UI part, after 8a): `related` parsing, wikilink resolution,
+8. Related panel, read-only (UI part, after 8a). Built: two groups (Outgoing,
+   Incoming; an empty group is omitted, `(none)` when both are), each entry
+   with its PARA folder at the right, unresolved entries dimmed with
+   `unresolved`; `j`/`k` move over entries only; `enter` or `space` jumps
+   PARA to the note (tab, directory and cursor) and moves focus to PARA, and
+   on an unresolved entry shows an info popup instead; `esc`/`h` returns to
+   PARA. The index is built at startup and refreshed with `ctrl+l`, terminal
+   focus, the editor returning, and every undoable change or undo/redo.
+   Original description: `related` parsing, wikilink resolution,
    backlink index, panel follows PARA selection, `enter`/`space` to jump.
    8b. Related panel, editing: add (fuzzy picker) and remove relations, writing
    the `related` property without disturbing other frontmatter.

@@ -36,6 +36,7 @@ func failEdit(err error) tea.Cmd {
 // and reports a failure to run it.
 func (m model) finishEdit(msg editDoneMsg) model {
 	m.para = m.para.Reload()
+	m = m.refreshLinks()
 	if msg.err != nil {
 		m = m.notify(popup.Error, fmt.Sprintf("Could not run the editor: %s.", msg.err))
 	}

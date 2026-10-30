@@ -7,12 +7,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/links"
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/body"
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/lazynote/internal/ui/related"
 	"github.com/tkilb/lazynote/internal/ui/statusbar"
 	"github.com/tkilb/lazynote/internal/ui/title"
 	"github.com/tkilb/lazynote/internal/undo"
@@ -84,6 +86,12 @@ var paraBindings = []statusbar.Binding{
 	{Key: "enter", Label: "open"},
 }
 
+var relatedBindings = []statusbar.Binding{
+	{Key: "j/k", Label: "move"},
+	{Key: "enter/space", Label: "jump to note"},
+	{Key: "esc/h", Label: "back to PARA"},
+}
+
 var infoBindings = []statusbar.Binding{
 	{Key: "j/k", Label: "scroll"},
 	{Key: "esc/h", Label: "back to PARA"},
@@ -96,12 +104,15 @@ var bodyBindings = []statusbar.Binding{
 }
 
 type model struct {
-	store         store.Store
-	focus         panelID
-	para          para.Model
-	body          body.Model
-	info          info.Model
-	title         title.Model
+	store   store.Store
+	focus   panelID
+	para    para.Model
+	body    body.Model
+	info    info.Model
+	related related.Model
+	title   title.Model
+	// links indexes the related properties; nil until it could be built.
+	links         *links.Index
 	shown         shownNote
 	width, height int
 	// history is shared by pointer: it holds the session's undo/redo stack.
@@ -132,7 +143,7 @@ type shownNote struct {
 func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
-		body: body.New(), info: info.New(), title: title.New(), history: &undo.Stack{},
+		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{},
 	}
 }
 
@@ -143,6 +154,7 @@ func (m model) syncSelection() model {
 	entry, ok := m.para.Selected()
 	if !ok {
 		m.body, m.info, m.shown = m.body.Clear(), m.info.Clear(), shownNote{}
+		m.related = m.related.Clear()
 		m.title = m.title.Set("")
 		return m
 	}
@@ -155,9 +167,11 @@ func (m model) syncSelection() model {
 	if entry.IsDir {
 		m.title = m.title.Set("")
 		m.body = m.body.Clear()
+		m.related = m.related.Clear()
 		m.info = m.info.ShowDir(entry.Rel, entry.Name, entry.ItemCount)
 		return m
 	}
+	m.related = m.related.Show(entry.Rel, m.links.Outgoing(entry.Rel), m.links.Incoming(entry.Rel))
 	note, err := m.store.ReadNote(entry.Rel)
 	if err != nil {
 		m.title = m.title.Set(entry.Name)
@@ -194,6 +208,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// A pending question was worded for the rows on screen, so it waits.
 		if m.pending == nil {
 			m.para = m.para.Reload()
+			m = m.refreshLinks()
 		}
 		return m, nil
 	case editDoneMsg:
@@ -236,6 +251,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.saveOrWarn(), tea.Suspend
 	case "ctrl+l":
 		m.para = m.para.Reload()
+		m = m.refreshLinks()
 		cmd = tea.ClearScreen
 	case "u":
 		m = m.runHistory("Undid", "Undo", m.history.Undo)
@@ -249,12 +265,16 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = panelID(key[0] - '0')
 	case "esc", "left", "h":
 		switch m.focus {
-		case panelBody, panelInfo:
+		case panelBody, panelInfo, panelRelated:
 			m.focus = panelPARA
 		case panelPARA:
 			m, cmd = m.paraKey(msg)
 		}
 	case "enter", "right", "l":
+		if m.focus == panelRelated {
+			m, cmd = m.relatedKey(msg)
+			break
+		}
 		if m.focus != panelPARA {
 			break
 		}
@@ -267,6 +287,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch m.focus {
 		case panelPARA:
 			m, cmd = m.paraKey(msg)
+		case panelRelated:
+			m, cmd = m.relatedKey(msg)
 		case panelBody:
 			m.body = m.body.Update(msg)
 		case panelInfo:
@@ -288,6 +310,8 @@ func (m model) bindings() []statusbar.Binding {
 	switch m.focus {
 	case panelPARA:
 		local = paraBindings
+	case panelRelated:
+		local = relatedBindings
 	case panelBody:
 		local = bodyBindings
 	case panelInfo:
@@ -305,6 +329,8 @@ func (m model) View() string {
 		switch id {
 		case panelPARA:
 			return m.para.View(w, h, m.focus == id)
+		case panelRelated:
+			return m.related.View(w, h, m.focus == id)
 		case panelBody:
 			return m.body.View(w, h, m.focus == id)
 		case panelInfo:

@@ -36,6 +36,7 @@ const inputCharLimit = 255
 func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 	if eff.Action != nil {
 		m.history.Push(*eff.Action)
+		m = m.refreshLinks()
 	}
 	if eff.Info != "" {
 		m = m.notify(popup.Info, eff.Info)
@@ -139,7 +140,7 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 		m = m.notify(popup.Info, done+": "+desc)
 	}
 	m.para = m.para.Reload()
-	return m
+	return m.refreshLinks()
 }
 
 // overlayModals draws the open question or prompt over view, then the

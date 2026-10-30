@@ -175,3 +175,9 @@ func TestAnUnreadableNoteDoesNotStopTheIndex(t *testing.T) {
 	assert.Equal(t, "areas/T.md", x.Outgoing("inbox/ok.md")[0].Rel)
 	assert.Empty(t, x.Outgoing("inbox/big.md"))
 }
+
+func TestANilIndexAnswersEmpty(t *testing.T) {
+	var x *Index
+	assert.Empty(t, x.Outgoing("inbox/a.md"))
+	assert.Empty(t, x.Incoming("inbox/a.md"))
+}

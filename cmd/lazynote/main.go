@@ -65,7 +65,7 @@ func main() {
 	if sessErr != nil {
 		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
 	}
-	start = start.withSession(sess)
+	start = start.withSession(sess).refreshLinks()
 
 	// The alternate screen gives the program the full terminal buffer, so
 	// resuming after ctrl+z or an external editor repaints cleanly. Focus
