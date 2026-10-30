@@ -129,7 +129,7 @@ func (m Model) Reload() Model {
 
 // load reads tab i's current directory and each note's kind.
 func (m Model) load(i int) Model {
-	t := m.tabs[i]
+	t := m.nearestExisting(i, m.tabs[i])
 	dir := filepath.Join(tabDefs[i].dir, t.dir)
 	entries, err := m.store.List(dir, store.ListOptions{ShowHidden: m.showHidden})
 	rows := make([]row, len(entries))
@@ -148,6 +148,25 @@ func (m Model) load(i int) Model {
 	t.selected = pruned(t.selected, rows)
 	m.tabs[i] = t
 	return m
+}
+
+// nearestExisting climbs out of a current directory that no longer exists,
+// for example one deleted outside the app, to the closest ancestor that
+// does, with the cursor on the folder it left. Anything tied to the old
+// directory (selection, search) is dropped, as when leaving it by hand.
+func (m Model) nearestExisting(i int, t tabState) tabState {
+	for t.dir != "" {
+		ok, err := m.store.Exists(filepath.Join(tabDefs[i].dir, t.dir))
+		if err != nil || ok {
+			break
+		}
+		t.keep = filepath.Base(t.dir)
+		if t.dir = filepath.Dir(t.dir); t.dir == "." {
+			t.dir = ""
+		}
+		t.selected, t.visual, t.search = nil, visualState{}, ""
+	}
+	return t
 }
 
 // restoreCursor returns the row index named keep, or cursor clamped to the

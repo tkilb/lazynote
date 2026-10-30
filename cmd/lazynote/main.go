@@ -58,8 +58,10 @@ func main() {
 	}
 
 	// The alternate screen gives the program the full terminal buffer, so
-	// resuming after ctrl+z or an external editor repaints cleanly.
-	p := tea.NewProgram(initialModel(st), tea.WithAltScreen())
+	// resuming after ctrl+z or an external editor repaints cleanly. Focus
+	// reporting lets the app refresh when the terminal regains focus (not
+	// every terminal sends it; ctrl+l always works).
+	p := tea.NewProgram(initialModel(st), tea.WithAltScreen(), tea.WithReportFocus())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running lazynote: %v\n", err)
 		os.Exit(1)

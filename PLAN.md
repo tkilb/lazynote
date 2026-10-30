@@ -315,7 +315,11 @@ Conflict notes:
   refresh reloads the current directory listing, the selected note (Body and
   Info) and the link index for files whose modification time changed. The
   cursor stays on the same file name; if that file is gone, it stays at the
-  same row. A cut or yank entry whose file has vanished is dropped and
+  same row. If the directory you are in has vanished, the panel falls back
+  to the nearest ancestor that still exists (dropping its selection and
+  search). Other tabs reload when next shown. A refresh waits while a
+  confirmation is open, so the question always matches the rows it was
+  asked about. A cut or yank entry whose file has vanished is dropped and
   reported when pasting.
 - Frontmatter follows Obsidian's "properties" format: a YAML block delimited
   by `---` at the top of the file. Keys are free-form; `tags` and `aliases`

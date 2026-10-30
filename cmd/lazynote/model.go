@@ -58,6 +58,7 @@ var globalBindings = []statusbar.Binding{
 	{Key: "0-4", Label: "focus panel"},
 	{Key: "tab", Label: "next panel"},
 	{Key: "u", Label: "undo"},
+	{Key: "ctrl+l", Label: "refresh"},
 	{Key: "ctrl+z", Label: "suspend"},
 	{Key: "q", Label: "quit"},
 }
@@ -109,6 +110,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		g := computeGrid(m.width, m.height-1)
 		_, rows := panel.InnerSize(g.leftWidth, g.paraHeight)
 		m.para = m.para.Resize(rows)
+	case tea.FocusMsg:
+		// Files may have changed while the terminal was in the background.
+		// A pending question was worded for the rows on screen, so it waits.
+		if m.pending == nil {
+			m.para = m.para.Reload()
+		}
+		return m, nil
 	case tea.ResumeMsg:
 		// Returning from ctrl+z: repaint everything on the alternate screen.
 		return m, tea.ClearScreen
@@ -144,6 +152,9 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "ctrl+z":
 		return m, tea.Suspend
+	case "ctrl+l":
+		m.para = m.para.Reload()
+		cmd = tea.ClearScreen
 	case "u":
 		m = m.runHistory("Undid", "Undo", m.history.Undo)
 	case "ctrl+r":
