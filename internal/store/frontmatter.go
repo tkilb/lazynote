@@ -53,6 +53,26 @@ func (f *Frontmatter) Get(key string) *yaml.Node {
 	return nil
 }
 
+// Property is one key and value of the properties block.
+type Property struct {
+	Key   string
+	Value *yaml.Node
+}
+
+// Properties returns every property in file order. Keys that are not plain
+// scalars are named by their text, or "?" when they have none.
+func (f *Frontmatter) Properties() []Property {
+	props := make([]Property, 0, len(f.node.Content)/2)
+	for i := 0; i+1 < len(f.node.Content); i += 2 {
+		key := f.node.Content[i].Value
+		if key == "" {
+			key = "?"
+		}
+		props = append(props, Property{Key: key, Value: f.node.Content[i+1]})
+	}
+	return props
+}
+
 // Marshal encodes the properties as YAML (without delimiters). An empty
 // mapping encodes as no bytes.
 func (f *Frontmatter) Marshal() ([]byte, error) {

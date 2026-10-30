@@ -6,18 +6,16 @@ package body
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/textsafe"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
 
 const (
-	// tabWidth is how many spaces a tab expands to before wrapping.
-	tabWidth = 4
 	// defaultHeight is the page size until the first Resize.
 	defaultHeight = 10
 )
@@ -64,7 +62,7 @@ func (m Model) Load(rel, text string) Model {
 		m.offset = 0
 	}
 	m.rel, m.err = rel, nil
-	m.text = Sanitize(strings.Trim(text, "\r\n"))
+	m.text = textsafe.Sanitize(strings.Trim(text, "\r\n"))
 	m = m.wrap()
 	m.offset = m.clamp(m.offset)
 	return m
@@ -137,26 +135,4 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		}
 	}
 	return panel.Frame("0 Body", content, width, height, focused, footer)
-}
-
-// Sanitize makes untrusted note text safe to draw: carriage returns are
-// dropped, tabs become spaces, and every other control character,
-// including escape and the C1 range, is removed, so a note can never send
-// terminal escape sequences. Newlines are kept.
-func Sanitize(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range s {
-		switch {
-		case r == '\n':
-			b.WriteRune(r)
-		case r == '\t':
-			b.WriteString(strings.Repeat(" ", tabWidth))
-		case r == '\r', unicode.IsControl(r):
-			// dropped
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
 }

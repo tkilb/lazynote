@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/lazynote/internal/ui/kindstyle"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
 
@@ -17,8 +17,6 @@ const panelNumber = '2'
 
 const (
 	badgeWidth = 4
-	// unsetBadge stands in for a note whose kind is unset.
-	unsetBadge = "----"
 )
 
 var (
@@ -64,19 +62,6 @@ const (
 	markerBar   = "▎"
 	markerWidth = 1
 )
-
-// badges gives each kind a four-letter label and a color class.
-var badges = map[store.Kind]struct {
-	text  string
-	color lipgloss.Color
-}{
-	store.KindFact:     {"fact", lipgloss.Color("2")},
-	store.KindRumor:    {"rumr", lipgloss.Color("3")},
-	store.KindProposal: {"prop", lipgloss.Color("4")},
-	store.KindFossil:   {"foss", lipgloss.Color("8")},
-	store.KindIdea:     {"idea", lipgloss.Color("6")},
-	store.KindDraft:    {"draf", lipgloss.Color("5")},
-}
 
 // View renders the panel into outerWidth x outerHeight, border included.
 func (m Model) View(outerWidth, outerHeight int, focused bool) string {
@@ -158,10 +143,8 @@ func renderRow(r row, width int, cursor bool, mk mark, query string) string {
 	if r.entry.IsDir {
 		name = r.entry.Name + "/"
 		right = fmt.Sprint(r.entry.ItemCount)
-	} else if b, ok := badges[r.kind]; ok {
-		badge, badgeColor = b.text, b.color
 	} else {
-		badge, badgeColor = unsetBadge, lipgloss.Color("245")
+		badge, badgeColor = kindstyle.Badge(r.kind)
 	}
 
 	nameWidth := max(width-badgeWidth-1-len(right)-1, 1)

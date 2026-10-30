@@ -131,3 +131,21 @@ func TestParseFrontmatterErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestFrontmatterProperties(t *testing.T) {
+	fm, err := ParseFrontmatter([]byte("zeta: 1\nuid: u\ntags: [a, b]\nnested:\n  k: v\nempty:\n? [complex]\n: x\n"))
+	require.NoError(t, err)
+
+	props := fm.Properties()
+	var keys []string
+	for _, p := range props {
+		keys = append(keys, p.Key)
+	}
+	assert.Equal(t, []string{"zeta", "uid", "tags", "nested", "empty", "?"}, keys, "file order, odd keys named ?")
+	assert.Equal(t, "1", props[0].Value.Value)
+	assert.Len(t, props[2].Value.Content, 2)
+
+	empty, err := ParseFrontmatter(nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty.Properties())
+}

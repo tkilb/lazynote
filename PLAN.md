@@ -381,6 +381,21 @@ Conflict notes:
   deleting or trashing a directory counts every entry on disk, not just the
   listed ones, and the confirm popup says how many unlisted files it holds.
   Cutting and pasting a directory moves everything inside it.
+- Info lists, for the note under the cursor: a highlighted `Kind` row (the
+  badge color, `unset` when missing or unrecognized), `Title`, `File`, then
+  every frontmatter property except `uid`, in file order, as a label column
+  and wrapped values. A scalar shows its text; a list of scalars is one
+  comma-separated line (`tags  work, ideas`); other lists show one `- ` item
+  per line; a mapping shows indented `key: value` lines; aliases show what
+  they point to. Depth and length are bounded (400 lines, 8 levels), and all
+  text is sanitized like Body. The `kind` property is not repeated unless
+  its value is unrecognized, so the raw text stays visible, and a `title`
+  property equal to the shown title is not repeated. Invalid frontmatter
+  shows a red `Properties` row. For a folder, Info shows its name and the
+  number of entries it lists; a note that cannot be read shows the error.
+  `↑/k` `↓/j` scroll, with a position footer when it overflows, and `esc` or
+  `h` returns to PARA. Info is about a third of the right column (at least
+  7 rows), Body gets the rest.
 - Body shows the note under the PARA cursor as plain text and follows it as
   the cursor moves; with a directory selected it is empty, and a note that
   cannot be read shows the error (for example "note is too large"). The

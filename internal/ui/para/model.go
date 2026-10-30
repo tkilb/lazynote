@@ -313,6 +313,15 @@ func (m Model) switchTab(i int) Model {
 	return m
 }
 
+// Selected returns the entry under the cursor, a note or a directory.
+func (m Model) Selected() (store.Entry, bool) {
+	t := m.tabs[m.active]
+	if t.cursor >= len(t.rows) {
+		return store.Entry{}, false
+	}
+	return t.rows[t.cursor].entry, true
+}
+
 // SelectedNote returns the entry under the cursor when it is a note.
 func (m Model) SelectedNote() (store.Entry, bool) {
 	t := m.tabs[m.active]

@@ -9,6 +9,7 @@ import (
 
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/body"
+	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
@@ -81,6 +82,11 @@ var paraBindings = []statusbar.Binding{
 	{Key: "enter", Label: "open"},
 }
 
+var infoBindings = []statusbar.Binding{
+	{Key: "j/k", Label: "scroll"},
+	{Key: "esc/h", Label: "back to PARA"},
+}
+
 var bodyBindings = []statusbar.Binding{
 	{Key: "j/k", Label: "scroll"},
 	{Key: "ctrl+d/u", Label: "half page"},
@@ -92,6 +98,7 @@ type model struct {
 	focus         panelID
 	para          para.Model
 	body          body.Model
+	info          info.Model
 	shown         shownNote
 	width, height int
 	// history is shared by pointer: it holds the session's undo/redo stack.
@@ -105,36 +112,51 @@ type model struct {
 	input *input
 }
 
-// shownNote identifies the note the Body panel last loaded: a changed
-// modification time means the file changed on disk.
+// shownNote identifies what the Body and Info panels last loaded. A changed
+// modification time means the file changed on disk, and a changed item
+// count means a folder listed differently (for example after toggling
+// hidden files).
 type shownNote struct {
-	rel string
-	mod time.Time
+	rel   string
+	mod   time.Time
+	items int
 }
 
 func initialModel(s store.Store) model {
-	return model{store: s, focus: panelPARA, para: para.New(s), body: body.New(), history: &undo.Stack{}}
+	return model{
+		store: s, focus: panelPARA, para: para.New(s),
+		body: body.New(), info: info.New(), history: &undo.Stack{},
+	}
 }
 
-// syncBody makes the Body panel show the note under the PARA cursor,
-// reading it only when the selection or the file changed.
-func (m model) syncBody() model {
-	entry, ok := m.para.SelectedNote()
+// syncSelection makes Body and Info show what is under the PARA cursor,
+// reading the note once, and only when the selection or the file changed.
+// A folder shows its name and item count in Info and nothing in Body.
+func (m model) syncSelection() model {
+	entry, ok := m.para.Selected()
 	if !ok {
-		m.body, m.shown = m.body.Clear(), shownNote{}
+		m.body, m.info, m.shown = m.body.Clear(), m.info.Clear(), shownNote{}
 		return m
 	}
-	now := shownNote{rel: entry.Rel, mod: entry.ModTime}
+	now := shownNote{rel: entry.Rel, mod: entry.ModTime, items: entry.ItemCount}
 	if now == m.shown {
 		return m
 	}
 	m.shown = now
+
+	if entry.IsDir {
+		m.body = m.body.Clear()
+		m.info = m.info.ShowDir(entry.Rel, entry.Name, entry.ItemCount)
+		return m
+	}
 	note, err := m.store.ReadNote(entry.Rel)
 	if err != nil {
 		m.body = m.body.Fail(entry.Rel, err)
+		m.info = m.info.ShowError(entry.Rel, entry.Name, err)
 		return m
 	}
 	m.body = m.body.Load(entry.Rel, note.Body)
+	m.info = m.info.ShowNote(entry.Rel, note)
 	return m
 }
 
@@ -142,7 +164,7 @@ func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
-	return next.(model).syncBody(), cmd
+	return next.(model).syncSelection(), cmd
 }
 
 func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -154,6 +176,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.para = m.para.Resize(rows)
 		bw, bh := panel.InnerSize(g.rightWidth, g.bodyHeight)
 		m.body = m.body.Resize(bw, bh)
+		iw, ih := panel.InnerSize(g.rightWidth, g.infoHeight)
+		m.info = m.info.Resize(iw, ih)
 	case tea.FocusMsg:
 		// Files may have changed while the terminal was in the background.
 		// A pending question was worded for the rows on screen, so it waits.
@@ -211,7 +235,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = panelID(key[0] - '0')
 	case "esc", "left", "h":
 		switch m.focus {
-		case panelBody:
+		case panelBody, panelInfo:
 			m.focus = panelPARA
 		case panelPARA:
 			m, cmd = m.paraKey(msg)
@@ -231,6 +255,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m, cmd = m.paraKey(msg)
 		case panelBody:
 			m.body = m.body.Update(msg)
+		case panelInfo:
+			m.info = m.info.Update(msg)
 		}
 	}
 	return m, cmd
@@ -250,6 +276,8 @@ func (m model) bindings() []statusbar.Binding {
 		local = paraBindings
 	case panelBody:
 		local = bodyBindings
+	case panelInfo:
+		local = infoBindings
 	}
 	return append(append([]statusbar.Binding(nil), local...), globalBindings...)
 }
@@ -265,6 +293,8 @@ func (m model) View() string {
 			return m.para.View(w, h, m.focus == id)
 		case panelBody:
 			return m.body.View(w, h, m.focus == id)
+		case panelInfo:
+			return m.info.View(w, h, m.focus == id)
 		}
 		title := string(rune('0'+id)) + " " + panelNames[id]
 		return panel.Render(title, "", w, h, m.focus == id)
