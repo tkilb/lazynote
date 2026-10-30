@@ -43,7 +43,7 @@ var helpParaBindings = []statusbar.Binding{
 	{Key: "a", Label: "new note (end with / for folder)"},
 	{Key: "r", Label: "rename (updates references)"},
 	{Key: "K", Label: "set the note's kind"},
-	{Key: "m", Label: "move the note to a tab (then i p a r A)"},
+	{Key: "m", Label: "move the note to a tab (keys i p a r A, or arrows)"},
 	{Key: "e", Label: "edit in $EDITOR"},
 	{Key: "/", Label: "search names"},
 	{Key: "n/N", Label: "next/previous match"},

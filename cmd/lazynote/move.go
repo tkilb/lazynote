@@ -35,17 +35,28 @@ func moveMenu() []popup.MenuItem {
 }
 
 // moveKey handles a key while the move menu is open: a destination key moves
-// the note at once, esc closes the menu, other keys are ignored.
+// the note at once, the arrows highlight a row and enter moves to it, esc
+// closes the menu, and other keys are ignored.
 func (m model) moveKey(key string) (tea.Model, tea.Cmd) {
-	if key == "esc" {
+	pick := func(d moveDestination) (tea.Model, tea.Cmd) {
+		rel := m.moving
 		m.moving = ""
-		return m, nil
+		return m.moveTo(rel, d), nil
 	}
-	for _, d := range moveDestinations {
-		if d.key == key {
-			rel := m.moving
-			m.moving = ""
-			return m.moveTo(rel, d), nil
+	switch key {
+	case "esc":
+		m.moving = ""
+	case "up":
+		m.moveCursor = max(m.moveCursor-1, 0)
+	case "down":
+		m.moveCursor = min(m.moveCursor+1, len(moveDestinations)-1)
+	case "enter":
+		return pick(moveDestinations[m.moveCursor])
+	default:
+		for _, d := range moveDestinations {
+			if d.key == key {
+				return pick(d)
+			}
 		}
 	}
 	return m, nil

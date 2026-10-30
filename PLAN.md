@@ -719,7 +719,8 @@ Numbers are kept stable; resolved items were removed.
    (9e) is still to come.
    `m` on a note opens a "Move to" menu (`i` Inbox, `p` Projects, `a` Areas,
    `r` Resources, `A` Archives); the next key moves the note at once to the
-   root of that tab, keeping its name and `uid`, as one undo entry; `esc`
+   root of that tab (or `↑`/`↓` highlight a row, starting on Inbox, and
+   `enter` moves to it), keeping its name and `uid`, as one undo entry; `esc`
    cancels and other keys are ignored. A dated daily note moved with `A`
    goes to `archives/daily/` (`store.MoveDestination`). A note already at the
    destination root says so; a name collision shows an error and moves

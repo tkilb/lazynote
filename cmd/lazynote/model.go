@@ -136,8 +136,10 @@ type model struct {
 	pickerOp  pickerOp
 	// pickerKind is the kind the note had when the kind picker opened.
 	pickerKind store.Kind
-	// moving is the note a destination menu is open for ("" for none).
-	moving string
+	// moving is the note a destination menu is open for ("" for none), and
+	// moveCursor the highlighted row.
+	moving     string
+	moveCursor int
 	// question is a yes/no question owned by the root model, with what to do
 	// on yes (the para panel's own questions use pending instead).
 	question *question
