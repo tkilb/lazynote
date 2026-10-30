@@ -91,6 +91,8 @@ const (
 
 	// boxChrome is the columns a box spends on its border and padding.
 	boxChrome = 4
+	// titleLead is how many border characters come before a title.
+	titleLead = 2
 )
 
 var (
@@ -138,19 +140,47 @@ func boxWidth(screenWidth int) int {
 	return max(w, minBoxWidth)
 }
 
-// renderBox lays out a bordered box with a colored title, body text and a
-// hint line at the bottom.
+// renderBox lays out a bordered box with its colored title embedded in the
+// top border line and its key hint in the bottom one, as the panels do,
+// around the body text.
 func renderBox(titleText string, color lipgloss.Color, hintText, bodyText string, screenWidth int) string {
-	title := lipgloss.NewStyle().Bold(true).Foreground(color).Render(titleText)
-	hint := lipgloss.NewStyle().Faint(true).Render(hintText)
-	body := lipgloss.JoinVertical(lipgloss.Left, title, "", bodyText, "", hint)
-
-	return lipgloss.NewStyle().
+	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
+		BorderTop(false).
+		BorderBottom(false).
 		BorderForeground(color).
 		Padding(0, 1).
 		Width(boxWidth(screenWidth)).
-		Render(body)
+		Render(bodyText)
+	width := ansi.StringWidth(strings.SplitN(box, "\n", 2)[0])
+	return titleBorder(titleText, color, width) + "\n" + box + "\n" + hintBorder(hintText, color, width)
+}
+
+// titleBorder is the top border line of a box width columns wide, with the
+// title after two border characters, as in a panel: "╭──Title─────╮".
+func titleBorder(title string, color lipgloss.Color, width int) string {
+	b := lipgloss.RoundedBorder()
+	lead := b.TopLeft + strings.Repeat(b.Top, titleLead)
+	room := max(width-ansi.StringWidth(lead)-ansi.StringWidth(b.TopRight), 0)
+	title = ansi.Truncate(title, room, "…")
+	fill := strings.Repeat(b.Top, max(room-ansi.StringWidth(title), 0))
+
+	line := lipgloss.NewStyle().Foreground(color)
+	label := lipgloss.NewStyle().Bold(true).Foreground(color).Render(title)
+	return line.Render(lead) + label + line.Render(fill+b.TopRight)
+}
+
+// hintBorder is the bottom border line of a box width columns wide, with the
+// key hint after one border character: "╰─(y) confirm────╯".
+func hintBorder(hint string, color lipgloss.Color, width int) string {
+	b := lipgloss.RoundedBorder()
+	lead := b.BottomLeft + b.Bottom
+	room := max(width-ansi.StringWidth(lead)-ansi.StringWidth(b.BottomRight), 0)
+	hint = ansi.Truncate(hint, room, "…")
+	fill := strings.Repeat(b.Bottom, max(room-ansi.StringWidth(hint), 0))
+
+	line := lipgloss.NewStyle().Foreground(color)
+	return line.Render(lead) + lipgloss.NewStyle().Faint(true).Render(hint) + line.Render(fill+b.BottomRight)
 }
 
 // Overlay composites box on top of background, centered within a

@@ -246,7 +246,9 @@ Conflict notes:
 - Notifications follow lazytask: errors, warnings and informational results
   appear as modal popups (`internal/ui/popup`, ported), queued and shown
   one at a time, each dismissed (and the key consumed) by any key, with a
-  colored title: Info blue, Warning orange, Error red. Confirmations are
+  colored title: Info blue, Warning orange, Error red. Every popup (these,
+  confirmations, input prompts) draws its title in the top border and its key
+  hint in the bottom border, as the panels, the picker and the help popup do. Confirmations are
   popups too (orange; red for trash and delete), and text
   prompts are input popups. Routine successes (yank, cut, paste, create,
   trash, delete) show no popup because the list and markers already show
