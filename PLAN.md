@@ -728,8 +728,10 @@ Numbers are kept stable; resolved items were removed.
      (`internal/ui/noteform`), opened with `A` from any panel. Four boxes, in
      tab order: "Quick Add: Title", "Body", "Kind" and "Tags", each its own
      bordered box with the field name in the border and the focused one
-     highlighted. `tab` and `shift+tab` move between them (the arrows belong
-     to the body's cursor). The body is multi-line and scrolls inside a fixed
+     highlighted. `tab` and `shift+tab` move between them (they wrap around),
+     and so do `↑`/`↓` (they stop at the first and last box). In the body the
+     arrows first move its own cursor and only leave it from the first or
+     last displayed row, wrapped lines counted. The body is multi-line and scrolls inside a fixed
      height of 3 to 8 lines (more on a tall terminal), with the cursor line
      and total shown at the bottom left once it overflows; `enter` there
      starts a new line. The kind box shows `‹ kind ›` in its color with its

@@ -58,10 +58,10 @@ const (
 // hints are the key hints for each focused field, shown on the bottom border
 // of the last box.
 var hints = [fieldCount]string{
-	FieldTitle: "(tab) next  (enter) save  (esc) cancel",
-	FieldBody:  "(tab) next  (ctrl+s) save  (esc) cancel",
-	FieldKind:  "(←/→) change  (enter) save  (esc) cancel",
-	FieldTags:  "(tab) next  (enter) save  (esc) cancel",
+	FieldTitle: "(tab/↓) next  (enter) save  (esc) cancel",
+	FieldBody:  "(tab, or ↑/↓ at the ends) move  (ctrl+s) save  (esc) cancel",
+	FieldKind:  "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldTags:  "(tab/↑↓) move  (enter) save  (esc) cancel",
 }
 
 // Values are what the user entered.
@@ -174,9 +174,10 @@ func (m Model) focus(f Field) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-// Update handles a message: tab and shift+tab move between the fields,
-// Left and Right change the kind while it has the focus, and everything else
-// goes to the focused field. It does not interpret enter, esc or ctrl+s,
+// Update handles a message: tab and shift+tab move between the fields, and so
+// do Up and Down (in the body only at its first or last line, so its own
+// cursor keeps working); Left and Right change the kind while it has the
+// focus, and everything else goes to the focused field. It does not interpret enter, esc or ctrl+s,
 // which the host uses to save and cancel.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyMsg); ok {
@@ -185,6 +186,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.focus((m.focused + 1) % fieldCount)
 		case "shift+tab":
 			return m.focus((m.focused + fieldCount - 1) % fieldCount)
+		case "up":
+			if m.atEdge(-1) {
+				return m.step(-1)
+			}
+		case "down":
+			if m.atEdge(1) {
+				return m.step(1)
+			}
 		}
 	}
 	var cmd tea.Cmd
@@ -207,6 +216,31 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.tags, cmd = m.tags.Update(msg)
 	}
 	return m, cmd
+}
+
+// atEdge reports whether an arrow key in direction dir (-1 up, 1 down) should
+// leave the focused field rather than move inside it. A one-line field is
+// always at its edge; the body is when its cursor is on its first (or last)
+// displayed row, counting wrapped lines.
+func (m Model) atEdge(dir int) bool {
+	if m.focused != FieldBody {
+		return true
+	}
+	info := m.body.LineInfo()
+	if dir < 0 {
+		return m.body.Line() == 0 && info.RowOffset == 0
+	}
+	return m.body.Line() == m.body.LineCount()-1 && info.RowOffset == info.Height-1
+}
+
+// step moves the focus one field in direction dir, staying put at the first
+// and last field (unlike tab, the arrows do not wrap around).
+func (m Model) step(dir int) (Model, tea.Cmd) {
+	next := m.focused + Field(dir)
+	if next < 0 || next >= fieldCount {
+		return m, nil
+	}
+	return m.focus(next)
 }
 
 // followCursor scrolls the text area to its cursor right away. The text
