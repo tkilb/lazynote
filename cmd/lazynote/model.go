@@ -157,7 +157,7 @@ func (m model) syncSelection() model {
 	if err != nil {
 		m.title = m.title.Set(entry.Name)
 		m.body = m.body.Fail(entry.Rel, err)
-		m.info = m.info.ShowError(entry.Rel, entry.Name, err)
+		m.info = m.info.ShowError(entry.Rel, err)
 		return m
 	}
 	m.title = m.title.SetNote(note.Kind, note.Title)

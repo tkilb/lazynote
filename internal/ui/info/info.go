@@ -1,7 +1,7 @@
-// Package info implements the Info panel: the kind and file name of the
-// selected note followed by every frontmatter property except the uid, in
-// file order, with nested values drawn generically. (The title has its own
-// panel.) For a folder it shows the name and item count.
+// Package info implements the Info panel: the kind of the selected note
+// followed by every frontmatter property except the uid, in file order, with
+// nested values drawn generically. (The title has its own panel.) For a
+// folder it shows the name and item count.
 package info
 
 import (
@@ -86,7 +86,6 @@ func (m Model) Clear() Model {
 func (m Model) ShowNote(rel string, n store.Note) Model {
 	rows := []row{
 		{label: "Kind", value: []string{n.Kind.String()}, highlight: kindstyle.Color(n.Kind)},
-		{label: "File", value: single(n.Name), style: plain},
 	}
 	if n.FrontmatterErr != nil {
 		rows = append(rows, row{
@@ -116,9 +115,8 @@ func (m Model) ShowDir(rel, name string, items int) Model {
 }
 
 // ShowError shows that the note at rel could not be read.
-func (m Model) ShowError(rel, name string, err error) Model {
+func (m Model) ShowError(rel string, err error) Model {
 	return m.show(rel, []row{
-		{label: "File", value: single(name), style: plain},
 		{label: "Error", value: single(err.Error()), style: errorStyle},
 	})
 }

@@ -26,7 +26,7 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
 | —   | Title    | Title of the selected note on one line, led by its kind badge. Display only: no number key, not in the focus cycle. |
 | `0` | Body     | Read-only plain-text view of the selected note (frontmatter hidden, lines wrapped).                                                                                                               |
-| `4` | Info     | Kind (highlighted), file name and every frontmatter property except `uid` of the selected note (Obsidian-style: `tags`, `aliases`, custom keys). Sits below Body. |
+| `4` | Info     | Kind (highlighted) and every frontmatter property except `uid` of the selected note (Obsidian-style: `tags`, `aliases`, custom keys). Sits below Body. |
 
 Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Notebook, PARA, Related, Body, Info and
 back; the Title panel is never focusable. Mouse support follows lazytask.
@@ -334,11 +334,10 @@ Conflict notes:
 - Uid: every note carries a stable `uid` property, a random UUIDv4
   generated with the standard library (`crypto/rand`, no new dependency). It
   never changes, including across rename and move, and the backlink index
-  keys on it. Info does not display it, and shows the file name instead
-  (below). A note without a `uid` gets one the first time lazynote writes
-  it for any reason (create, import, rename, kind change, relation edit);
+  keys on it. Info does not display it. A note without a `uid` gets one the
+  first time lazynote writes it for any reason (create, import, rename, kind change, relation edit);
   lazynote never rewrites an untouched note just to add one.
-- Info shows the kind, the file name and all properties except `uid`, so no
+- Info shows the kind and all properties except `uid`, so no
   schema is enforced. The title has its own panel above Body.
 - Relations: the `related` frontmatter property, a list of `[[wikilinks]]`
   (for example `related: ["[[Project Alpha]]", "[[Meeting 2026-10-01]]"]`).
@@ -386,7 +385,7 @@ Conflict notes:
   listed ones, and the confirm popup says how many unlisted files it holds.
   Cutting and pasting a directory moves everything inside it.
 - Info lists, for the note under the cursor: a highlighted `Kind` row (the
-  badge color, `unset` when missing or unrecognized), `File`, then
+  badge color, `unset` when missing or unrecognized), then
   every frontmatter property except `uid`, in file order. To save vertical
   space the rows flow into columns (as many as fit, 24 columns wide at
   least, up to three): a row whose label and value fit on one line within a
@@ -582,7 +581,7 @@ Numbers are kept stable; resolved items were removed.
    to the link index (8) and hook it to `$EDITOR` returning (9).
 4. Body panel: show the selected note as plain text, frontmatter stripped,
    long lines wrapped, scrollable.
-5. Info panel (and the display-only Title panel): kind, file name and all
+5. Info panel (and the display-only Title panel): kind and all
    frontmatter properties except `uid`,
    rendered generically (scalars, lists, nested values), in file order.
 6. `internal/state`: SQLite persistence and restore on launch, including
