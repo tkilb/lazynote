@@ -41,6 +41,9 @@ var (
 // is shown dim at the right; Value is what the caller gets back.
 type Item struct {
 	Label, Detail, Value string
+	// Color, when set, draws the label in that color (except on the
+	// highlighted row, which keeps the selection colors).
+	Color lipgloss.Color
 }
 
 // Outcome says how a key press ended the picker, if it did.
@@ -188,6 +191,9 @@ func (m Model) row(mt match, width int, cursor bool) string {
 	gap := strings.Repeat(" ", max(width-lipgloss.Width(label)-lipgloss.Width(detail), 0))
 
 	base := lipgloss.NewStyle()
+	if it.Color != "" {
+		base = base.Foreground(it.Color)
+	}
 	if cursor {
 		base = selStyle
 	}

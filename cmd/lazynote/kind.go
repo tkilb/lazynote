@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/lazynote/internal/ui/kindstyle"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/picker"
 )
@@ -16,7 +17,7 @@ func (m model) openKindPicker(req *para.KindRequest) (model, tea.Cmd) {
 	var items []picker.Item
 	current := 0
 	for i, k := range store.Kinds() {
-		items = append(items, picker.Item{Label: k.String(), Detail: k.Meaning(), Value: k.String()})
+		items = append(items, picker.Item{Label: k.String(), Detail: k.Meaning(), Value: k.String(), Color: kindstyle.Color(k)})
 		if k == req.Current {
 			current = i
 		}
