@@ -4,6 +4,7 @@
 package para
 
 import (
+	"maps"
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,6 +44,28 @@ type tabState struct {
 	// keep is the name to put the cursor on at the next load, when set.
 	keep string
 	err  error
+	// selected holds the names marked in the current directory. It is
+	// replaced, never mutated, on every change, and cleared when the
+	// directory changes.
+	selected map[string]bool
+	visual   visualState
+}
+
+// visualMode says whether a range is being selected, unselected, or neither.
+type visualMode int
+
+const (
+	visualOff visualMode = iota
+	visualSelect
+	visualUnselect
+)
+
+// visualState anchors a visual-mode range. While it is active, the
+// selection is base plus (or minus) every row between anchor and cursor.
+type visualState struct {
+	mode   visualMode
+	anchor int
+	base   map[string]bool
 }
 
 // selectedName returns the name under the cursor, or the pending keep name
@@ -83,7 +106,7 @@ func (m Model) Resize(visibleRows int) Model {
 // tab keeps its directory, and its cursor stays on the same name.
 func (m Model) Reload() Model {
 	for i, t := range m.tabs {
-		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.selectedName()}
+		m.tabs[i] = tabState{dir: t.dir, cursor: t.cursor, keep: t.selectedName(), selected: t.selected}
 	}
 	return m.load(m.active)
 }
@@ -105,6 +128,8 @@ func (m Model) load(i int) Model {
 	t.loaded, t.rows, t.err = true, rows, err
 	t.cursor = restoreCursor(rows, t.cursor, t.keep)
 	t.keep = ""
+	t.visual = visualState{}
+	t.selected = pruned(t.selected, rows)
 	m.tabs[i] = t
 	return m
 }
@@ -130,6 +155,16 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 		m.move(-1)
 	case "down", "j":
 		m.move(1)
+	case " ":
+		m.toggleHovered()
+	case "v":
+		m.startVisual(visualSelect)
+	case "V":
+		m.startVisual(visualUnselect)
+	case "ctrl+a":
+		m.selectAll()
+	case "esc":
+		m.escape()
 	case "left", "h":
 		m = m.goUp()
 	case "right", "l", "enter":
@@ -161,10 +196,12 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 	return m
 }
 
-// move shifts the cursor by delta rows, clamped to the list.
+// move shifts the cursor by delta rows, clamped to the list. In visual mode
+// the selection follows the cursor.
 func (m *Model) move(delta int) {
 	t := &m.tabs[m.active]
 	t.cursor = min(max(t.cursor+delta, 0), max(len(t.rows)-1, 0))
+	t.applyVisual()
 }
 
 func (m *Model) moveTo(i int) {
@@ -180,6 +217,7 @@ func (m Model) enterDir() Model {
 	}
 	t.dir = filepath.Join(t.dir, t.rows[t.cursor].entry.Name)
 	t.cursor, t.keep = 0, ""
+	t.selected, t.visual = nil, visualState{}
 	m.tabs[m.active] = t
 	return m.load(m.active)
 }
@@ -192,6 +230,7 @@ func (m Model) goUp() Model {
 		return m
 	}
 	t.keep = filepath.Base(t.dir)
+	t.selected, t.visual = nil, visualState{}
 	if t.dir = filepath.Dir(t.dir); t.dir == "." {
 		t.dir = ""
 	}
@@ -214,4 +253,102 @@ func (m Model) SelectedNote() (store.Entry, bool) {
 		return store.Entry{}, false
 	}
 	return t.rows[t.cursor].entry, true
+}
+
+// toggleHovered flips the selection of the row under the cursor and moves
+// down, as Yazi's space does. It is ignored in visual mode.
+func (m *Model) toggleHovered() {
+	t := &m.tabs[m.active]
+	if t.visual.mode != visualOff || t.cursor >= len(t.rows) {
+		return
+	}
+	name := t.rows[t.cursor].entry.Name
+	t.selected = withName(t.selected, name, !t.selected[name])
+	m.move(1)
+}
+
+// startVisual enters visual mode anchored at the cursor. Pressing the same
+// key again leaves it; the other key switches between select and unselect.
+func (m *Model) startVisual(mode visualMode) {
+	t := &m.tabs[m.active]
+	if t.cursor >= len(t.rows) {
+		return
+	}
+	if t.visual.mode == mode {
+		t.visual = visualState{}
+		return
+	}
+	t.visual = visualState{mode: mode, anchor: t.cursor, base: t.selected}
+	t.applyVisual()
+}
+
+// selectAll marks every row in the current directory and leaves visual mode.
+func (m *Model) selectAll() {
+	t := &m.tabs[m.active]
+	t.visual = visualState{}
+	all := make(map[string]bool, len(t.rows))
+	for _, r := range t.rows {
+		all[r.entry.Name] = true
+	}
+	t.selected = all
+}
+
+// escape leaves visual mode keeping the selection; outside visual mode it
+// clears the selection.
+func (m *Model) escape() {
+	t := &m.tabs[m.active]
+	if t.visual.mode != visualOff {
+		t.visual = visualState{}
+		return
+	}
+	t.selected = nil
+}
+
+// applyVisual recomputes the selection from the visual range.
+func (t *tabState) applyVisual() {
+	if t.visual.mode == visualOff {
+		return
+	}
+	lo, hi := min(t.visual.anchor, t.cursor), max(t.visual.anchor, t.cursor)
+	sel := maps.Clone(t.visual.base)
+	if sel == nil {
+		sel = map[string]bool{}
+	}
+	for i := lo; i <= hi && i < len(t.rows); i++ {
+		name := t.rows[i].entry.Name
+		if t.visual.mode == visualSelect {
+			sel[name] = true
+		} else {
+			delete(sel, name)
+		}
+	}
+	t.selected = sel
+}
+
+// withName returns a copy of set with name added or removed.
+func withName(set map[string]bool, name string, on bool) map[string]bool {
+	c := maps.Clone(set)
+	if c == nil {
+		c = map[string]bool{}
+	}
+	if on {
+		c[name] = true
+	} else {
+		delete(c, name)
+	}
+	return c
+}
+
+// pruned returns the part of set whose names still appear in rows.
+func pruned(set map[string]bool, rows []row) map[string]bool {
+	var out map[string]bool
+	for _, r := range rows {
+		if set[r.entry.Name] {
+			if out == nil {
+				out = map[string]bool{}
+			}
+			out[r.entry.Name] = true
+		}
+	}
+	return out
 }

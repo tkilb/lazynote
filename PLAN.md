@@ -130,6 +130,14 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
 | Cut      | red             | `x`                    |
 | Selected | yellow (verify) | `space`, `v`, `ctrl+a` |
 
+- Selection belongs to a tab's current directory: leaving the directory
+  clears it, so a bulk action never touches items you cannot see. A reload
+  keeps the names that still exist. In visual mode (`v` select, `V` unselect;
+  the same key again leaves it, the other key switches) the range between
+  the anchor and the cursor follows the cursor. `esc` leaves visual mode
+  keeping the selection; `esc` outside visual mode clears it. `space` is
+  ignored in visual mode. The panel footer shows `VISUAL`/`UNSELECT`, the
+  count (`3 sel`) and the position.
 - Yank, cut and delete act on the selection when one exists, otherwise on the
   hovered item.
 - The yank or cut buffer persists while you navigate directories and switch

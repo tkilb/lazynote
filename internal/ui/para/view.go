@@ -26,6 +26,14 @@ var (
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	selStyle   = lipgloss.NewStyle().Bold(true).Background(panel.SelectedRowBackground)
+	// markerStyle colors the left-edge bar of a selected row, as Yazi does.
+	markerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+)
+
+const (
+	// markerBar is drawn in the first column of a selected row.
+	markerBar   = "▎"
+	markerWidth = 1
 )
 
 // badges gives each kind a four-letter label and a color class.
@@ -51,11 +59,27 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		tabs[i] = panel.Tab{Label: d.label, Active: i == m.active}
 	}
 
-	footer := panel.Footer{Left: "/" + filepath.ToSlash(t.dir)}
-	if len(t.rows) > 0 {
-		footer.Right = fmt.Sprintf("%d/%d", t.cursor+1, len(t.rows))
-	}
+	footer := panel.Footer{Left: "/" + filepath.ToSlash(t.dir), Right: status(t)}
 	return panel.FrameTabs(panelNumber, tabs, m.body(t, width, height, focused), width, height, focused, footer)
+}
+
+// status builds the bottom-right text: the visual-mode flag, the selection
+// count and the cursor position, e.g. "VISUAL 3 sel 4/9".
+func status(t tabState) string {
+	var parts []string
+	switch t.visual.mode {
+	case visualSelect:
+		parts = append(parts, "VISUAL")
+	case visualUnselect:
+		parts = append(parts, "UNSELECT")
+	}
+	if n := len(t.selected); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d sel", n))
+	}
+	if len(t.rows) > 0 {
+		parts = append(parts, fmt.Sprintf("%d/%d", t.cursor+1, len(t.rows)))
+	}
+	return strings.Join(parts, " ")
 }
 
 func (m Model) body(t tabState, width, height int, focused bool) string {
@@ -69,14 +93,21 @@ func (m Model) body(t tabState, width, height int, focused bool) string {
 	start, end := panel.ScrollWindow(t.cursor, len(t.rows), height)
 	lines := make([]string, 0, end-start)
 	for i := start; i < end; i++ {
-		lines = append(lines, renderRow(t.rows[i], width, i == t.cursor && focused))
+		lines = append(lines, renderRow(t.rows[i], width, i == t.cursor && focused, t.selected[t.rows[i].entry.Name]))
 	}
 	return strings.Join(lines, "\n")
 }
 
-// renderRow draws one row: a kind badge (blank for directories), the name,
-// and for directories an item count right-aligned.
-func renderRow(r row, width int, selected bool) string {
+// renderRow draws one row: a marker column, a kind badge (blank for
+// directories), the name, and for directories an item count right-aligned.
+// cursor highlights the row; marked draws the selection bar.
+func renderRow(r row, width int, cursor, marked bool) string {
+	bar := " "
+	if marked {
+		bar = markerBar
+	}
+	width -= markerWidth
+
 	badge, badgeColor := strings.Repeat(" ", badgeWidth), lipgloss.Color("")
 	name := strings.TrimSuffix(r.entry.Name, ".md")
 	right := ""
@@ -93,13 +124,14 @@ func renderRow(r row, width int, selected bool) string {
 	name = ansi.Truncate(name, nameWidth, "…")
 	gap := strings.Repeat(" ", max(width-badgeWidth-1-ansi.StringWidth(name)-len(right), 0))
 
-	if selected {
-		return selStyle.Render(ansi.Truncate(badge+" "+name+gap+right, width, ""))
+	if cursor {
+		return selStyle.Foreground(markerStyle.GetForeground()).Render(bar) +
+			selStyle.Render(ansi.Truncate(badge+" "+name+gap+right, width, ""))
 	}
 	nameStyle := lipgloss.NewStyle()
 	if r.entry.IsDir {
 		nameStyle = dirStyle
 	}
-	return lipgloss.NewStyle().Foreground(badgeColor).Render(badge) + " " +
+	return markerStyle.Render(bar) + lipgloss.NewStyle().Foreground(badgeColor).Render(badge) + " " +
 		nameStyle.Render(name) + gap + dimStyle.Render(right)
 }
