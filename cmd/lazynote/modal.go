@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/tkilb/lazynote/internal/ui/helppopup"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 	"github.com/tkilb/lazynote/internal/ui/statusbar"
@@ -147,6 +148,8 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 // front notification on top of that.
 func (m model) overlayModals(view string) string {
 	switch {
+	case m.showingHelp:
+		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll), m.width, m.height)
 	case m.input != nil && m.input.inline:
 		// Drawn in the status row by statusLine instead.
 	case m.input != nil:

@@ -65,6 +65,7 @@ var globalBindings = []statusbar.Binding{
 	{Key: "0-4", Label: "focus panel"},
 	{Key: "tab", Label: "next panel"},
 	{Key: "u", Label: "undo"},
+	{Key: "?", Label: "help"},
 	{Key: "ctrl+l", Label: "refresh"},
 	{Key: "ctrl+z", Label: "suspend"},
 	{Key: "q", Label: "quit"},
@@ -88,7 +89,7 @@ var paraBindings = []statusbar.Binding{
 
 var relatedBindings = []statusbar.Binding{
 	{Key: "j/k", Label: "move"},
-	{Key: "enter/space", Label: "jump to note"},
+	{Key: "enter", Label: "jump to note"},
 	{Key: "esc/h", Label: "back to PARA"},
 }
 
@@ -126,6 +127,9 @@ type model struct {
 	input *input
 	// session saves and restores the position between runs.
 	session session
+	// showingHelp is set while the help popup is open, scrolled by helpScroll.
+	showingHelp bool
+	helpScroll  int
 	// saveErr is a failure to save on quit, reported after the screen closes.
 	saveErr error
 }
@@ -236,6 +240,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case m.popups.Active():
 			m.popups = m.popups.Dismiss()
 			return m, nil
+		case m.showingHelp:
+			return m.updateHelp(msg), nil
 		case m.pending != nil:
 			return m.answer(key)
 		case m.input != nil:
@@ -247,6 +253,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		m.saveErr = m.save()
 		return m, tea.Quit
+	case "?":
+		m.showingHelp = true
 	case "ctrl+z":
 		return m.saveOrWarn(), tea.Suspend
 	case "ctrl+l":

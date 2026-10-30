@@ -49,7 +49,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `ctrl+z`            | Suspend                                       |
 | `0`-`4`             | Focus Body / Notebook / PARA / Related / Info |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
-| `?`                 | Help popup                                    |
+| `?`                 | Keybindings popup (see "Help popup")          |
 | `F`                 | Quick fact (one-line prompt, `kind: fact`)    |
 | `R`                 | Quick rumor (one-line prompt, `kind: rumor`)  |
 | `i`                 | Quick idea (one-line prompt, `kind: idea`)    |
@@ -104,8 +104,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | Key             | Action                                           |
 | --------------- | ------------------------------------------------ |
 | `↑/k` `↓/j`     | Move selection                                   |
-| `enter / space` | Jump PARA to the related note                    |
-| `*+`            | Add relation (fuzzy picker)                      |
+| `enter`         | Jump PARA to the related note                    |
+| `*space`        | Add relation (fuzzy picker)                      |
 | `d`             | Remove relation (confirm; References entries only)|
 
 **Info (4)**: `↑/k` `↓/j` scroll.
@@ -202,10 +202,22 @@ subfolder is open decision 5). The keys are case-sensitive: `a` is area, `A` is 
 `inbox/daily/` named `YYYY-MM-DD.md` is routed to `archives/daily/` by `A`,
 so the retention purge applies to it.
 
+## Help popup
+
+`?` opens a scrollable "Keybindings" popup ported from lazytask, with three
+sections as in lazygit: **Local** (every key of the focused panel, a fuller
+list than the status bar hints), **Global** (keys that work in any panel:
+undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`-`4`, `Tab`,
+`Shift+Tab`). A panel with no keys of its own has no Local section. `j`/`k`
+or the arrows scroll, `esc` or `?` closes, other keys are ignored. It lists
+only keys that are implemented, so each chunk that adds a key adds it to the
+lists in `cmd/lazynote/help.go` (and the status bar hints in `model.go`).
+
 Conflict notes:
 
 - `a` creates a note or directory in PARA only (as in Yazi); it is not a
-  global key. Related uses `+` for adding a relation.
+  global key. Related uses `space` for adding a relation (`+` is kept free for a
+  future panel zoom, as in lazygit).
 - `h`/`l` navigate directories in PARA only; other panels use `j`/`k`.
 - Related uses `d` for removing a relation (confirm) to stay consistent with
   PARA's delete.
@@ -222,7 +234,7 @@ Conflict notes:
   append moved to `t` and `T`.
 - In PARA, `enter` and `→`/`l` drill a directory or open a note (focus
   Body); `←`/`h` goes to the parent directory, and in Body `←`/`h` or `esc`
-  returns focus to PARA. In Related, `enter` or `space` jumps to the note.
+  returns focus to PARA. In Related, `enter` jumps to the note.
 - `i` (quick idea) and `I` (import) differ only by case, like `a`/`A` in the
   move popup.
 
@@ -508,7 +520,7 @@ Also confirmed:
   missing.
 - Sorting the inbox: there is no separate triage mode. Work through the
   Inbox tab with the ordinary PARA keys: `K` to set a kind, `m` then a
-  key to file a note, `+` in Related to add relations, and Body line
+  key to file a note, `space` in Related to add relations, and Body line
   selection (`v`, `enter`) to extract. If a queue or mode is needed later, it
   will be added then.
 - Daily notes in `inbox/daily/` are digested, not filed: extract the useful
@@ -531,7 +543,7 @@ Also confirmed:
 
 Numbers are kept stable; resolved items were removed.
 
-2. Creating a relation in-app. Default: `+` in the Related panel opens a
+2. Creating a relation in-app. Default: `space` in the Related panel opens a
    fuzzy picker over all notes and appends the choice to the selected note's
    `related` property. Removing: `d` on a Related row (confirm).
 3. Fossil drift. Default: `fossil` is set manually; no automatic aging and no
@@ -558,6 +570,8 @@ Numbers are kept stable; resolved items were removed.
 
 ## Future enhancements
 
+- Zoom the focused panel to full screen with `+` (as lazygit does). `+` is
+  deliberately unused until then.
 - Markdown rendering in Body with `charmbracelet/glamour` (headings, lists,
   code blocks, emphasis). Needs a new dependency, so verify it is current and
   maintained and get approval first. Keep the plain-text view available as a
@@ -658,7 +672,7 @@ Numbers are kept stable; resolved items were removed.
 8. Related panel, read-only (UI part, after 8a). Built: two groups (References,
    Referenced by; an empty group is omitted, `(none)` when both are), each entry
    with its PARA folder at the right, unresolved entries dimmed with
-   `unresolved`; `j`/`k` move over entries only; `enter` or `space` jumps
+   `unresolved`; `j`/`k` move over entries only; `enter` jumps
    PARA to the note (tab, directory and cursor) and moves focus to PARA, and
    on an unresolved entry shows an info popup instead; `esc`/`h` returns to
    PARA. The index is built at startup and refreshed with `ctrl+l`, terminal
@@ -685,7 +699,7 @@ Numbers are kept stable; resolved items were removed.
    9f. URL clip (title fetch needs a network call; confirm design first).
    9g. Daily note append.
    9h. Daily retention: purge archived dailies past `retention.daily`.
-10. Mouse support, help popup, remaining config keys (`retention.daily`).
+10. Mouse support, remaining config keys (`retention.daily`).
 7. Notebook panel: list the configured notebooks, switch with `enter`, mark
    unavailable paths, restore the last used notebook.
    Deliberately scheduled last among the features (project owner decision);

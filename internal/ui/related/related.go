@@ -139,7 +139,7 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m.move(-1), Effect{}
 	case "down", "j":
 		return m.move(1), Effect{}
-	case "enter", " ":
+	case "enter":
 		if len(m.lines) == 0 || m.lines[m.cursor].header {
 			return m, Effect{}
 		}
