@@ -191,7 +191,7 @@ Markers: a colored bar at the left edge of each row, as in Yazi.
 - Every change lazynote makes to a note is undoable except `D` and the
   automatic daily retention purge (see the Undo decision).
 - Wikilinks resolve by filename, so moves do not break `related` entries
-  unless the name collides. Rename does (open decision 8).
+  unless the name collides. Rename rewrites them (chunk 8c).
 
 Move popup: pressing `m` opens a small popup listing the destinations and
 their keys; the next key moves the note immediately with no confirm, and
@@ -557,9 +557,6 @@ Numbers are kept stable; resolved items were removed.
 5. Move into a subfolder. Cut and paste covers it: `x`, navigate to any
    directory in any tab, `p`. Default: no `M` picker; `m` then key stays as
    the quick move to a tab root.
-8. Rename (`r`) and links. Renaming a note changes its wikilink target.
-   Default: rewrite matching `related` entries in other notes (Obsidian
-   behavior), shown in the confirm popup as "updates N notes".
 9. Yazi key clashes. Current clashes and their resolution: `K` (preview seek
    in Yazi, kind picker here), `ctrl+r` (invert selection in Yazi, redo here)
    and `o` (open in Yazi, `e` edits here). Default: keep lazynote's meaning
@@ -695,9 +692,22 @@ Numbers are kept stable; resolved items were removed.
    time, so stacked edits of one note undo in order; undo refuses if the note
    changed on disk meanwhile. A link names a note by file name only, so with
    duplicate names it resolves to the shortest path.
-   8c. Rename (`r`): rename the hovered item and rewrite matching `related`
-   entries in other notes (open decision 8), undoable as one operation.
-   It follows the link index, so it cannot come earlier.
+   8c. Rename (`r`, done): rename the hovered item. The prompt starts with
+   the current name (a note's without `.md`); the name follows the `a` rules
+   (no `/`, `.md` added to a note), is refused when it already exists, and an
+   unchanged name only says so. For a note, the `title` property is set to
+   the new file name, a missing `uid` is added (an existing one never
+   changes), and every note that references it has its `related` entries
+   rewritten, keeping any folder prefix, `#heading` and `|alias`. When other
+   notes reference it, a confirmation first says "updates N notes". A name
+   containing `|`, `#`, `[` or `]` is refused while other notes reference
+   the note, because a link could not name it. A folder rename only moves it:
+   links name files, so none change. The move, the title and every rewrite
+   are one undo entry; a failure partway undoes what was done. A note whose
+   properties are invalid (or too large) is renamed without touching its
+   title, or skipped as a referrer, and a warning popup says so; a note with
+   invalid properties is not seen as a referrer at all, so a link in it is
+   not rewritten. The cursor lands on the renamed item.
 9. Remaining actions: set kind (`K` picker) and the `m` move popup. Cut/paste, delete, create and undo are already
    in chunks 3e to 3g.
    9b. Intake core: quick fact (`F`), quick rumor (`R`), quick idea

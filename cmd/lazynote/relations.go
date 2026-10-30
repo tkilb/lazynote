@@ -15,12 +15,6 @@ import (
 
 const addReferenceTitle = "Add reference"
 
-// relationEdit is an add or remove of a reference waiting for the user: the
-// note it applies to and the name involved.
-type removal struct {
-	rel, name string
-}
-
 // openReferencePicker lists the notes the shown note could reference: every
 // note except itself and those it already references.
 func (m model) openReferencePicker() (model, tea.Cmd) {
@@ -70,27 +64,11 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 
 // askRemoval asks before removing the reference name from the note at rel.
 func (m model) askRemoval(rel, name string) model {
-	m.removal = &removal{rel: rel, name: name}
-	return m
-}
-
-// answerRemoval handles a key while the removal question is open.
-func (m model) answerRemoval(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "y", "enter":
-		r := m.removal
-		m.removal = nil
-		return m.editReference(r.rel, "remove reference to "+r.name,
-			func(fm *store.Frontmatter) { links.RemoveReference(fm, r.name) }), nil
-	case "n", "esc":
-		m.removal = nil
-	}
-	return m, nil
-}
-
-// removalPrompt words the removal question.
-func removalPrompt(r *removal) string {
-	return fmt.Sprintf("Remove the reference to %q from %s?", r.name, strings.TrimSuffix(filepath.Base(r.rel), filepath.Ext(r.rel)))
+	prompt := fmt.Sprintf("Remove the reference to %q from %s?", name, strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel)))
+	return m.ask(prompt, func(m model) model {
+		return m.editReference(rel, "remove reference to "+name,
+			func(fm *store.Frontmatter) { links.RemoveReference(fm, name) })
+	})
 }
 
 // editReference changes the properties of the note at rel, records the undo

@@ -256,3 +256,5 @@ func TestNotesListsOneNotePerNameSortedIgnoringCase(t *testing.T) {
 	var nilIndex *Index
 	assert.Empty(t, nilIndex.Notes())
 }
+
+func timeLater() time.Time { return time.Now().Add(time.Hour) }

@@ -202,6 +202,8 @@ func (m Model) Update(msg tea.KeyMsg) (Model, Effect) {
 		return m, Effect{Prompt: &Prompt{
 			Op: OpSearch, Placeholder: "search names...", Inline: true, CancelOp: OpClearSearch,
 		}}
+	case "r":
+		return m.askRename()
 	case "e":
 		if e, ok := m.SelectedNote(); ok {
 			return m, Effect{Edit: e.Rel}

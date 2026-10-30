@@ -80,6 +80,7 @@ var paraBindings = []statusbar.Binding{
 	{Key: "y/x/p", Label: "yank/cut/paste"},
 	{Key: "d/D", Label: "trash/delete"},
 	{Key: "a", Label: "new"},
+	{Key: "r", Label: "rename"},
 	{Key: "e", Label: "edit"},
 	{Key: "/", Label: "search"},
 	{Key: "n/N", Label: "next/prev match"},
@@ -129,10 +130,12 @@ type model struct {
 	// input is an open one-line text prompt.
 	input *input
 	// picker is the open fuzzy picker for adding a reference to the note at
-	// pickerFor; removal is a pending question about removing one.
+	// pickerFor.
 	picker    *picker.Model
 	pickerFor string
-	removal   *removal
+	// question is a yes/no question owned by the root model, with what to do
+	// on yes (the para panel's own questions use pending instead).
+	question *question
 	// session saves and restores the position between runs.
 	session session
 	// showingHelp is set while the help popup is open, scrolled by helpScroll.
@@ -255,8 +258,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.showingHelp:
 			return m.updateHelp(msg), nil
-		case m.removal != nil:
-			return m.answerRemoval(key)
+		case m.question != nil:
+			return m.answerQuestion(key)
 		case m.picker != nil:
 			return m.pickerKey(msg)
 		case m.pending != nil:

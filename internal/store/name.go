@@ -32,3 +32,22 @@ func CleanNewName(input string) (name string, isDir bool, err error) {
 	}
 	return name, isDir, nil
 }
+
+// CleanRenamedName validates a name typed into the rename prompt for an item
+// that is a folder when isDir is set. It applies the rules of CleanNewName,
+// except that a folder's name needs no trailing "/" (one is allowed) and a
+// note's name may not have one.
+func CleanRenamedName(input string, isDir bool) (string, error) {
+	text := strings.TrimSpace(input)
+	if isDir {
+		text = strings.TrimSuffix(text, "/") + "/"
+	}
+	name, gotDir, err := CleanNewName(text)
+	switch {
+	case err != nil:
+		return "", err
+	case gotDir != isDir:
+		return "", ErrBadName
+	}
+	return name, nil
+}

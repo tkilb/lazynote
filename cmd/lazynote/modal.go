@@ -49,6 +49,10 @@ func (m model) apply(eff para.Effect) (model, tea.Cmd) {
 		m = m.notify(popup.Error, capitalize(eff.Err.Error())+".")
 	}
 
+	if eff.Rename != nil {
+		m = m.startRename(eff.Rename)
+	}
+
 	var cmd tea.Cmd
 	switch {
 	case eff.Edit != "":
@@ -81,6 +85,7 @@ func (m model) openInput(p *para.Prompt) (*input, tea.Cmd) {
 	}
 	field.CharLimit = inputCharLimit
 	field.Placeholder = p.Placeholder
+	field.SetValue(p.Initial)
 	field.Focus()
 	return &input{
 		title: p.Title, label: p.Label, op: p.Op, field: field,
@@ -110,6 +115,32 @@ func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.input.field, cmd = m.input.field.Update(msg)
 	return m, cmd
+}
+
+// question is a yes/no question owned by the root model.
+type question struct {
+	prompt string
+	yes    func(model) model
+}
+
+// ask opens a question; yes runs when it is accepted.
+func (m model) ask(prompt string, yes func(model) model) model {
+	m.question = &question{prompt: prompt, yes: yes}
+	return m
+}
+
+// answerQuestion handles a key while a root question is open: y or enter
+// accepts, n or esc declines, anything else is ignored.
+func (m model) answerQuestion(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "y", "enter":
+		q := m.question
+		m.question = nil
+		return q.yes(m), nil
+	case "n", "esc":
+		m.question = nil
+	}
+	return m, nil
 }
 
 // answer handles a key while a question is pending: y or enter accepts, n
@@ -152,8 +183,8 @@ func (m model) overlayModals(view string) string {
 		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll), m.width, m.height)
 	case m.picker != nil:
 		view = popup.Overlay(view, m.picker.View(m.width, m.height), m.width, m.height)
-	case m.removal != nil:
-		view = popup.Overlay(view, popup.ConfirmBox(removalPrompt(m.removal), m.width), m.width, m.height)
+	case m.question != nil:
+		view = popup.Overlay(view, popup.ConfirmBox(m.question.prompt, m.width), m.width, m.height)
 	case m.input != nil && m.input.inline:
 		// Drawn in the status row by statusLine instead.
 	case m.input != nil:

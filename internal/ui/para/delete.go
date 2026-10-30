@@ -118,6 +118,8 @@ func (m Model) ApplyInput(op InputOp, text string) (Model, Effect) {
 	switch op {
 	case OpCreate:
 		return m.create(text)
+	case OpRename:
+		return m.rename(text)
 	case OpSearch:
 		if strings.TrimSpace(text) == "" {
 			return m, Effect{}

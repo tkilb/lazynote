@@ -15,6 +15,9 @@ type Effect struct {
 	// Edit, when set, is the root-relative path of the note to open in the
 	// editor.
 	Edit string
+	// Rename, when set, asks the root model to rename an item; it owns the
+	// link index that rewriting references needs.
+	Rename *RenameRequest
 	// Confirm, when set, asks the user before anything changes.
 	Confirm *Confirm
 	// Prompt, when set, asks the user to type a line of text.
@@ -48,6 +51,8 @@ type InputOp int
 const (
 	// OpCreate creates a note, or a folder with a trailing slash.
 	OpCreate InputOp = iota + 1
+	// OpRename renames the hovered item to the text.
+	OpRename
 	// OpSearch jumps to the first entry whose name contains the text.
 	OpSearch
 	// OpClearSearch discards the active search.
@@ -62,8 +67,10 @@ type Prompt struct {
 	Title       string
 	Label       string
 	Placeholder string
-	Op          InputOp
-	Inline      bool
+	// Initial is the text the field starts with.
+	Initial string
+	Op      InputOp
+	Inline  bool
 	// CancelOp, when set, is applied (with empty text) on esc instead of just
 	// closing the prompt, so esc also undoes what the prompt set.
 	CancelOp InputOp
