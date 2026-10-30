@@ -381,6 +381,18 @@ Conflict notes:
   deleting or trashing a directory counts every entry on disk, not just the
   listed ones, and the confirm popup says how many unlisted files it holds.
   Cutting and pasting a directory moves everything inside it.
+- Body shows the note under the PARA cursor as plain text and follows it as
+  the cursor moves; with a directory selected it is empty, and a note that
+  cannot be read shows the error (for example "note is too large"). The
+  frontmatter is hidden, blank lines around the text are dropped, lines wrap
+  at word boundaries (a word longer than the panel is split), tabs become
+  four spaces, and a position footer (`first line/total`) shows once the
+  note is longer than the panel. Scrolling is `↑/k` `↓/j` and `ctrl+d`/`ctrl+u`,
+  never past the ends. A note is read again only when the selection or its
+  modification time changes; the scroll resets for a different note and
+  survives a refresh of the same one. Note text is untrusted: every control
+  character, including escape and the C1 range, is removed before drawing,
+  so a note can never send terminal escape sequences.
 - Backlink index is built at startup and kept in SQLite (`internal/state`),
   refreshed when file modification times change.
 

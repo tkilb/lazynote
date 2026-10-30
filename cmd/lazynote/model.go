@@ -1,11 +1,14 @@
 package main
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/lazynote/internal/ui/body"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/popup"
@@ -79,12 +82,17 @@ var paraBindings = []statusbar.Binding{
 }
 
 var bodyBindings = []statusbar.Binding{
+	{Key: "j/k", Label: "scroll"},
+	{Key: "ctrl+d/u", Label: "half page"},
 	{Key: "esc/h", Label: "back to PARA"},
 }
 
 type model struct {
+	store         store.Store
 	focus         panelID
 	para          para.Model
+	body          body.Model
+	shown         shownNote
 	width, height int
 	// history is shared by pointer: it holds the session's undo/redo stack.
 	history *undo.Stack
@@ -97,19 +105,55 @@ type model struct {
 	input *input
 }
 
+// shownNote identifies the note the Body panel last loaded: a changed
+// modification time means the file changed on disk.
+type shownNote struct {
+	rel string
+	mod time.Time
+}
+
 func initialModel(s store.Store) model {
-	return model{focus: panelPARA, para: para.New(s), history: &undo.Stack{}}
+	return model{store: s, focus: panelPARA, para: para.New(s), body: body.New(), history: &undo.Stack{}}
+}
+
+// syncBody makes the Body panel show the note under the PARA cursor,
+// reading it only when the selection or the file changed.
+func (m model) syncBody() model {
+	entry, ok := m.para.SelectedNote()
+	if !ok {
+		m.body, m.shown = m.body.Clear(), shownNote{}
+		return m
+	}
+	now := shownNote{rel: entry.Rel, mod: entry.ModTime}
+	if now == m.shown {
+		return m
+	}
+	m.shown = now
+	note, err := m.store.ReadNote(entry.Rel)
+	if err != nil {
+		m.body = m.body.Fail(entry.Rel, err)
+		return m
+	}
+	m.body = m.body.Load(entry.Rel, note.Body)
+	return m
 }
 
 func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	return next.(model).syncBody(), cmd
+}
+
+func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		g := computeGrid(m.width, m.height-1)
 		_, rows := panel.InnerSize(g.leftWidth, g.paraHeight)
 		m.para = m.para.Resize(rows)
+		bw, bh := panel.InnerSize(g.rightWidth, g.bodyHeight)
+		m.body = m.body.Resize(bw, bh)
 	case tea.FocusMsg:
 		// Files may have changed while the terminal was in the background.
 		// A pending question was worded for the rows on screen, so it waits.
@@ -182,8 +226,11 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m, cmd = m.paraKey(msg)
 		}
 	default:
-		if m.focus == panelPARA {
+		switch m.focus {
+		case panelPARA:
 			m, cmd = m.paraKey(msg)
+		case panelBody:
+			m.body = m.body.Update(msg)
 		}
 	}
 	return m, cmd
@@ -213,8 +260,11 @@ func (m model) View() string {
 	}
 	g := computeGrid(m.width, m.height-1) // one row for the status bar
 	render := func(id panelID, w, h int) string {
-		if id == panelPARA {
+		switch id {
+		case panelPARA:
 			return m.para.View(w, h, m.focus == id)
+		case panelBody:
+			return m.body.View(w, h, m.focus == id)
 		}
 		title := string(rune('0'+id)) + " " + panelNames[id]
 		return panel.Render(title, "", w, h, m.focus == id)
