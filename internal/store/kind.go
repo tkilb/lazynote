@@ -73,7 +73,7 @@ func (k Kind) Meaning() string {
 	case KindFact:
 		return "Accurate information"
 	case KindRumor:
-		return "Unconfirmed"
+		return "Unconfirmed information"
 	case KindProposal:
 		return "Desired outcome, may not be real"
 	case KindFossil:
