@@ -286,13 +286,3 @@ func TestCaptureWritesTagsAndOmitsAnUnsetKind(t *testing.T) {
 	assert.Nil(t, n.Frontmatter.Get("kind"))
 	assert.Len(t, n.Frontmatter.Get("tags").Content, 2)
 }
-
-func TestSourcesStartWithTheDefault(t *testing.T) {
-	assert.Equal(t, SourceAdhoc, Sources[0])
-	assert.Equal(t, []string{"adhoc", "meeting", "conversation", "email", "web", "document"}, Sources)
-	seen := map[string]bool{}
-	for _, s := range Sources {
-		assert.False(t, seen[s], "duplicate %s", s)
-		seen[s] = true
-	}
-}

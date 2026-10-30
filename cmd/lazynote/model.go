@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/links"
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/body"
@@ -137,6 +138,8 @@ type model struct {
 	pickerOp  pickerOp
 	// pickerKind is the kind the note had when the kind picker opened.
 	pickerKind store.Kind
+	// sources are the sources Quick Add offers, from the config.
+	sources []string
 	// form is the open quick-capture form; formSave handles its texts.
 	form     *noteform.Model
 	formSave func(model, noteform.Values) (model, tea.Cmd)
@@ -168,6 +171,7 @@ func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
 		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{},
+		sources: config.DefaultSources,
 	}
 }
 

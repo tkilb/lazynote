@@ -299,7 +299,18 @@ Conflict notes:
     - ~/Notes/personal
   retention:
     daily: 30d
+  sources:
+    - adhoc
+    - meeting
+    - conversation
   ```
+
+  `sources` (optional) lists the sources Quick Add offers; the first is the
+  default. When it is absent or empty the built-in list is used: adhoc,
+  meeting, conversation, email, web, document (`config.DefaultSources`).
+  Each entry is trimmed and must be non-empty, free of control characters, at
+  most 40 characters and distinct from the others ignoring case; a bad entry
+  is a config error that names it.
 
   The first entry is the default notebook. The display name is the
   directory's base name. `~` is expanded. Each path must be an existing
@@ -737,8 +748,9 @@ Numbers are kept stable; resolved items were removed.
      starts a new line. The kind box shows `‹ kind ›` in its color with its
      meaning and changes with `←`/`→` through unset, fact, rumor, proposal,
      fossil, idea and draft (unset by default). The source box works the same
-     way through adhoc, meeting, conversation, email, web and document
-     (`intake.Sources`; `adhoc` by default and first). Tags are names separated by
+     way through the `sources` list of the config file (see Config; the
+     built-in list is adhoc, meeting, conversation, email, web, document,
+     and the first entry is the default). Tags are names separated by
      commas or white space, `#` optional, letters, digits, `_`, `-` and `/`
      only, not all digits, duplicates dropped. `enter` in any one-line field
      and `ctrl+s` anywhere save, `esc` cancels; the key hints are on the last

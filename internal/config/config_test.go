@@ -78,6 +78,9 @@ func TestParse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Parse([]byte(tt.yaml), home)
 			require.NoError(t, err)
+			if tt.want.Sources == nil {
+				tt.want.Sources = DefaultSources
+			}
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -191,4 +194,60 @@ func TestDefaultPath(t *testing.T) {
 	got, err := DefaultPath()
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(home, ".config", "lazynote", "config.yaml"), got)
+}
+
+func TestParseSources(t *testing.T) {
+	const nb = "notebooks:\n  - /tmp\n"
+	tests := []struct {
+		name, yaml string
+		want       []string
+	}{
+		{"absent uses the defaults", nb, DefaultSources},
+		{"empty list uses the defaults", nb + "sources: []\n", DefaultSources},
+		{"null uses the defaults", nb + "sources:\n", DefaultSources},
+		{"custom list keeps its order", nb + "sources: [call, standup, adhoc]\n", []string{"call", "standup", "adhoc"}},
+		{"entries are trimmed", nb + "sources:\n  - \"  call \"\n  - web\n", []string{"call", "web"}},
+		{"spaces and punctuation inside are fine", nb + "sources:\n  - team sync\n  - 1:1\n", []string{"team sync", "1:1"}},
+		{"a single source", nb + "sources: [notes]\n", []string{"notes"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Parse([]byte(tt.yaml), t.TempDir())
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.Sources)
+		})
+	}
+}
+
+func TestParseSourcesRejectsBadEntries(t *testing.T) {
+	const nb = "notebooks:\n  - /tmp\n"
+	long := ""
+	for i := 0; i < maxSourceRunes+1; i++ {
+		long += "x"
+	}
+	tests := []struct{ name, yaml string }{
+		{"blank entry", nb + "sources: [call, \"  \"]\n"},
+		{"duplicate", nb + "sources: [call, web, call]\n"},
+		{"duplicate ignoring case", nb + "sources: [Call, web, call]\n"},
+		{"control character", nb + "sources:\n  - \"a\\tb\"\n"},
+		{"newline", nb + "sources:\n  - \"a\\nb\"\n"},
+		{"too long", nb + "sources: [" + long + "]\n"},
+		{"not a list", nb + "sources: call\n"},
+		{"not strings", nb + "sources: [[a], b]\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse([]byte(tt.yaml), t.TempDir())
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, ErrNoNotebooks)
+			assert.Contains(t, err.Error(), "sources")
+		})
+	}
+}
+
+func TestDefaultSourcesAreNotSharedWithCallers(t *testing.T) {
+	cfg, err := Parse([]byte("notebooks:\n  - /tmp\n"), t.TempDir())
+	require.NoError(t, err)
+	cfg.Sources[0] = "changed"
+	assert.Equal(t, "adhoc", DefaultSources[0], "changing a parsed config cannot change the defaults")
 }

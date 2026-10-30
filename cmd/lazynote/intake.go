@@ -17,7 +17,7 @@ import (
 
 // startQuickAdd opens the Quick Add form.
 func (m model) startQuickAdd() (model, tea.Cmd) {
-	form, cmd := noteform.New("Quick Add", intake.Sources, m.width, m.height)
+	form, cmd := noteform.New("Quick Add", m.sources, m.width, m.height)
 	m.form = &form
 	m.formSave = func(m model, v noteform.Values) (model, tea.Cmd) {
 		if strings.TrimSpace(v.Title) == "" && strings.TrimSpace(v.Body) == "" {
@@ -39,7 +39,7 @@ func (m model) startQuickAdd() (model, tea.Cmd) {
 // reopenForm puts the form back after a mistake, with a warning and what was
 // typed, so a typo in the tags does not lose a long body.
 func (m model) reopenForm(v noteform.Values, f noteform.Field, why error) (model, tea.Cmd) {
-	form, _ := noteform.New("Quick Add", intake.Sources, m.width, m.height)
+	form, _ := noteform.New("Quick Add", m.sources, m.width, m.height)
 	form, cmd := form.WithValues(v, f)
 	m.form = &form
 	return m.notify(popup.Warning, capitalize(why.Error())+"."), cmd

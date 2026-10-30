@@ -14,23 +14,24 @@ import (
 	"github.com/tkilb/lazynote/internal/version"
 )
 
-// openStore loads the config and opens the first available notebook. The
+// openStore loads the config and opens the first available notebook,
+// returning it, its root path and the config's Quick Add sources. The
 // Notebook panel (a later chunk) will replace this with a real selection.
-func openStore() (store.Store, string, error) {
+func openStore() (store.Store, string, []string, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	cfg, err := config.Load(path)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	for _, nb := range cfg.Notebooks {
 		if nb.Available {
-			return store.NewMarkdown(nb.Path), nb.Path, nil
+			return store.NewMarkdown(nb.Path), nb.Path, cfg.Sources, nil
 		}
 	}
-	return nil, "", errors.New("none of the configured notebooks is an existing directory")
+	return nil, "", nil, errors.New("none of the configured notebooks is an existing directory")
 }
 
 // isVersionArg reports whether args (os.Args[1:]) ask for the version
@@ -52,7 +53,7 @@ func main() {
 		return
 	}
 
-	st, root, err := openStore()
+	st, root, sources, err := openStore()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "lazynote: %v\n", err)
 		os.Exit(1)
@@ -62,6 +63,7 @@ func main() {
 		defer sess.db.Close()
 	}
 	start := initialModel(st)
+	start.sources = sources
 	if sessErr != nil {
 		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
 	}

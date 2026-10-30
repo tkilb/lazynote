@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -27,6 +29,9 @@ const (
 	// maxRetentionDays caps retention.daily (100 years) so later date
 	// arithmetic cannot overflow.
 	maxRetentionDays = 36500
+
+	// maxSourceRunes bounds one source name.
+	maxSourceRunes = 40
 )
 
 // ExampleConfig is shown when no notebooks are configured.
@@ -45,6 +50,8 @@ type Config struct {
 	// Notebooks keeps the configured order; the first entry is the default.
 	Notebooks []Notebook
 	Retention Retention
+	// Sources are the sources Quick Add offers, the first being the default.
+	Sources []string
 }
 
 // Notebook is one configured notebook root.
@@ -65,7 +72,8 @@ type Retention struct {
 }
 
 type rawConfig struct {
-	Notebooks []string `yaml:"notebooks"`
+	Notebooks []string  `yaml:"notebooks"`
+	Sources   yaml.Node `yaml:"sources"`
 	Retention struct {
 		Daily string `yaml:"daily"`
 	} `yaml:"retention"`
@@ -112,7 +120,12 @@ func Parse(data []byte, home string) (Config, error) {
 		return Config{}, err
 	}
 
-	cfg := Config{Retention: Retention{DailyDays: days}}
+	sources, err := parseSources(&raw.Sources)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources}
 	for _, p := range raw.Notebooks {
 		nb, err := newNotebook(p, home)
 		if err != nil {
@@ -167,4 +180,43 @@ func parseRetention(s string) (int, error) {
 		return 0, fmt.Errorf("retention.daily %q must be a positive whole number followed by d, for example 30d", s)
 	}
 	return n, nil
+}
+
+// DefaultSources are the sources offered when the config lists none.
+var DefaultSources = []string{"adhoc", "meeting", "conversation", "email", "web", "document"}
+
+// parseSources reads the sources list. An absent, null or empty list gives a
+// copy of DefaultSources. Entries are trimmed and must be non-empty, free of
+// control characters, at most maxSourceRunes long and distinct ignoring case.
+func parseSources(n *yaml.Node) ([]string, error) {
+	if n.Kind == 0 || (n.Kind == yaml.ScalarNode && n.Tag == "!!null") {
+		return append([]string(nil), DefaultSources...), nil
+	}
+	if n.Kind != yaml.SequenceNode {
+		return nil, errors.New("sources must be a list of names, for example: sources: [adhoc, meeting]")
+	}
+	if len(n.Content) == 0 {
+		return append([]string(nil), DefaultSources...), nil
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, item := range n.Content {
+		if item.Kind != yaml.ScalarNode {
+			return nil, errors.New("sources entries must be plain names")
+		}
+		name := strings.TrimSpace(item.Value)
+		switch {
+		case name == "":
+			return nil, errors.New("sources entries must not be blank")
+		case strings.ContainsFunc(name, unicode.IsControl):
+			return nil, fmt.Errorf("sources entry %q must not contain control characters", name)
+		case utf8.RuneCountInString(name) > maxSourceRunes:
+			return nil, fmt.Errorf("sources entry %q is longer than %d characters", name, maxSourceRunes)
+		case seen[strings.ToLower(name)]:
+			return nil, fmt.Errorf("sources entry %q is listed twice", name)
+		}
+		seen[strings.ToLower(name)] = true
+		out = append(out, name)
+	}
+	return out, nil
 }
