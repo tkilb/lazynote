@@ -647,7 +647,13 @@ Numbers are kept stable; resolved items were removed.
    a warning popup. The notebook is still chosen by config until chunk 7
    restores the last one used. Engine tests for `internal/state`; manual QA
    note for the restore.
-8. Related panel, read-only: `related` parsing, wikilink resolution,
+   8a. Link engine (`internal/links`): `Target` parsing, `related` extraction
+   (a list, one string, or an unquoted `[[Name]]`), name resolution, and an
+   index with outgoing links and incoming backlinks over the five PARA
+   folders, refreshed by modification time. In memory for now; the SQLite
+   cache named in the Decisions (open for the project owner to confirm) is
+   added only if startup scans prove slow. Engine tests only.
+8. Related panel, read-only (UI part, after 8a): `related` parsing, wikilink resolution,
    backlink index, panel follows PARA selection, `enter`/`space` to jump.
    8b. Related panel, editing: add (fuzzy picker) and remove relations, writing
    the `related` property without disturbing other frontmatter.
