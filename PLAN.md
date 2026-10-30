@@ -647,8 +647,6 @@ Numbers are kept stable; resolved items were removed.
    a warning popup. The notebook is still chosen by config until chunk 7
    restores the last one used. Engine tests for `internal/state`; manual QA
    note for the restore.
-7. Notebook panel: list the configured notebooks, switch with `enter`, mark
-   unavailable paths, restore the last used notebook.
 8. Related panel, read-only: `related` parsing, wikilink resolution,
    backlink index, panel follows PARA selection, `enter`/`space` to jump.
    8b. Related panel, editing: add (fuzzy picker) and remove relations, writing
@@ -672,6 +670,10 @@ Numbers are kept stable; resolved items were removed.
    9g. Daily note append.
    9h. Daily retention: purge archived dailies past `retention.daily`.
 10. Mouse support, help popup, remaining config keys (`retention.daily`).
+7. Notebook panel: list the configured notebooks, switch with `enter`, mark
+   unavailable paths, restore the last used notebook.
+   Deliberately scheduled last among the features (project owner decision);
+   until then the first available configured notebook is used.
 11. Release tooling, CI (copy from lazytask) and the README, including the
     `.lazynote/` sync note.
 
