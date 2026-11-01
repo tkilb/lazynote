@@ -416,13 +416,8 @@ Conflict notes:
   `areas/`, `resources/`, `archives/`, `inbox/`) and cannot navigate above
   it. Directories list first, then notes, both sorted by name. Directory
   rows show an item count and no kind badge. Each tab remembers its
-  own current directory and cursor. The bottom border shows a breadcrumb,
-  `Projects › alpha › notes`: the tab name, then the folders below it, the
-  one you are in bold and those above dim (just the tab name at the tab
-  root). When it is too long it is cut from the left (`… › notes › 2026`) so
-  the current folder always shows; an active search follows it
-  (`search: text`). (Tried to make drilling obvious; it is one commit, easy to
-  revert.) With a directory selected, Info shows its name and item
+  own current directory and cursor. The panel title shows the path relative
+  to the tab root. With a directory selected, Info shows its name and item
   counts, and Body and Related are empty. `a` creates the note in the
   current directory, quick capture still goes to the `inbox/` root, and `d` on
   a directory confirms and warns when it is not empty. `/` searches the

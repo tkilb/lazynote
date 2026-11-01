@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
 )
 
 const leadDashes = 2
@@ -200,19 +199,19 @@ func bottomBorder(footer Footer, width int, lineStyle lipgloss.Style) string {
 }
 
 // truncateHead shortens s to at most width columns by replacing its start
-// with an ellipsis. s may carry styling, which the part kept keeps.
+// with an ellipsis.
 func truncateHead(s string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	w := ansi.StringWidth(s)
-	if w <= width {
+	r := []rune(s)
+	if len(r) <= width {
 		return s
 	}
 	if width == 1 {
 		return "…"
 	}
-	return ansi.TruncateLeft(s, w-width+1, "…")
+	return "…" + string(r[len(r)-width+1:])
 }
 
 // tabSeparator joins the labels in a FrameTabs title.
