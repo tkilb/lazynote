@@ -35,6 +35,7 @@ const (
 	titlePlaceholder = "optional; the page's own title when blank"
 	urlPlaceholder   = "required; an http or https address"
 	hint             = "(tab/↑↓) move  (enter) save  (esc) cancel"
+	cursorCell       = 1
 )
 
 // Values are what the user entered.
@@ -50,7 +51,8 @@ type Model struct {
 }
 
 // New returns a form with url filled in, sized for a screenWidth x
-// screenHeight terminal, with the URL focused. The command blinks the cursor.
+// screenHeight terminal, with the Title focused. The command blinks the
+// cursor.
 func New(url string, screenWidth, screenHeight int) (Model, tea.Cmd) {
 	title := textinput.New()
 	title.Prompt = ""
@@ -64,7 +66,7 @@ func New(url string, screenWidth, screenHeight int) (Model, tea.Cmd) {
 	addr.SetValue(url)
 
 	m := Model{title: title, url: addr}.Resize(screenWidth, screenHeight)
-	return m.focus(FieldURL)
+	return m.focus(FieldTitle)
 }
 
 // WithValues fills the form with v and puts the keyboard on f, for showing a
@@ -79,8 +81,11 @@ func (m Model) WithValues(v Values, f Field) (Model, tea.Cmd) {
 func (m Model) Resize(screenWidth, _ int) Model {
 	m.width = min(max(screenWidth-screenMargin, minWidth), maxWidth)
 	inner, _ := panel.InnerSize(m.width, 1)
-	m.title.Width = inner
-	m.url.Width = inner
+	// A text box draws its cursor in one more cell than its width, so leave
+	// that cell, or a full box wraps to a second row each time the cursor
+	// shows and the form jumps as it blinks.
+	m.title.Width = inner - cursorCell
+	m.url.Width = inner - cursorCell
 	return m
 }
 
@@ -98,8 +103,11 @@ func (m Model) focus(f Field) (Model, tea.Cmd) {
 	m.title.Blur()
 	m.url.Blur()
 	if f == FieldTitle {
+		// A long address shows its start while it is not being edited.
+		m.url.CursorStart()
 		return m, m.title.Focus()
 	}
+	m.url.CursorEnd()
 	return m, m.url.Focus()
 }
 

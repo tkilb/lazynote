@@ -30,15 +30,16 @@ type clipFetchedMsg struct {
 	err   error
 }
 
-// startClip opens the clip form, with the address filled in from the
-// clipboard when that holds one. Enter saves: with a title the note is saved
-// at once; without one the page's own title is fetched in the background.
+// startClip opens the clip form with the keyboard on the title. The address
+// is filled in from the clipboard only when that holds a web address and
+// nothing else. Enter saves: with a title the note is saved at once; without
+// one the page's own title is fetched in the background.
 func (m model) startClip() (model, tea.Cmd) {
 	initial, _ := clipboard.ReadAll()
-	if _, err := clip.ParseURL(initial); err != nil {
+	if !clip.LooksLikeWebAddress(initial) {
 		initial = ""
 	}
-	return m.openClipForm(clipform.Values{URL: strings.TrimSpace(initial)}, clipform.FieldURL)
+	return m.openClipForm(clipform.Values{URL: strings.TrimSpace(initial)}, clipform.FieldTitle)
 }
 
 // openClipForm shows the clip form with v filled in and the keyboard on f.

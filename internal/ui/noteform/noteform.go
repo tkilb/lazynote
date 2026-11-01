@@ -50,6 +50,7 @@ const (
 	titleLimit   = 120
 	tagsLimit    = 200
 	bodyLimit    = 20000
+	cursorCell   = 1 // the cell a text box's cursor needs beyond its width
 
 	titlePlaceholder = "required"
 	bodyPlaceholder  = "optional; enter starts a new line"
@@ -154,8 +155,10 @@ func (m Model) Resize(screenWidth, screenHeight int) Model {
 	fixed := lineBoxes*lineBoxRows + boxChrome
 	m.bodyRows = min(max(screenHeight-screenMargin-fixed, minBodyRows), maxBodyRows)
 	inner, _ := panel.InnerSize(m.width, 1)
-	m.title.Width = inner
-	m.tags.Width = inner
+	// A text box draws its cursor in one more cell than its width; leave that
+	// cell so a full box does not wrap and make the form jump as it blinks.
+	m.title.Width = inner - cursorCell
+	m.tags.Width = inner - cursorCell
 	m.body.SetWidth(inner)
 	m.body.SetHeight(m.bodyRows)
 	return m

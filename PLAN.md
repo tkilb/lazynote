@@ -905,14 +905,23 @@ Numbers are kept stable; resolved items were removed.
    9f. URL clip (done for the TUI; `internal/clip`, `intake.Clip`, tested; a
    `lazynote clip URL` shell command is not built yet):
    - `U` opens a form of two boxes in the style of Quick Add: "Clip: Title"
-     (optional) and "URL" (required), with the keyboard on the URL. The URL
-     starts as the clipboard's text when that is a valid address. `tab`,
+     (optional) and "URL" (required), with the keyboard on the title. The URL
+     starts as the clipboard's text only when that is a web address and
+     nothing else: one line, `http` or `https`, no password, and a dotted host
+     name ending in at least two letters (`example.com`, `wiki.example.net`)
+     or an IPv4 address; text around it, `localhost`, a bare name like `wiki`
+     or a mangled host leaves the box empty (what you type yourself is checked
+     by the address rules below, which allow those). A long address shows its
+     start while the title is focused and its end while you edit it. `tab`,
      `shift+tab` and `↑`/`↓` move between the boxes, `enter` saves and `esc`
      cancels. A bad address says why and brings the form back with
      everything typed. With a title the note is saved at once, with no
      network call. With the title blank the page's own title is fetched in
      the background (the status bar says "Fetching the page title…"; the app
      stays usable). Both boxes blank does nothing.
+   - Both text boxes (here and Quick Add's title and tags) leave one cell
+     free for the cursor: a full box otherwise wraps to a second row each
+     time the cursor shows, so the whole form jumped as it blinked.
    - Address rules: `http` or `https` only, a host, no user name or password,
      no spaces or control characters, at most 2048 characters.
    - The fetch is bounded: a plain GET with no cookies or credentials and no

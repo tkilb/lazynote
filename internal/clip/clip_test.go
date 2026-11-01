@@ -248,3 +248,41 @@ func TestFetchSendsNoRefererOnARedirect(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, sawReferer, "the original address is not passed on")
 }
+
+func TestLooksLikeWebAddress(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		{"https://example.com", true},
+		{"http://example.com/a/b?x=1&y=2#frag", true},
+		{"  https://sub.example.co.uk/path  ", true},
+		{"https://wiki.example.net:8443/pages/1234/Some+Title", true},
+		{"HTTPS://Example.COM/x", true},
+		{"https://93.184.216.34/x", true},
+		{"https://my-site.example.org", true},
+		{"https://example", false},                     // no dot: not a public host
+		{"https://localhost:3000/x", false},            // local
+		{"https://$$$.com", false},                     // not a host name
+		{"https://exa mple.com", false},                // a space
+		{"https://example.com/two\nlines", false},      // more than one line
+		{"see https://example.com for details", false}, // text around it
+		{"https://example.com and more", false},
+		{"ftp://example.com/file", false},
+		{"mailto:me@example.com", false},
+		{"example.com", false}, // no scheme
+		{"https://", false},
+		{"https://.com", false},
+		{"https://example..com", false},
+		{"https://example.c", false}, // a one-letter ending
+		{"https://example.123", false},
+		{"https://user:pw@example.com/", false},
+		{"", false},
+		{"https://example.com/" + strings.Repeat("a", maxURLLen), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			assert.Equal(t, tt.want, LooksLikeWebAddress(tt.in))
+		})
+	}
+}

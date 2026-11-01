@@ -6,7 +6,9 @@ package clip
 
 import (
 	"errors"
+	"net/netip"
 	"net/url"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -45,3 +47,26 @@ func ParseURL(raw string) (*url.URL, error) {
 
 // bad reports a character a pasted address cannot hold.
 func bad(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }
+
+// publicHost matches a dotted host name: letters, digits and hyphens in each
+// label, no empty label, and an ending of at least two letters.
+var publicHost = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
+
+// LooksLikeWebAddress reports whether text is, on its own, a web address worth
+// offering as a suggestion: an address ParseURL accepts (one line, http or
+// https, no password) whose host is a dotted name such as example.com or an
+// IPv4 address. A bare name like "localhost" or "wiki", or anything with
+// other text around it, is not. It checks the text only and says nothing
+// about whether the page exists.
+func LooksLikeWebAddress(text string) bool {
+	u, err := ParseURL(text)
+	if err != nil {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	if publicHost.MatchString(host) {
+		return true
+	}
+	ip, err := netip.ParseAddr(host)
+	return err == nil && ip.Is4()
+}
