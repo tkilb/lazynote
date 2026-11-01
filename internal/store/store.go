@@ -57,6 +57,9 @@ type Store interface {
 	Inspect(rel string) (DirInfo, error)
 	// Delete permanently removes a file or directory tree. Not undoable.
 	Delete(rel string) error
+	// PurgeDailies permanently deletes archived daily notes that are
+	// retentionDays or more days old, and returns how many. Not undoable.
+	PurgeDailies(retentionDays int, today time.Time) (int, error)
 	// Path returns the absolute path of rel (relative to the root), after the
 	// same path-safety checks as every other operation.
 	Path(rel string) (string, error)

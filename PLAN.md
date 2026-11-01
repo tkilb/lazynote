@@ -878,7 +878,15 @@ Numbers are kept stable; resolved items were removed.
      `archives/daily/`; the other keys are ignored.
    9f. URL clip (title fetch needs a network call; confirm design first).
    9g. Daily note append.
-   9h. Daily retention: purge archived dailies past `retention.daily`.
+   9h. Daily retention (done; `Store.PurgeDailies`, tested): once at startup,
+   before the lists load, files in `archives/daily/` named `YYYY-MM-DD.md`
+   whose date is `retention.daily` or more calendar days before today are
+   deleted permanently (not undoable). Only regular files directly in that
+   folder are touched: a symlink, a folder, another name or a future date is
+   left alone, and the folder must resolve inside the notebook root. The
+   count is reported in an info popup (the app has no transient status-bar
+   message); a failure shows a warning. Only the first notebook is purged for
+   now; the Notebook panel (7) must call it on the first switch to another.
 10. Mouse support, remaining config keys (`retention.daily`).
 7. Notebook panel: list the configured notebooks, switch with `enter`, mark
    unavailable paths, restore the last used notebook.

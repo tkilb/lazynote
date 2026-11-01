@@ -82,13 +82,14 @@ func main() {
 	if sess.db != nil {
 		defer sess.db.Close()
 	}
+	purged, purgeErr := boot.store.PurgeDailies(boot.retentionDays, time.Now())
 	start := initialModel(boot.store)
 	start.sources = boot.sources
 	start.para = start.para.WithRetention(boot.retentionDays, time.Now)
 	if sessErr != nil {
 		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
 	}
-	start = start.withSession(sess).refreshLinks()
+	start = start.notifyPurge(purged, purgeErr).withSession(sess).refreshLinks()
 
 	// The alternate screen gives the program the full terminal buffer, so
 	// resuming after ctrl+z or an external editor repaints cleanly. Focus

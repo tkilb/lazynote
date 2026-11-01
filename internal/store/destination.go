@@ -76,13 +76,8 @@ func DailyOverdue(rel string, retentionDays int, today time.Time) bool {
 		return false
 	}
 	date, _ := DailyDate(rel)
-	day, err := time.Parse(dateLayout, date)
-	if err != nil {
-		return false
-	}
-	y, m, d := today.Date()
-	todayDay := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
-	return int(todayDay.Sub(day).Hours()/hoursPerDay) >= retentionDays
+	age, ok := daysBefore(date, today)
+	return ok && age >= retentionDays
 }
 
 const hoursPerDay = 24
