@@ -413,7 +413,7 @@ func mustURL(t *testing.T, raw string) *url.URL {
 	return u
 }
 
-func TestClipWritesARumorNoteNamedAfterThePage(t *testing.T) {
+func TestClipWritesAWebNoteNamedAfterThePage(t *testing.T) {
 	root, s := newStore(t)
 	res, err := Clip(s, now, mustURL(t, "https://example.com/a/b?x=1"), "Tom: a / b?")
 	require.NoError(t, err)
@@ -422,11 +422,11 @@ func TestClipWritesARumorNoteNamedAfterThePage(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root, res.Rel))
 	require.NoError(t, err)
 	n := store.ParseNote("x.md", data)
-	assert.Equal(t, store.KindRumor, n.Kind)
+	assert.Equal(t, store.KindWeb, n.Kind)
 	assert.Equal(t, "https://example.com/a/b?x=1", n.Frontmatter.Get("source").Value)
 	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
 	assert.Equal(t, "Tom a b", n.Frontmatter.Get("title").Value)
-	assert.Equal(t, "https://example.com/a/b?x=1\n", n.Body)
+	assert.Empty(t, n.Body, "the address lives in the properties only")
 
 	require.NoError(t, res.Action.Undo())
 	assert.NoFileExists(t, filepath.Join(root, res.Rel))

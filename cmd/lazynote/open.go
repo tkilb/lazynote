@@ -1,0 +1,32 @@
+package main
+
+import (
+	"github.com/tkilb/lazynote/internal/clip"
+	"github.com/tkilb/lazynote/internal/ui/popup"
+)
+
+// openWeb sends the web address in the source property of the note under
+// the PARA cursor to the default browser. A note whose source is not an http
+// or https address, and a folder, only get a notice.
+func (m model) openWeb() model {
+	entry, ok := m.para.SelectedNote()
+	if !ok {
+		return m.notify(popup.Info, "Select a note with a web address in its source to open it.")
+	}
+	note, err := m.store.ReadNote(entry.Rel)
+	if err != nil {
+		return m.notify(popup.Warning, "Could not read the note: "+err.Error()+".")
+	}
+	var source string
+	if v := note.Frontmatter.Get("source"); v != nil {
+		source = v.Value
+	}
+	u, err := clip.ParseURL(source)
+	if err != nil {
+		return m.notify(popup.Info, "This note has no web address in its source.")
+	}
+	if err := m.openURL(u.String()); err != nil {
+		return m.notify(popup.Warning, capitalize(err.Error())+".")
+	}
+	return m
+}

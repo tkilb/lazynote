@@ -28,18 +28,20 @@ const (
 	KindIdea Kind = "idea"
 	// KindDraft is a forming idea that is incomplete and still being revised.
 	KindDraft Kind = "draft"
+	// KindWeb is a saved web page; its address is the source property.
+	KindWeb Kind = "web"
 )
 
 // kinds lists every assignable kind in display order.
-var kinds = []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft}
+var kinds = []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb}
 
-// Kinds returns the six assignable kinds (not KindUnset) in display order.
+// Kinds returns the seven assignable kinds (not KindUnset) in display order.
 func Kinds() []Kind {
 	return append([]Kind(nil), kinds...)
 }
 
 // ParseKind maps s to a kind, ignoring case and surrounding space. Anything
-// that is not one of the six kinds is KindUnset.
+// that is not one of the seven kinds is KindUnset.
 func ParseKind(s string) Kind {
 	k := Kind(strings.ToLower(strings.TrimSpace(s)))
 	for _, valid := range kinds {
@@ -82,6 +84,8 @@ func (k Kind) Meaning() string {
 		return "Loose thought"
 	case KindDraft:
 		return "Incomplete, still revising"
+	case KindWeb:
+		return "Web page, saved by its address (o opens it)"
 	}
 	return ""
 }

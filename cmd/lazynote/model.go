@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/browser"
 	"github.com/tkilb/lazynote/internal/clip"
 	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/links"
@@ -150,7 +151,9 @@ type model struct {
 	extract *extractState
 	// fetcher gets page titles for URL clips; clipping counts the fetches
 	// still running.
-	fetcher  *clip.Fetcher
+	fetcher *clip.Fetcher
+	// openURL hands a web address to the browser.
+	openURL  func(string) error
 	clipping int
 	// writeClipboard copies text to the system clipboard (a yank).
 	writeClipboard func(string) error
@@ -187,7 +190,7 @@ func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
 		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{},
-		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(),
+		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
 	}
 }
 
@@ -327,6 +330,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m, cmd = m.startImport()
 	case "U":
 		m, cmd = m.startClip()
+	case "o":
+		m = m.openWeb()
 	case "b":
 		m = m.openDaily(-1)
 	case "t":

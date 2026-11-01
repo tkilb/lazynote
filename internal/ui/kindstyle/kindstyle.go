@@ -3,10 +3,15 @@
 package kindstyle
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/tkilb/lazynote/internal/store"
 )
+
+// BadgeWidth is the width of every badge; shorter ones are padded.
+const BadgeWidth = 4
 
 // UnsetBadge stands in for a note whose kind is unset.
 const UnsetBadge = "----"
@@ -24,12 +29,13 @@ var styles = map[store.Kind]struct {
 	store.KindFossil:   {"foss", lipgloss.Color("8")},
 	store.KindIdea:     {"idea", lipgloss.Color("4")},
 	store.KindDraft:    {"draf", lipgloss.Color("5")},
+	store.KindWeb:      {"web", lipgloss.Color("111")},
 }
 
 // Badge returns the four-character badge and color for k.
 func Badge(k store.Kind) (string, lipgloss.Color) {
 	if s, ok := styles[k]; ok {
-		return s.badge, s.color
+		return fmt.Sprintf("%-*s", BadgeWidth, s.badge), s.color
 	}
 	return UnsetBadge, unsetColor
 }

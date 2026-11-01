@@ -311,8 +311,8 @@ func Daily(s store.Store, t time.Time) (Result, error) {
 }
 
 // Clip creates an inbox note for a web page: named after title (or, when the
-// title has nothing usable, after the address), with kind rumor, the address
-// as its source and as its body. u must come from clip.ParseURL.
+// title has nothing usable, after the address), with kind web and the
+// address as its source, and an empty body. u must come from clip.ParseURL.
 func Clip(s store.Store, now time.Time, u *url.URL, title string) (Result, error) {
 	name := Name(title)
 	if name == "" {
@@ -323,7 +323,7 @@ func Clip(s store.Store, now time.Time, u *url.URL, title string) (Result, error
 	}
 	address := u.String()
 	return createUnique(s, name, func(final string) ([]byte, error) {
-		return store.IntakeNote(final, store.KindRumor, address, now.Format(dayLayout), address+"\n", nil)
+		return store.IntakeNote(final, store.KindWeb, address, now.Format(dayLayout), "", nil)
 	})
 }
 

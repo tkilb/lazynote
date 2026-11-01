@@ -53,7 +53,7 @@ func (m Model) View(outerWidth, outerHeight int) string {
 	textWidth := width
 	if m.badge != "" {
 		pill := lipgloss.NewStyle().Bold(true).Background(m.color).Foreground(lipgloss.Color("0")).
-			Render(" " + m.badge + " ")
+			Render(" " + strings.TrimSpace(m.badge) + " ")
 		lead = pill + " "
 		textWidth -= ansi.StringWidth(lead)
 	}

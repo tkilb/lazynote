@@ -31,6 +31,9 @@ func (m model) startExtract() (model, tea.Cmd) {
 	}
 	var items []picker.Item
 	for _, k := range store.Kinds() {
+		if k == store.KindWeb {
+			continue // lines taken from a note are not a web link
+		}
 		items = append(items, picker.Item{
 			Label: k.String(), Detail: k.Meaning(), Value: k.String(), Color: kindstyle.Color(k),
 		})

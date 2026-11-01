@@ -52,7 +52,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `?`                 | Keybindings popup (see "Help popup")          |
 | `A`                 | Quick Add: form for a new inbox note          |
 | `I`                 | Import transcript or note (path prompt)       |
-| `U`                 | URL clip                                      |
+| `U`                 | URL clip (a web note)                         |
+| `o`                 | Open the web address in the note's source     |
 | `b`                 | Open yesterday's daily note                   |
 | `t`                 | Open today's daily note                       |
 | `T`                 | Open tomorrow's daily note                    |
@@ -502,6 +503,7 @@ Conflict notes:
   | `fossil`   | Is or was true, but may have drifted due to time.          |
   | `idea`     | A loose thought that has not graduated to a proposal.      |
   | `draft`    | A forming idea that is incomplete and still being revised. |
+  | `web`      | A web page saved by its address, which is the `source` property (`o` opens it). Not offered when extracting lines. |
 
   The set is closed and defined once in `internal/store` as a typed enum.
   A missing or unrecognized value is shown as `unset` and never
@@ -510,7 +512,7 @@ Conflict notes:
 - Kind is visible in three places: a short badge on each PARA row (colored per
   class), the same badge as a colored pill before the title in the Title
   panel, and a highlighted row at the top of Info.
-- Changing a kind in-app (`K` in PARA) opens a picker listing all six kinds and
+- Changing a kind in-app (`K` in PARA) opens a picker listing all seven kinds and
   writes only the `kind` property, using the round-trip rules above.
 
 ## Intake
@@ -544,8 +546,9 @@ Also confirmed:
 - Shell capture: `lazynote add "Title" "body" --kind idea`, and
   `pbpaste | lazynote add --source clipboard` or `lazynote add --clipboard`,
   so capture works from a hotkey or script without opening the TUI.
-- URL clip (`U`, chunk 9f): save a link, named after the page title, with
-  `source: <url>` and `kind: rumor`. See chunk 9f for the rules.
+- URL clip (`U`, chunk 9f): save a link as a web note, named after the
+  page title, with `kind: web` and `source: <url>`; the body is empty.
+  `o` opens the address in the browser. See chunk 9f for the rules.
 - Daily retention: when a notebook is first opened in a session (at startup for the
   active one, on first switch for others), lazynote
   permanently deletes files in `archives/daily/` named `YYYY-MM-DD.md` whose date is
@@ -742,7 +745,7 @@ Numbers are kept stable; resolved items were removed.
    invalid properties is not seen as a referrer at all, so a link in it is
    not rewritten. The cursor lands on the renamed item.
 9. Remaining actions: set kind (`K` picker, done) and the `m` move popup (done).
-   `K` on a note opens the fuzzy picker titled "Set kind" with the six kinds
+   `K` on a note opens the fuzzy picker titled "Set kind" with the seven kinds
    and their meanings, the highlight on the current one; `enter` writes only
    the `kind` property through `Store.Edit` (so a missing `uid` is added and
    the title set, as for any write), as one undo entry; choosing the current
@@ -773,7 +776,7 @@ Numbers are kept stable; resolved items were removed.
      and total shown at the bottom left once it overflows; `enter` there
      starts a new line. The kind box shows `‹ kind ›` in its color with its
      meaning and changes with `←`/`→` through unset, fact, rumor, proposal,
-     fossil, idea and draft (unset by default). The source box works the same
+     fossil, idea, draft and web (unset by default). The source box works the same
      way through the `sources` list of the config file (see Config; the
      built-in list is adhoc, meeting, conversation, email, web, document,
      and the first entry is the default). Tags are names separated by
@@ -816,7 +819,7 @@ Numbers are kept stable; resolved items were removed.
    - Every flag is optional and flags may come before, between or after the
      positionals; `--` ends the flags (a title may start with a dash). The
      title is required: one positional, or the first line of the text.
-   - `--kind`: one of the six kinds in any case, or `unset`; default none, so
+   - `--kind`: one of the seven kinds in any case, or `unset`; default none, so
      no `kind` property. `--source`: any word (not blank, no control
      characters, at most 40 characters, the same rule as the config);
      default the first source of the config (`adhoc`). `--tags`: the form's
@@ -906,9 +909,18 @@ Numbers are kept stable; resolved items were removed.
      bytes (on a character boundary) for every intake note, so a title of
      four-byte characters still saves.
    - The note is `inbox/<title>.md` (cleaned and numbered like Quick Add)
-     with `uid`, `title`, `kind: rumor`, `source` (the address), `date` and
-     empty `tags`; the body is the address. Undo moves it to the trash. If
-     the note cannot be saved, the prompt comes back with the address.
+     with `uid`, `title`, `kind: web`, `source` (the address), `date` and
+     empty `tags`; the body is empty, because the address lives in the
+     properties only. Undo moves it to the trash. If the note cannot be
+     saved, the prompt comes back with the address.
+   - `o` (from any panel, on the note under the PARA cursor) opens the
+     address in the `source` property in the default browser: `open` on macOS,
+     `xdg-open` on Linux, run directly with the address as one argument (never
+     through a shell). Only an address `clip.ParseURL` accepts is passed on, so
+     it can never be taken for an option or a local file. It works on any note
+     whose source is a web address, whatever its kind. A note without one, or
+     a folder, only gets a notice. The browser is started, not waited for;
+     `internal/browser`, tested for the choice of command.
    - When the fetch fails or the page has no title, the note is still saved,
      named after the address (`example.com - docs - intro`), and a warning
      says why. Errors never show the address.
