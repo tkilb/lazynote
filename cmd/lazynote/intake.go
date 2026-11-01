@@ -100,6 +100,15 @@ func (m model) startImport() (model, tea.Cmd) {
 	})
 }
 
+// savedPlace says where a new note went: "the Inbox" for the inbox folder
+// itself, else its folder, such as "projects/alpha".
+func savedPlace(rel string) string {
+	if dir := filepath.ToSlash(filepath.Dir(rel)); dir != "inbox" {
+		return dir
+	}
+	return "the Inbox"
+}
+
 // finishIntake records the undo entry for a created note and refreshes the
 // panels. Nothing is said when the new note shows in the current list; when
 // it does not, a notice says where it went.
@@ -117,7 +126,7 @@ func (m model) finishIntake(res intake.Result, err error) model {
 		m = m.notify(popup.Warning, "The note's properties could not be read, so it was imported unchanged and keeps its original uid.")
 	}
 	if !m.para.Shows(res.Rel) {
-		m = m.notify(popup.Info, "Saved to the Inbox as "+strings.TrimSuffix(filepath.Base(res.Rel), ".md")+".")
+		m = m.notify(popup.Info, "Saved to "+savedPlace(res.Rel)+" as "+strings.TrimSuffix(filepath.Base(res.Rel), ".md")+".")
 	}
 	return m
 }

@@ -564,8 +564,8 @@ Also confirmed:
   `pbpaste | lazynote add --source clipboard` or `lazynote add --clipboard`,
   so capture works from a hotkey or script without opening the TUI.
 - URL clip (`U`, chunk 9f): save a link as a web note, named after the
-  page title, with `kind: web` and `source: <url>`; the body is empty.
-  `o` opens the address in the browser. See chunk 9f for the rules.
+  page title, with `kind: web` and `source: <url>`; the body is empty. It is
+  saved in the folder PARA is showing. `o` opens the address in the browser. See chunk 9f for the rules.
 - Daily retention: when a notebook is first opened in a session (at startup for the
   active one, on first switch for others), lazynote
   permanently deletes files in `archives/daily/` named `YYYY-MM-DD.md` whose date is
@@ -924,10 +924,13 @@ Numbers are kept stable; resolved items were removed.
      overrides) removed, white space collapsed. A file name is cut to 200
      bytes (on a character boundary) for every intake note, so a title of
      four-byte characters still saves.
-   - The note is `inbox/<title>.md` (cleaned and numbered like Quick Add)
-     with `uid`, `title`, `kind: web`, `source` (the address), `date` and
-     empty `tags`; the body is empty, because the address lives in the
-     properties only. Undo moves it to the trash. If the note cannot be
+   - The note is `<folder>/<title>.md` (cleaned and numbered like Quick Add),
+     where `<folder>` is the folder PARA is showing when the address is
+     submitted (`projects/alpha`, or `inbox` at the Inbox root), not always the
+     Inbox. A folder that is missing is created, and one outside the notebook
+     is refused. The note has `uid`, `title`, `kind: web`, `source` (the
+     address), `date` and empty `tags`; the body is empty, because the address
+     lives in the properties only. Undo moves it to the trash. If the note cannot be
      saved, the prompt comes back with the address.
    - `o` (from any panel, on the note under the PARA cursor) opens the
      address in the `source` property in the default browser: `open` on macOS,

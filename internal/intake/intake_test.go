@@ -415,7 +415,7 @@ func mustURL(t *testing.T, raw string) *url.URL {
 
 func TestClipWritesAWebNoteNamedAfterThePage(t *testing.T) {
 	root, s := newStore(t)
-	res, err := Clip(s, now, mustURL(t, "https://example.com/a/b?x=1"), "Tom: a / b?")
+	res, err := Clip(s, now, "", mustURL(t, "https://example.com/a/b?x=1"), "Tom: a / b?")
 	require.NoError(t, err)
 	assert.Equal(t, "inbox/Tom a b.md", res.Rel)
 
@@ -441,7 +441,7 @@ func TestClipFallsBackToTheAddressWithoutATitle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.raw, func(t *testing.T) {
 			_, s := newStore(t)
-			res, err := Clip(s, now, mustURL(t, tt.raw), tt.title)
+			res, err := Clip(s, now, "", mustURL(t, tt.raw), tt.title)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, res.Rel)
 		})
@@ -451,9 +451,9 @@ func TestClipFallsBackToTheAddressWithoutATitle(t *testing.T) {
 func TestClipNumbersATakenName(t *testing.T) {
 	_, s := newStore(t)
 	u := mustURL(t, "https://example.com/x")
-	first, err := Clip(s, now, u, "Same")
+	first, err := Clip(s, now, "", u, "Same")
 	require.NoError(t, err)
-	second, err := Clip(s, now, u, "Same")
+	second, err := Clip(s, now, "", u, "Same")
 	require.NoError(t, err)
 	assert.Equal(t, "inbox/Same.md", first.Rel)
 	assert.Equal(t, "inbox/Same 2.md", second.Rel)
@@ -469,6 +469,39 @@ func TestNameFitsAFileName(t *testing.T) {
 
 func TestClipWithAHugeTitleStillSaves(t *testing.T) {
 	_, s := newStore(t)
-	_, err := Clip(s, now, mustURL(t, "https://example.com/x"), strings.Repeat("😀", 80))
+	_, err := Clip(s, now, "", mustURL(t, "https://example.com/x"), strings.Repeat("😀", 80))
 	require.NoError(t, err)
+}
+
+func TestClipSavesInTheFolderGiven(t *testing.T) {
+	root, s := newStore(t)
+	u := mustURL(t, "https://example.com/x")
+
+	res, err := Clip(s, now, "projects/alpha", u, "Same")
+	require.NoError(t, err)
+	assert.Equal(t, "projects/alpha/Same.md", res.Rel)
+	assert.FileExists(t, filepath.Join(root, "projects", "alpha", "Same.md"), "the folder is created when missing")
+
+	again, err := Clip(s, now, "projects/alpha", u, "Same")
+	require.NoError(t, err)
+	assert.Equal(t, "projects/alpha/Same 2.md", again.Rel, "a taken name is numbered in that folder")
+
+	inbox, err := Clip(s, now, "", u, "Same")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Same.md", inbox.Rel, "no folder means the inbox")
+
+	require.NoError(t, res.Action.Undo())
+	assert.NoFileExists(t, filepath.Join(root, "projects", "alpha", "Same.md"))
+}
+
+func TestClipRefusesAFolderOutsideTheNotebook(t *testing.T) {
+	root, s := newStore(t)
+	u := mustURL(t, "https://example.com/x")
+	for _, dir := range []string{"../escape", "/tmp/abs", "a/../../up", "a\x00b"} {
+		_, err := Clip(s, now, dir, u, "Nope")
+		assert.Error(t, err, dir)
+	}
+	parent := filepath.Dir(root)
+	assert.NoFileExists(t, filepath.Join(parent, "escape", "Nope.md"))
+	assert.NoFileExists(t, "/tmp/abs/Nope.md")
 }

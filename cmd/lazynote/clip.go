@@ -21,7 +21,10 @@ const clipTimeout = 10 * time.Second
 // clipFetchedMsg arrives when the page title fetch ends. err is nil when
 // title holds the page's title.
 type clipFetchedMsg struct {
-	url   *url.URL
+	url *url.URL
+	// dir is the folder PARA was showing when the address was submitted; the
+	// note is saved there.
+	dir   string
 	title string
 	err   error
 }
@@ -50,18 +53,18 @@ func (m model) askClipURL(initial string) (model, tea.Cmd) {
 			return m.askClipURL(text)
 		}
 		m.clipping++
-		return m, m.fetchTitle(u)
+		return m, m.fetchTitle(u, m.para.Dir())
 	})
 }
 
 // fetchTitle returns the command that fetches the title of u.
-func (m model) fetchTitle(u *url.URL) tea.Cmd {
+func (m model) fetchTitle(u *url.URL, dir string) tea.Cmd {
 	fetcher := m.fetcher
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), clipTimeout)
 		defer cancel()
 		title, err := fetcher.Title(ctx, u)
-		return clipFetchedMsg{url: u, title: title, err: err}
+		return clipFetchedMsg{url: u, dir: dir, title: title, err: err}
 	}
 }
 
@@ -71,7 +74,7 @@ func (m model) fetchTitle(u *url.URL) tea.Cmd {
 // lost.
 func (m model) finishClip(msg clipFetchedMsg) (model, tea.Cmd) {
 	m.clipping = max(m.clipping-1, 0)
-	res, err := intake.Clip(m.store, time.Now(), msg.url, msg.title)
+	res, err := intake.Clip(m.store, time.Now(), msg.dir, msg.url, msg.title)
 	m = m.finishIntake(res, err)
 	if err != nil {
 		return m.askClipURL(msg.url.String())

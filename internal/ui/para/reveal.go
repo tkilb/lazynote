@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+// Dir returns the folder the panel is looking at, relative to the notebook
+// root, such as "projects/alpha" (or just "inbox" at a tab root).
+func (m Model) Dir() string {
+	return filepath.ToSlash(filepath.Join(tabDefs[m.active].dir, m.tabs[m.active].dir))
+}
+
 // Shows reports whether the directory the panel is looking at is the one
 // that holds the note at rel.
 func (m Model) Shows(rel string) bool {

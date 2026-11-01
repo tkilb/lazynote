@@ -169,7 +169,7 @@ New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source
 
 - **`A` Quick Add** opens a form for the title, body, kind, source and tags.
 - **`I` Import** reads a file: a transcript becomes a note holding the text unchanged (kind `rumor`), and a markdown note is copied in with its properties kept.
-- **`U` Clip** asks for a web address and saves a `web` note named after the page's title, with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
+- **`U` Clip** asks for a web address and saves a `web` note, in the folder PARA is showing, named after the page's title, with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
 - **Extract**: in Body, select lines and press `enter` to turn them into a new note that links back to the original.
 
 The same capture works from a shell, without opening the interface. Both commands print the new note's path:

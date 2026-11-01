@@ -16,7 +16,7 @@ var helpGlobalBindings = []statusbar.Binding{
 	{Key: "B", Label: "choose the notebook to open (your place in each is remembered)"},
 	{Key: "A", Label: "Quick Add a note to the inbox (tab, ctrl+s saves)"},
 	{Key: "I", Label: "import a file (transcript or note)"},
-	{Key: "U", Label: "clip a web page (a web note named after its title)"},
+	{Key: "U", Label: "clip a web page (a web note named after its title, saved in the folder PARA shows)"},
 	{Key: "o", Label: "open the web address in the note's source in the browser"},
 	{Key: "b/t/T", Label: "open yesterday's/today's/tomorrow's daily note"},
 	{Key: "u", Label: "undo"},

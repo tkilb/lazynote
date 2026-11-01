@@ -153,6 +153,12 @@ func ImportNote(s store.Store, now time.Time, path string) (Result, error) {
 // so on when that is taken. contents makes the bytes for the name finally
 // used.
 func createUnique(s store.Store, name string, contents func(final string) ([]byte, error)) (Result, error) {
+	return createUniqueIn(s, inboxDir, name, contents)
+}
+
+// createUniqueIn is createUnique for the folder dir, relative to the notebook
+// root. The store refuses a folder that leaves the notebook.
+func createUniqueIn(s store.Store, dir, name string, contents func(final string) ([]byte, error)) (Result, error) {
 	stem := strings.TrimSuffix(name, filepath.Ext(name))
 	ext := filepath.Ext(name)
 	for n := 1; n <= maxNameTries; n++ {
@@ -164,7 +170,7 @@ func createUnique(s store.Store, name string, contents func(final string) ([]byt
 		if err != nil {
 			return Result{}, err
 		}
-		rel := filepath.Join(inboxDir, final)
+		rel := filepath.Join(dir, final)
 		act, err := s.Create(rel, data)
 		if errors.Is(err, store.ErrExists) {
 			continue
@@ -310,10 +316,14 @@ func Daily(s store.Store, t time.Time) (Result, error) {
 	return Result{Rel: rel, Action: act}, nil
 }
 
-// Clip creates an inbox note for a web page: named after title (or, when the
+// Clip creates a note for a web page in the folder dir (relative to the
+// notebook root; empty means the inbox): named after title (or, when the
 // title has nothing usable, after the address), with kind web and the
 // address as its source, and an empty body. u must come from clip.ParseURL.
-func Clip(s store.Store, now time.Time, u *url.URL, title string) (Result, error) {
+func Clip(s store.Store, now time.Time, dir string, u *url.URL, title string) (Result, error) {
+	if dir == "" {
+		dir = inboxDir
+	}
 	name := Name(title)
 	if name == "" {
 		name = Name(addressTitle(u))
@@ -322,7 +332,7 @@ func Clip(s store.Store, now time.Time, u *url.URL, title string) (Result, error
 		return Result{}, ErrEmpty
 	}
 	address := u.String()
-	return createUnique(s, name, func(final string) ([]byte, error) {
+	return createUniqueIn(s, dir, name, func(final string) ([]byte, error) {
 		return store.IntakeNote(final, store.KindWeb, address, now.Format(dayLayout), "", nil)
 	})
 }
