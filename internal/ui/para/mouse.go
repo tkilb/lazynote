@@ -21,6 +21,10 @@ func (m Model) SelectTab(i int) Model {
 	return m.switchTab(i)
 }
 
+// InFolder reports whether the active tab is inside a folder, so ← goes back
+// rather than doing nothing.
+func (m Model) InFolder() bool { return m.tabs[m.active].dir != "" }
+
 // RowAt returns the index of the row drawn at content row y (0 is the first
 // row under the top border).
 func (m Model) RowAt(y int) (int, bool) {

@@ -17,12 +17,15 @@ const panelNumber = '2'
 
 const (
 	badgeWidth = 4
+	// dirMarker leads a folder's row where a note has its kind badge.
+	dirMarker = "▸"
 )
 
 var (
 	dimStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	dirColor   = lipgloss.Color("6")
+	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(dirColor)
 	// overdueColor is the name color of a daily note past its retention that
 	// has not been archived.
 	overdueColor = lipgloss.Color("208")
@@ -125,8 +128,8 @@ func (m Model) body(t tabState, width, height int, focused bool) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderRow draws one row: a marker column, a kind badge (blank for
-// directories), the name, and for directories an item count right-aligned.
+// renderRow draws one row: a marker column, a kind badge (a ▸ in the folder
+// color for directories, which can be opened), the name, and for directories an item count right-aligned.
 // cursor highlights the row; mk draws the left-edge bar; query, when the row
 // matches it, highlights the matching text in the name.
 func renderRow(r row, width int, cursor bool, mk mark, query string) string {
@@ -146,6 +149,7 @@ func renderRow(r row, width int, cursor bool, mk mark, query string) string {
 	if r.entry.IsDir {
 		name = r.entry.Name + "/"
 		right = fmt.Sprint(r.entry.ItemCount)
+		badge, badgeColor = dirMarker+strings.Repeat(" ", badgeWidth-1), dirColor
 	} else {
 		badge, badgeColor = kindstyle.Badge(r.kind)
 	}
