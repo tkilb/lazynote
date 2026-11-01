@@ -10,6 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const leadDashes = 2
+
 const (
 	// UnfocusedColor is the border/title color for a panel that does not
 	// currently have focus. The empty color leaves the terminal foreground
@@ -145,7 +147,6 @@ func ScrollWindow(cursor, totalItems, visibleRows int) (start, end int) {
 // "╭──[1]-Notebook────────╮". A title that does not fit within width is
 // truncated to avoid overflowing the panel.
 func topBorder(title string, width int, focused bool, lineStyle lipgloss.Style) string {
-	const leadDashes = 2
 	label := titleLabel(title)
 	if len(label) > width-leadDashes {
 		label = label[:max(width-leadDashes, 0)]
@@ -223,15 +224,7 @@ const tabSeparator = " - "
 func topBorderTabs(number rune, tabs []Tab, width int, focused bool, lineStyle lipgloss.Style) string {
 	prefix := "[" + string(number) + "]-"
 
-	const leadDashes = 2
-	budget := width - leadDashes - len(prefix)
-	var shown []Tab
-	for _, layout := range tabLayouts(tabs) {
-		if tabsWidth(layout) <= budget {
-			shown = layout
-			break
-		}
-	}
+	shown, budget := shownTabs(tabs, width, len(prefix))
 	if shown == nil {
 		return topBorder(prefix+tabsPlain(tabs), width, focused, lineStyle)
 	}
@@ -255,6 +248,50 @@ func topBorderTabs(number rune, tabs []Tab, width int, focused bool, lineStyle l
 	fill := max(budget-tabsWidth(shown), 0)
 	b.WriteString(lineStyle.Render(strings.Repeat("─", fill) + "╮"))
 	return b.String()
+}
+
+// shownTabs picks the widest layout of tabs that fits a title of width
+// columns after the lead dashes and a prefix of prefixLen columns. It returns
+// nil when none fits, and the columns left for the layout.
+func shownTabs(tabs []Tab, width, prefixLen int) ([]Tab, int) {
+	budget := width - leadDashes - prefixLen
+	for _, layout := range tabLayouts(tabs) {
+		if tabsWidth(layout) <= budget {
+			return layout, budget
+		}
+	}
+	return nil, budget
+}
+
+// TabAt maps a column of the panel's top border (0 is the corner) to the
+// index of the tab drawn there, for a title built by FrameTabs with an inner
+// width of width. It reports false over the border, a separator, or when only
+// the active tab is shown.
+func TabAt(tabs []Tab, width, x int) (int, bool) {
+	const prefixLen = len("[0]-")
+	shown, _ := shownTabs(tabs, width, prefixLen)
+	if shown == nil || len(shown) != len(tabs) {
+		return 0, false
+	}
+	start := 1 + leadDashes + prefixLen
+	for i, t := range shown {
+		if x >= start && x < start+len(t.Label) {
+			return i, true
+		}
+		start += len(t.Label) + len(tabSeparator)
+	}
+	return 0, false
+}
+
+// RowAt maps a content row of a list (0 is the first row drawn) to the item
+// index drawn there, using the ScrollWindow its View uses. It reports false
+// past the last item.
+func RowAt(row, cursor, totalItems, visibleRows int) (int, bool) {
+	start, end := ScrollWindow(cursor, totalItems, visibleRows)
+	if row < 0 || start+row >= end {
+		return 0, false
+	}
+	return start + row, true
 }
 
 // tabLayouts lists the candidate layouts of tabs, widest first.

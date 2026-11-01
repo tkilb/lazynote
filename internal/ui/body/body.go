@@ -459,3 +459,20 @@ func (m Model) row(i, width int, focused bool) string {
 	}
 	return pickStyle.Render(text)
 }
+
+// RowAt returns the source line drawn at content row y (0 is the first row
+// under the top border). It reports false past the last row.
+func (m Model) RowAt(y int) (int, bool) {
+	row := m.offset + y
+	if y < 0 || y >= m.height || row >= len(m.srcOf) {
+		return 0, false
+	}
+	return m.srcOf[row], true
+}
+
+// SelectRow puts the cursor on source line i, as moving with the arrow keys
+// does.
+func (m Model) SelectRow(i int) Model {
+	m.yanked = 0
+	return m.moveTo(i)
+}

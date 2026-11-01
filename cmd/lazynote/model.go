@@ -261,6 +261,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.ClearScreen
 	case tea.KeyMsg:
 		return m.updateKey(msg)
+	case tea.MouseMsg:
+		return m.updateMouse(msg)
 	default:
 		// Cursor blink and similar messages belong to the open prompt.
 		if m.picker != nil {

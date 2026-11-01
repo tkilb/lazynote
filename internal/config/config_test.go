@@ -268,3 +268,28 @@ func TestValidateSource(t *testing.T) {
 		assert.Error(t, err, "%q", bad)
 	}
 }
+
+func TestParseMouse(t *testing.T) {
+	tests := []struct {
+		name string
+		ui   string
+		want bool
+	}{
+		{"absent means on", "", true},
+		{"ui without mouse means on", "ui: {}\n", true},
+		{"true", "ui:\n  mouse: true\n", true},
+		{"false turns it off", "ui:\n  mouse: false\n", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := Parse([]byte("notebooks: [\"~\"]\n"+tt.ui), t.TempDir())
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.UI.MouseEnabled())
+		})
+	}
+}
+
+func TestParseMouseRejectsNonBoolean(t *testing.T) {
+	_, err := Parse([]byte("notebooks: [\"~\"]\nui:\n  mouse: maybe\n"), t.TempDir())
+	require.Error(t, err)
+}

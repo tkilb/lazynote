@@ -210,3 +210,19 @@ func renderLine(l line, width int, cursor bool) string {
 	}
 	return name + gap + dimStyle.Render(right)
 }
+
+// RowAt returns the index of the line drawn at content row y (0 is the first
+// row under the top border), for a panel outerHeight rows tall.
+func (m Model) RowAt(y, outerHeight int) (int, bool) {
+	_, height := panel.InnerSize(0, outerHeight)
+	return panel.RowAt(y, m.cursor, len(m.lines), height)
+}
+
+// SelectRow puts the cursor on line i when it is an entry; a group header
+// does nothing.
+func (m Model) SelectRow(i int) Model {
+	if i >= 0 && i < len(m.lines) && !m.lines[i].header {
+		m.cursor = i
+	}
+	return m
+}

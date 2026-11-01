@@ -50,6 +50,7 @@ type Config struct {
 	// Notebooks keeps the configured order; the first entry is the default.
 	Notebooks []Notebook
 	Retention Retention
+	UI        UI
 	// Sources are the sources Quick Add offers, the first being the default.
 	Sources []string
 }
@@ -71,12 +72,25 @@ type Retention struct {
 	DailyDays int
 }
 
+// UI holds the interface settings. The zero value is the default.
+type UI struct {
+	// MouseOff is set when ui.mouse is false in the config file.
+	MouseOff bool
+}
+
+// MouseEnabled reports whether mouse support is on: true unless ui.mouse is
+// explicitly false.
+func (u UI) MouseEnabled() bool { return !u.MouseOff }
+
 type rawConfig struct {
 	Notebooks []string  `yaml:"notebooks"`
 	Sources   yaml.Node `yaml:"sources"`
 	Retention struct {
 		Daily string `yaml:"daily"`
 	} `yaml:"retention"`
+	UI struct {
+		Mouse *bool `yaml:"mouse"`
+	} `yaml:"ui"`
 }
 
 // DefaultPath returns ~/.config/lazynote/config.yaml.
@@ -126,6 +140,7 @@ func Parse(data []byte, home string) (Config, error) {
 	}
 
 	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources}
+	cfg.UI.MouseOff = raw.UI.Mouse != nil && !*raw.UI.Mouse
 	for _, p := range raw.Notebooks {
 		nb, err := newNotebook(p, home)
 		if err != nil {

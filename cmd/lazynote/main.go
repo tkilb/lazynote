@@ -23,6 +23,7 @@ type startup struct {
 	root          string
 	sources       []string
 	retentionDays int
+	mouse         bool
 }
 
 // openStore loads the config and opens the first available notebook. The
@@ -41,6 +42,7 @@ func openStore() (startup, error) {
 			return startup{
 				store: store.NewMarkdown(nb.Path), root: nb.Path,
 				sources: cfg.Sources, retentionDays: cfg.Retention.DailyDays,
+				mouse: cfg.UI.MouseEnabled(),
 			}, nil
 		}
 	}
@@ -95,7 +97,11 @@ func main() {
 	// resuming after ctrl+z or an external editor repaints cleanly. Focus
 	// reporting lets the app refresh when the terminal regains focus (not
 	// every terminal sends it; ctrl+l always works).
-	p := tea.NewProgram(start, tea.WithAltScreen(), tea.WithReportFocus())
+	opts := []tea.ProgramOption{tea.WithAltScreen(), tea.WithReportFocus()}
+	if boot.mouse {
+		opts = append(opts, tea.WithMouseCellMotion())
+	}
+	p := tea.NewProgram(start, opts...)
 	final, err := p.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running lazynote: %v\n", err)

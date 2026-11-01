@@ -125,7 +125,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `esc`       | Close an open range; then clear the selection; then return focus to PARA (2) |
 | `←`         | Return focus to PARA (2) (closing a range or clearing the selection first, like `esc`) |
 
-Mouse follows lazytask (click to focus or select, wheel to scroll).
+Mouse follows lazytask (click to focus or select, wheel to scroll); the
+details are in chunk 10.
 
 ## Yazi parity
 
@@ -309,6 +310,8 @@ Conflict notes:
     - ~/Notes/personal
   retention:
     daily: 30d
+  ui:
+    mouse: true
   sources:
     - adhoc
     - meeting
@@ -893,7 +896,23 @@ Numbers are kept stable; resolved items were removed.
    count is reported in an info popup (the app has no transient status-bar
    message); a failure shows a warning. Only the first notebook is purged for
    now; the Notebook panel (7) must call it on the first switch to another.
-10. Mouse support, remaining config keys (`retention.daily`).
+10. Mouse support (done; config key `ui.mouse` tested). On by default; set
+    `ui:` / `mouse: false` in the config file to turn it off (cell-motion
+    reporting is not requested then).
+    - A left click focuses the panel under the pointer (not Title). In PARA it
+      also selects the row clicked, or the tab clicked on the top border
+      (what is drawn: the compact `I - P - A` form counts too); in Related it
+      selects an entry (a group header does nothing); in Body it puts the
+      cursor on the source line clicked. A click only selects: it never
+      jumps, opens or acts, and there is no double click.
+    - The wheel focuses the panel and moves like `↑`/`↓` (Body cursor, PARA
+      and Related selection, Info scroll).
+    - While a popup, prompt, form, picker, menu or the help is open the grid
+      ignores the mouse. A click dismisses a notice; the wheel moves in the
+      help, a picker or a menu. Clicking inside pickers, menus, forms and
+      confirmations is not supported yet (the keyboard is the way), so a
+      stray click never discards typed text or answers a question.
+    - Remaining config keys: none; `retention.daily` came with chunk 2.
 7. Notebook panel: list the configured notebooks, switch with `enter`, mark
    unavailable paths, restore the last used notebook.
    Deliberately scheduled last among the features (project owner decision);
