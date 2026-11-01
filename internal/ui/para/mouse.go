@@ -22,13 +22,13 @@ func (m Model) SelectTab(i int) Model {
 }
 
 // RowAt returns the index of the row drawn at content row y (0 is the first
-// row under the top border).
+// row under the top border, which holds the path inside a folder).
 func (m Model) RowAt(y int) (int, bool) {
 	t := m.tabs[m.active]
 	if t.err != nil {
 		return 0, false
 	}
-	return panel.RowAt(y, t.cursor, len(t.rows), m.pageSize)
+	return panel.RowAt(y-m.headerRows(), t.cursor, len(t.rows), m.listRows())
 }
 
 // SelectRow puts the cursor on row i, as moving with the arrow keys does.

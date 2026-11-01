@@ -416,8 +416,17 @@ Conflict notes:
   `areas/`, `resources/`, `archives/`, `inbox/`) and cannot navigate above
   it. Directories list first, then notes, both sorted by name. Directory
   rows show an item count and no kind badge. Each tab remembers its
-  own current directory and cursor. The panel title shows the path relative
-  to the tab root. With a directory selected, Info shows its name and item
+  own current directory and cursor. Inside a folder, the first row of the
+  panel is the path of the folders below the tab root, `alpha/notes/`
+  (with a trailing slash; the tab's name is in the title), in the folder
+  color (cyan, as folder rows are): the one you are in bold, those above
+  plain, and the slashes dim. At the tab root there is no path row and the list gets the full height. The
+  path is cut from the left when too long (`…ha/notes/2026`) so the
+  current folder always shows. The row takes one list row while it is there
+  (a page is one row shorter, and a click on it only focuses the panel). The
+  bottom border keeps the search text (`search: text`) and the position.
+  (Tried to make drilling
+  obvious; it is one commit, easy to revert.) With a directory selected, Info shows its name and item
   counts, and Body and Related are empty. `a` creates the note in the
   current directory, quick capture still goes to the `inbox/` root, and `d` on
   a directory confirms and warns when it is not empty. `/` searches the

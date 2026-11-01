@@ -34,8 +34,8 @@ type row struct {
 	overdue bool
 }
 
-// defaultPageSize is the page length until the first Resize.
-const defaultPageSize = 10
+// defaultInnerRows is the height inside the border until the first Resize.
+const defaultInnerRows = 10
 
 // tabState is one tab's listing. A tab loads when it is first shown and
 // remembers its directory and cursor while another tab is active.
@@ -103,7 +103,9 @@ type Model struct {
 	active     int
 	tabs       [5]tabState
 	showHidden bool
-	pageSize   int
+	// innerRows is the height inside the panel's border; the list gets that
+	// less the path row, which shows only inside a folder.
+	innerRows int
 	// pendingG is set after a first "g", waiting for the second of "gg".
 	pendingG bool
 	// clip is the yank/cut buffer, shared by every tab.
@@ -116,7 +118,7 @@ type Model struct {
 
 // New returns a panel over s with the first tab loaded.
 func New(s store.Store) Model {
-	return Model{store: s, pageSize: defaultPageSize, now: time.Now}.load(0)
+	return Model{store: s, innerRows: defaultInnerRows, now: time.Now}.load(0)
 }
 
 // WithRetention marks undigested daily notes whose date is days or more before
@@ -126,9 +128,9 @@ func (m Model) WithRetention(days int, now func() time.Time) Model {
 	return m.Reload()
 }
 
-// Resize sets the number of visible list rows, used for paging.
+// Resize sets the number of rows inside the panel's border.
 func (m Model) Resize(visibleRows int) Model {
-	m.pageSize = max(visibleRows, 1)
+	m.innerRows = max(visibleRows, 1)
 	return m
 }
 
@@ -274,9 +276,9 @@ func (m Model) navigate(msg tea.KeyMsg) Model {
 	case "G":
 		m.moveTo(len(m.tabs[m.active].rows) - 1)
 	case "ctrl+u", "pgup":
-		m.move(-m.pageSize)
+		m.move(-m.listRows())
 	case "ctrl+d", "pgdown":
-		m.move(m.pageSize)
+		m.move(m.listRows())
 	case ".":
 		m.showHidden = !m.showHidden
 		m = m.Reload()

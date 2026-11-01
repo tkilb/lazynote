@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/textsafe"
 	"github.com/tkilb/lazynote/internal/ui/kindstyle"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
@@ -22,7 +23,8 @@ const (
 var (
 	dimStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	dirColor   = lipgloss.Color("6")
+	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(dirColor)
 	// overdueColor is the name color of a daily note past its retention that
 	// has not been archived.
 	overdueColor = lipgloss.Color("208")
@@ -76,12 +78,63 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		tabs[i] = panel.Tab{Label: d.label, Active: i == m.active}
 	}
 
-	left := "/" + filepath.ToSlash(t.dir)
+	// Inside a folder the path is the first row, so the bottom border has
+	// only the search.
+	left := ""
 	if t.search != "" {
-		left += "  search: " + t.search
+		left = "search: " + t.search
 	}
 	footer := panel.Footer{Left: left, Right: status(t, m.clip)}
-	return panel.FrameTabs(panelNumber, tabs, m.body(t, width, height, focused), width, height, focused, footer)
+	content := m.body(t, width, max(height-m.headerRows(), 1), focused)
+	if m.headerRows() > 0 {
+		content = breadcrumb(t.dir, width) + "\n" + content
+	}
+	return panel.FrameTabs(panelNumber, tabs, content, width, height, focused, footer)
+}
+
+// headerRows is how many rows above the list hold the path: one inside a
+// folder, none at the tab root, where the tab name already says where you are.
+func (m Model) headerRows() int {
+	if m.tabs[m.active].dir == "" {
+		return 0
+	}
+	return 1
+}
+
+// listRows is how many list rows fit: the height inside the border less the
+// path row, if there is one.
+func (m Model) listRows() int { return max(m.innerRows-m.headerRows(), 1) }
+
+// The path is drawn in the color of the folder rows: the folder you are in is
+// bold, the ones above it plain, and the slashes dim.
+var (
+	currentStyle = dirStyle
+	parentStyle  = lipgloss.NewStyle().Foreground(dirColor)
+)
+
+// breadcrumb shows the folders below the tab root, such as "alpha/notes/" (the
+// tab's own name is in the panel title), in the folder color. When it is wider than width it is cut from the left, so
+// the current folder always shows.
+func breadcrumb(dir string, width int) string {
+	segs := strings.Split(filepath.ToSlash(dir), "/")
+	var b strings.Builder
+	for i, seg := range segs {
+		if i > 0 {
+			b.WriteString(dimStyle.Render("/"))
+		}
+		seg = textsafe.SingleLine(seg)
+		if i == len(segs)-1 {
+			b.WriteString(currentStyle.Render(seg))
+		} else {
+			b.WriteString(parentStyle.Render(seg))
+		}
+	}
+	b.WriteString(dimStyle.Render("/")) // a folder, as its row in the list says
+	line := b.String()
+	if w := ansi.StringWidth(line); w > width && width > 1 {
+		line = ansi.TruncateLeft(line, w-width+1, "…")
+	}
+	return line
 }
 
 // status builds the bottom-right text: the visual-mode flag, the selection
