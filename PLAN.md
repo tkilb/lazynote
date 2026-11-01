@@ -415,11 +415,7 @@ Conflict notes:
 - PARA directory browsing: each tab is rooted at its folder (`projects/`,
   `areas/`, `resources/`, `archives/`, `inbox/`) and cannot navigate above
   it. Directories list first, then notes, both sorted by name. Directory
-  rows show an item count and, where a note has its kind badge, a `▸` in
-  the folder color, so folders can be told from notes at a glance. With the
-  cursor on a folder the status bar says `→/enter open folder`, and `← back`
-  once inside one, in place of the general open and up hints. (Tried to make
-  drilling obvious; easy to revert, it is one commit.) Each tab remembers its
+  rows show an item count and no kind badge. Each tab remembers its
   own current directory and cursor. The panel title shows the path relative
   to the tab root. With a directory selected, Info shows its name and item
   counts, and Body and Related are empty. `a` creates the note in the

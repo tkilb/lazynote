@@ -451,31 +451,11 @@ func (m model) paraKey(msg tea.KeyMsg) (model, tea.Cmd) {
 	return m.apply(eff)
 }
 
-// paraHints are PARA's status bar keys. With the cursor on a folder they say
-// how to go in (and back out, once inside one), in place of the general
-// open and up hints.
-func (m model) paraHints() []statusbar.Binding {
-	entry, ok := m.para.Selected()
-	if !ok || !entry.IsDir {
-		return paraBindings
-	}
-	hints := []statusbar.Binding{{Key: "↑/↓", Label: "move"}, {Key: "→/enter", Label: "open folder"}}
-	if m.para.InFolder() {
-		hints = append(hints, statusbar.Binding{Key: "←", Label: "back"})
-	}
-	for _, b := range paraBindings {
-		if b.Key != "↑/↓" && b.Key != "←/→" && b.Key != "enter" {
-			hints = append(hints, b)
-		}
-	}
-	return hints
-}
-
 func (m model) bindings() []statusbar.Binding {
 	var local []statusbar.Binding
 	switch m.focus {
 	case panelPARA:
-		local = m.paraHints()
+		local = paraBindings
 	case panelRelated:
 		local = relatedBindings
 	case panelBody:
