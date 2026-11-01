@@ -56,7 +56,7 @@ text piped in, or the clipboard, is its body; with no TITLE the first line of
 that text is the title. Put -- before a title that starts with a dash.
 
 Flags:
-  --kind K       fact, rumor, proposal, fossil, idea, draft or unset (default unset)
+  --kind K       fact, rumor, proposal, fossil, idea, draft, web or unset (default unset)
   --source S     any word, such as meeting (default: the first configured source)
   --tags a,b     tag names separated by commas or spaces
   --clipboard    take the text from the clipboard

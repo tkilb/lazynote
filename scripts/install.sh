@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Installs the latest lazynote release for Linux or macOS.
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/tkilb/lazynote/main/scripts/install.sh | bash
+#
+# Env vars:
+#   INSTALL_DIR - where to put the binary (default: $HOME/bin)
+#
+# Linux and macOS only. Windows is not supported by this script.
+set -euo pipefail
+
+REPO="tkilb/lazynote"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/bin}"
+
+os="$(uname -s)"
+case "$os" in
+Linux) goos="linux" ;;
+Darwin) goos="darwin" ;;
+MINGW* | MSYS* | CYGWIN*)
+	cat >&2 <<'EOF'
+lazynote does not support Windows.
+Use Linux or macOS (WSL works) and try again.
+EOF
+	exit 1
+	;;
+*)
+	echo "Unsupported OS: $os" >&2
+	exit 1
+	;;
+esac
+
+arch="$(uname -m)"
+case "$arch" in
+x86_64 | amd64) goarch="amd64" ;;
+arm64 | aarch64) goarch="arm64" ;;
+*)
+	echo "Unsupported architecture: $arch" >&2
+	exit 1
+	;;
+esac
+
+echo "Detected $goos/$goarch."
+
+echo "Looking up latest release..."
+release_json="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")"
+tag="$(printf '%s' "$release_json" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
+if [ -z "$tag" ]; then
+	echo "Could not determine the latest release tag." >&2
+	exit 1
+fi
+version="${tag#v}"
+
+archive="lazynote_${version}_${goos}_${goarch}.tar.gz"
+url="https://github.com/${REPO}/releases/download/${tag}/${archive}"
+
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+echo "Downloading $url..."
+curl -fsSL "$url" -o "$tmp_dir/$archive"
+
+echo "Verifying checksum..."
+curl -fsSL "https://github.com/${REPO}/releases/download/${tag}/checksums.txt" -o "$tmp_dir/checksums.txt"
+expected="$(awk -v f="$archive" '{n=$2; sub(/^\*/, "", n)} n == f {print $1}' "$tmp_dir/checksums.txt")"
+if [ -z "$expected" ]; then
+	echo "No checksum listed for $archive." >&2
+	exit 1
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+	actual="$(sha256sum "$tmp_dir/$archive" | awk '{print $1}')"
+else
+	actual="$(shasum -a 256 "$tmp_dir/$archive" | awk '{print $1}')"
+fi
+if [ "$expected" != "$actual" ]; then
+	echo "Checksum mismatch for $archive (expected $expected, got $actual)." >&2
+	exit 1
+fi
+
+echo "Extracting..."
+tar -xzf "$tmp_dir/$archive" -C "$tmp_dir"
+
+mkdir -p "$INSTALL_DIR"
+install -m 755 "$tmp_dir/lazynote_${version}_${goos}_${goarch}/lazynote" "$INSTALL_DIR/lazynote"
+
+echo "Installed lazynote $version to $INSTALL_DIR/lazynote"
+case ":$PATH:" in
+*":$INSTALL_DIR:"*) ;;
+*) echo "Note: $INSTALL_DIR is not on your PATH. Add it to your shell profile." ;;
+esac

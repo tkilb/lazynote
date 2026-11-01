@@ -1045,8 +1045,24 @@ Numbers are kept stable; resolved items were removed.
       opened. If the database cannot be used they last for the session only.
     - Mouse: a click focuses the panel; once it is expanded, a click on a row
       also chooses it.
-11. Release tooling, CI (copy from lazytask) and the README, including the
-    `.lazynote/` sync note.
+11. Release tooling, CI (copied from lazytask) and the README (done; shell and
+    workflow files, checked by hand since they cannot run here):
+    - `.github/workflows/build.yml`: build, vet and test on Linux and macOS
+      for every push and pull request, with the Go version from `go.mod`.
+    - `.github/workflows/release.yml`: on a `v*` tag, test, cross-compile
+      `lazynote` for linux and darwin on amd64 and arm64 (CGO off; the SQLite
+      driver is pure Go), tar each, write `checksums.txt` and publish a GitHub
+      Release. No Windows.
+    - `scripts/release.sh` and `make release [minor|major]`: bump `VERSION`,
+      commit only that file, tag `v<version>`, push the branch and the tag.
+      It refuses a dirty tree and asks before it does anything.
+    - `scripts/install.sh`: downloads the latest release for the OS and
+      architecture, checks the checksum and installs to `~/bin`. Run with
+      `bash` (it uses `pipefail`).
+    - `README.md`: install, setup, the screen, keys, capture (including the
+      shell commands), daily notes, and the note to exclude `.lazynote/` from
+      sync and version control. Not copied from lazytask: its `update`
+      command (self-update) is not built.
 
 Each chunk: tests for any engine code it adds, a manual QA note for any UI it
 adds, `go build ./...` and `go test ./...` passing, one commit.
