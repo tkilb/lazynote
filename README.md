@@ -159,7 +159,7 @@ In every picker, type to narrow the list (words separated by spaces must all mat
 | `/` then `n` / `N` | Search names, then step through the matches |
 | `.` | Show hidden files |
 
-**Body**: `↑` `↓` move the cursor line, `space` picks lines, `v`/`V` select a range, `ctrl+a` selects all, `y` copies the selection (or the line) to the system clipboard, and `enter` extracts the selection into a new Inbox note, after you choose its kind. **Related**: `enter` jumps to the note, `l` adds a reference, `d` removes one. **Stickies** (focused): `enter` jumps, `d` unpins.
+**Body**: `↑` `↓` move the cursor line, `space` picks lines, `v`/`V` select a range, `ctrl+a` selects all, `y` copies the selection (or the line) to the system clipboard, `e` edits the note in `$EDITOR`, `r` renames it, and `enter` extracts the selection into a new Inbox note, after you choose its kind. **Related**: `enter` jumps to the note, `l` adds a reference, `d` removes one. **Stickies** (focused): `enter` jumps, `d` unpins.
 
 The mouse works too: click a panel to focus it, click a row, tab or Body line to select it, and use the wheel to move. While a popup is open, only the wheel (in lists) and a click to dismiss a notice do anything, so a stray click never discards what you typed. Mouse reporting changes native text selection in most terminals: hold `Shift` (or `Option` on macOS) while dragging to select text.
 

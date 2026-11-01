@@ -119,6 +119,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `y`         | Yank: copy the selection, or the cursor line, to the system clipboard |
 | `enter`     | Extract the selection into a new note (kind picked in the picker) |
 | `r`         | Rename the note shown, exactly as `r` does in PARA (focus stays in Body, and the cursor line is kept) |
+| `e`         | Edit the note shown in `$EDITOR`, exactly as `e` does in PARA (focus stays in Body) |
 | `esc`       | Close an open range; then clear the selection; then return focus to PARA (2) |
 | `←`         | Return focus to PARA (2) (closing a range or clearing the selection first, like `esc`) |
 
