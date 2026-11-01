@@ -12,7 +12,7 @@ const (
 	// rows plus the border. Other properties scroll.
 	infoHeight = 5
 	// leftWidthPercent is the left column share of the terminal width.
-	leftWidthPercent = 35
+	leftWidthPercent = 30
 )
 
 // grid holds the outer (border included) size of every panel.
