@@ -356,10 +356,10 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 		return m.moveTo(m.cursor - 1)
 	case "down":
 		return m.moveTo(m.cursor + 1)
-	case "ctrl+u":
-		return m.moveRows(-max(m.height/2, 1))
-	case "ctrl+d":
-		return m.moveRows(max(m.height/2, 1))
+	case "ctrl+u", "pgup":
+		return m.moveRows(-m.height)
+	case "ctrl+d", "pgdown":
+		return m.moveRows(m.height)
 	case "g", "home":
 		return m.moveTo(0)
 	case "G", "end":

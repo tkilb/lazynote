@@ -70,8 +70,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `→`                 | Enter the selected directory, or open a note (focus Body, 0)                              |
 | `enter`             | Enter the selected directory, or open a note (focus Body, 0)                              |
 | `gg` / `G`          | Jump to first / last entry                                                                |
-| `ctrl+u` / `ctrl+d` | Half page up / down                                                                       |
-| `ctrl+b` / `ctrl+f` | Page up / down                                                                            |
+| `ctrl+u` / `ctrl+d` | Page up / down (`pgup` / `pgdown` do the same; `ctrl+b` and `ctrl+f` are free)            |
 | `space`             | Toggle selection on the hovered item and move down                                        |
 | `v` / `V`           | Visual mode: select a range / unselect a range                                            |
 | `ctrl+a`            | Select all in the current directory                                                       |
@@ -109,7 +108,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | Key         | Action                                                                                       |
 | ----------- | -------------------------------------------------------------------------------------------- |
 | `↑` `↓`     | Move the cursor line (the view follows) |
-| `ctrl+d/u`  | Half page down / up |
+| `ctrl+d/u`  | Page down / up (`pgdown` / `pgup` do the same) |
 | `g` / `G`   | First / last line |
 | `space`     | Pick the cursor line (cherry-pick) and move down |
 | `v` / `V`   | Select / unselect a range as the cursor moves (the same key again closes it) |
@@ -471,8 +470,8 @@ Conflict notes:
   at word boundaries (a word longer than the panel is split), tabs become
   four spaces, and a position footer (`first line/total`) shows once the
   note is longer than the panel. Body has a cursor line, highlighted while the
-  panel has focus, that moves with `↑` `↓` and `ctrl+d`/`ctrl+u` by source line
-  (a wrapped line is one line) and keeps your place: the view follows it, the
+  panel has focus, that moves with `↑` `↓` by source line (a wrapped line is
+  one line) and with `ctrl+d`/`ctrl+u` or `pgdown`/`pgup` by a page and keeps your place: the view follows it, the
   footer shows `cursor line/total lines`, and the cursor of each note is
   remembered for the session, so coming back to a note puts you where you
   were. A note is read again only when the selection or its modification

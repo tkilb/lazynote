@@ -273,13 +273,9 @@ func (m Model) navigate(msg tea.KeyMsg) Model {
 		}
 	case "G":
 		m.moveTo(len(m.tabs[m.active].rows) - 1)
-	case "ctrl+u":
-		m.move(-max(m.pageSize/2, 1))
-	case "ctrl+d":
-		m.move(max(m.pageSize/2, 1))
-	case "ctrl+b":
+	case "ctrl+u", "pgup":
 		m.move(-m.pageSize)
-	case "ctrl+f":
+	case "ctrl+d", "pgdown":
 		m.move(m.pageSize)
 	case ".":
 		m.showHidden = !m.showHidden

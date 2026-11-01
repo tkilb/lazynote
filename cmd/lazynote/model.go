@@ -121,7 +121,7 @@ var infoBindings = []statusbar.Binding{
 
 var bodyBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "move"},
-	{Key: "ctrl+d/u", Label: "half page"},
+	{Key: "ctrl+d/u", Label: "page"},
 	{Key: "space", Label: "pick line"},
 	{Key: "v", Label: "select lines"},
 	{Key: "y", Label: "yank"},

@@ -35,8 +35,7 @@ var helpParaBindings = []statusbar.Binding{
 	{Key: "←", Label: "go to the parent directory"},
 	{Key: "→/enter", Label: "open a directory or note"},
 	{Key: "gg/G", Label: "first/last entry"},
-	{Key: "ctrl+u/d", Label: "half page up/down"},
-	{Key: "ctrl+b/f", Label: "page up/down"},
+	{Key: "ctrl+u/d, pgup/pgdn", Label: "page up/down"},
 	{Key: "[ ]", Label: "previous/next tab"},
 	{Key: "space", Label: "select and move down"},
 	{Key: "v/V", Label: "visual select/unselect"},
@@ -66,7 +65,7 @@ var helpRelatedBindings = []statusbar.Binding{
 
 var helpBodyBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "move the cursor line (your place is remembered)"},
-	{Key: "ctrl+d/u", Label: "half page down/up"},
+	{Key: "ctrl+d/u, pgdn/pgup", Label: "page down/up"},
 	{Key: "g/G", Label: "first/last line"},
 	{Key: "space", Label: "pick the line and move down"},
 	{Key: "v/V", Label: "select/unselect a range as you move"},
