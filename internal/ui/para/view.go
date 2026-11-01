@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/textsafe"
 	"github.com/tkilb/lazynote/internal/ui/kindstyle"
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
@@ -76,12 +77,39 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		tabs[i] = panel.Tab{Label: d.label, Active: i == m.active}
 	}
 
-	left := "/" + filepath.ToSlash(t.dir)
+	left := breadcrumb(tabDefs[m.active].label, t.dir)
 	if t.search != "" {
 		left += "  search: " + t.search
 	}
 	footer := panel.Footer{Left: left, Right: status(t, m.clip)}
 	return panel.FrameTabs(panelNumber, tabs, m.body(t, width, height, focused), width, height, focused, footer)
+}
+
+// currentStyle draws the folder the panel is in.
+var currentStyle = lipgloss.NewStyle().Bold(true)
+
+// breadcrumb shows where the panel is as the tab and the folders below it,
+// such as "Projects › alpha › notes": the folder you are in is bold, the
+// ones above it dim. The footer cuts it from the left when it is too long,
+// so the current folder always stays visible.
+func breadcrumb(tab, dir string) string {
+	segs := []string{tab}
+	if dir != "" {
+		segs = append(segs, strings.Split(filepath.ToSlash(dir), "/")...)
+	}
+	var b strings.Builder
+	for i, seg := range segs {
+		if i > 0 {
+			b.WriteString(dimStyle.Render(" › "))
+		}
+		seg = textsafe.SingleLine(seg)
+		if i == len(segs)-1 {
+			b.WriteString(currentStyle.Render(seg))
+		} else {
+			b.WriteString(dimStyle.Render(seg))
+		}
+	}
+	return b.String()
 }
 
 // status builds the bottom-right text: the visual-mode flag, the selection
