@@ -219,8 +219,8 @@ const tabSeparator = " - "
 
 // topBorderTabs builds the top border line for FrameTabs, with the active
 // tab styled distinctly. It uses the first of these layouts that fits within
-// width: every full label; inactive tabs shrunk to their first letter; the
-// active tab alone. If none fits, it falls back to a truncated plain label.
+// width: the active tab spelled out with inactive tabs shrunk to their first
+// letter; the active tab alone. If none fits, it falls back to a truncated plain label.
 func topBorderTabs(number rune, tabs []Tab, width int, focused bool, lineStyle lipgloss.Style) string {
 	prefix := "[" + string(number) + "]-"
 
@@ -294,7 +294,9 @@ func RowAt(row, cursor, totalItems, visibleRows int) (int, bool) {
 	return start + row, true
 }
 
-// tabLayouts lists the candidate layouts of tabs, widest first.
+// tabLayouts lists the candidate layouts of tabs, widest first: the active
+// tab spelled out with the others shrunk to their first letter, then the
+// active tab alone. Full labels for every tab are never used.
 func tabLayouts(tabs []Tab) [][]Tab {
 	compact := make([]Tab, len(tabs))
 	var activeOnly []Tab
@@ -307,7 +309,7 @@ func tabLayouts(tabs []Tab) [][]Tab {
 			activeOnly = append(activeOnly, t)
 		}
 	}
-	return [][]Tab{tabs, compact, activeOnly}
+	return [][]Tab{compact, activeOnly}
 }
 
 func tabsWidth(tabs []Tab) int {

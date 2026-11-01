@@ -964,7 +964,8 @@ Numbers are kept stable; resolved items were removed.
     reporting is not requested then).
     - A left click focuses the panel under the pointer (not Title). In PARA it
       also selects the row clicked, or the tab clicked on the top border
-      (what is drawn: the compact `I - P - A` form counts too); in Related it
+      (what is drawn counts: only the active tab is spelled out, the others are
+      their first letter, as in `I - Projects - A - R - A`); in Related it
       selects an entry (a group header does nothing); in Body it puts the
       cursor on the source line clicked. A click only selects: it never
       jumps, opens or acts, and there is no double click.
