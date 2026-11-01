@@ -10,6 +10,7 @@ import (
 // helpGlobalBindings are the keys that work whatever panel has focus. Panel
 // switching is movement, so it is under Navigation, as in lazygit.
 var helpGlobalBindings = []statusbar.Binding{
+	{Key: "B", Label: "choose the notebook to open (your place in each is remembered)"},
 	{Key: "A", Label: "Quick Add a note to the inbox (tab, ctrl+s saves)"},
 	{Key: "I", Label: "import a file (transcript or note)"},
 	{Key: "U", Label: "clip a web page (a web note named after its title)"},
@@ -24,7 +25,7 @@ var helpGlobalBindings = []statusbar.Binding{
 }
 
 var helpNavigationBindings = []statusbar.Binding{
-	{Key: "0-4", Label: "jump to panel"},
+	{Key: "0,2-4", Label: "jump to panel"},
 	{Key: "tab/shift+tab", Label: "next/prev panel"},
 }
 

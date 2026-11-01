@@ -293,3 +293,32 @@ func TestParseMouseRejectsNonBoolean(t *testing.T) {
 	_, err := Parse([]byte("notebooks: [\"~\"]\nui:\n  mouse: maybe\n"), t.TempDir())
 	require.Error(t, err)
 }
+
+func TestSelect(t *testing.T) {
+	cfg := Config{Notebooks: []Notebook{
+		{Path: "/a", Name: "a", Available: false},
+		{Path: "/b", Name: "b", Available: true},
+		{Path: "/c", Name: "c", Available: true},
+	}}
+	tests := []struct {
+		name string
+		cfg  Config
+		last string
+		want int
+		ok   bool
+	}{
+		{"last used wins", cfg, "/c", 2, true},
+		{"no last: first available", cfg, "", 1, true},
+		{"last no longer configured", cfg, "/gone", 1, true},
+		{"last is unavailable", cfg, "/a", 1, true},
+		{"none available", Config{Notebooks: []Notebook{{Path: "/a", Available: false}}}, "/a", 0, false},
+		{"empty", Config{}, "", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := tt.cfg.Select(tt.last)
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

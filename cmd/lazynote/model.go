@@ -28,28 +28,38 @@ import (
 )
 
 // panelID identifies a panel. Its value is the number key that focuses it,
-// so Body is 0 and Notebook is 1, matching the titles in the grid.
+// so Body is 0, matching the titles in the grid. Number 1 belongs to a
+// reserved slot with no panel in it yet, so it is skipped.
 type panelID int
 
 const (
 	panelBody panelID = iota
-	panelNotebook
+	_                 // 1: reserved
 	panelPARA
 	panelRelated
 	panelInfo
 )
 
 var panelNames = map[panelID]string{
-	panelBody:     "Body",
-	panelNotebook: "Notebook",
-	panelPARA:     "PARA",
-	panelRelated:  "Related",
-	panelInfo:     "Info",
+	panelBody:    "Body",
+	panelPARA:    "PARA",
+	panelRelated: "Related",
+	panelInfo:    "Info",
 }
 
 // focusCycle is the Tab/Shift+Tab order: the left column top to bottom,
 // then the right column top to bottom. The Title panel is not in it.
-var focusCycle = []panelID{panelNotebook, panelPARA, panelRelated, panelBody, panelInfo}
+var focusCycle = []panelID{panelPARA, panelRelated, panelBody, panelInfo}
+
+// isPanel reports whether n is the number of a focusable panel.
+func isPanel(n int) bool {
+	for _, p := range focusCycle {
+		if int(p) == n {
+			return true
+		}
+	}
+	return false
+}
 
 func (p panelID) next() panelID { return focusCycle[(p.cycleIndex()+1)%len(focusCycle)] }
 
@@ -69,7 +79,8 @@ func (p panelID) cycleIndex() int {
 // globalBindings are always shown in the status bar, after any bindings of
 // the focused panel.
 var globalBindings = []statusbar.Binding{
-	{Key: "0-4", Label: "focus panel"},
+	{Key: "0,2-4", Label: "focus panel"},
+	{Key: "B", Label: "notebook"},
 	{Key: "tab", Label: "next panel"},
 	{Key: "u", Label: "undo"},
 	{Key: "?", Label: "help"},
@@ -126,7 +137,14 @@ type model struct {
 	body    body.Model
 	info    info.Model
 	related related.Model
-	title   title.Model
+	// notebooks are the configured notebooks and activeNotebook the index of
+	// the open one; purged holds the notebook roots whose old dailies were
+	// removed this session, and retentionDays is the daily retention.
+	notebooks      []config.Notebook
+	activeNotebook int
+	purged         map[string]bool
+	retentionDays  int
+	title          title.Model
 	// links indexes the related properties; nil until it could be built.
 	links         *links.Index
 	shown         shownNote
@@ -189,7 +207,7 @@ type shownNote struct {
 func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
-		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{},
+		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{}, purged: map[string]bool{},
 		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
 	}
 }
@@ -239,6 +257,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return next.(model).syncSelection(), cmd
 }
 
+// resizePanels gives PARA, Body and Info the size the grid leaves them.
+func (m model) resizePanels() model {
+	g := computeGrid(m.width, m.height-1)
+	_, rows := panel.InnerSize(g.leftWidth, g.paraHeight)
+	m.para = m.para.Resize(rows)
+	bw, bh := panel.InnerSize(g.rightWidth, g.bodyHeight)
+	m.body = m.body.Resize(bw, bh)
+	iw, ih := panel.InnerSize(g.rightWidth, g.infoHeight)
+	m.info = m.info.Resize(iw, ih)
+	return m
+}
+
 func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -247,13 +277,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f := m.form.Resize(m.width, m.height)
 			m.form = &f
 		}
-		g := computeGrid(m.width, m.height-1)
-		_, rows := panel.InnerSize(g.leftWidth, g.paraHeight)
-		m.para = m.para.Resize(rows)
-		bw, bh := panel.InnerSize(g.rightWidth, g.bodyHeight)
-		m.body = m.body.Resize(bw, bh)
-		iw, ih := panel.InnerSize(g.rightWidth, g.infoHeight)
-		m.info = m.info.Resize(iw, ih)
+		m = m.resizePanels()
 	case tea.FocusMsg:
 		// Files may have changed while the terminal was in the background.
 		// A pending question was worded for the rows on screen, so it waits.
@@ -328,6 +352,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m, cmd = m.startQuickAdd()
 	case "I":
 		m, cmd = m.startImport()
+	case "B":
+		m, cmd = m.openNotebookPicker()
 	case "U":
 		m, cmd = m.startClip()
 	case "o":
@@ -352,7 +378,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = m.focus.next()
 	case "shift+tab":
 		m.focus = m.focus.prev()
-	case "0", "1", "2", "3", "4":
+	case "0", "2", "3", "4":
 		m.focus = panelID(key[0] - '0')
 	case "esc", "left":
 		switch m.focus {
@@ -449,12 +475,11 @@ func (m model) View() string {
 		case panelInfo:
 			return m.info.View(w, h, m.focus == id)
 		}
-		title := string(rune('0'+id)) + " " + panelNames[id]
-		return panel.Render(title, "", w, h, m.focus == id)
+		return panel.Render("1", "", w, h, false) // the reserved slot
 	}
 
 	left := lipgloss.JoinVertical(lipgloss.Left,
-		render(panelNotebook, g.leftWidth, g.notebookHeight),
+		panel.Render("1", "", g.leftWidth, g.reservedHeight, false), // reserved for later
 		render(panelPARA, g.leftWidth, g.paraHeight),
 		render(panelRelated, g.leftWidth, g.relatedHeight),
 	)

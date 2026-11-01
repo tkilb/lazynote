@@ -220,7 +220,10 @@ func (m model) statusLine() string {
 	if m.input != nil && m.input.inline {
 		return m.input.field.View()
 	}
-	return statusbar.Render(m.bindings())
+	if m.clipping > 0 {
+		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "…", Label: "fetching the page title"}})
+	}
+	return statusbar.RenderWithBook(m.notebookName(), m.bindings())
 }
 
 func capitalize(s string) string {

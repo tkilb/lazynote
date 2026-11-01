@@ -20,6 +20,12 @@ var (
 	labelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245"))
 
+	// bookStyle draws the open notebook's name, as lazytask draws its
+	// taskbook.
+	bookStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("6"))
+
 	separator = "  "
 )
 
@@ -43,4 +49,18 @@ func Render(bindings []Binding) string {
 		parts = append(parts, keyStyle.Render(b.Key)+" "+labelStyle.Render(b.Label))
 	}
 	return strings.Join(parts, separator)
+}
+
+// RenderWithBook renders the open notebook's name followed by a space and the
+// key bindings.
+func RenderWithBook(book string, bindings []Binding) string {
+	res := Render(bindings)
+	if book == "" {
+		return res
+	}
+	rendered := bookStyle.Render(book)
+	if res == "" {
+		return rendered
+	}
+	return rendered + " " + res
 }

@@ -26,12 +26,12 @@ func (m model) hitAt(x, y int) (hit, bool) {
 	}
 	if x < g.leftWidth {
 		switch {
-		case y < g.notebookHeight:
-			return hit{panelNotebook, x, y}, true
-		case y < g.notebookHeight+g.paraHeight:
-			return hit{panelPARA, x, y - g.notebookHeight}, true
-		case y < g.notebookHeight+g.paraHeight+g.relatedHeight:
-			return hit{panelRelated, x, y - g.notebookHeight - g.paraHeight}, true
+		case y < g.reservedHeight:
+			return hit{}, false // the reserved slot takes no clicks
+		case y < g.reservedHeight+g.paraHeight:
+			return hit{panelPARA, x, y - g.reservedHeight}, true
+		case y < g.reservedHeight+g.paraHeight+g.relatedHeight:
+			return hit{panelRelated, x, y - g.reservedHeight - g.paraHeight}, true
 		}
 		return hit{}, false
 	}

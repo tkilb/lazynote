@@ -6,7 +6,7 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 ## Layout (from the paper mock)
 
 ```
-┌[1] Notebook──────────────────────────────────┐┌Title───────────────────────────────┐
+┌[1]───────────────────────────────────────────┐┌Title───────────────────────────────┐
 └──────────────────────────────────────────────┘└────────────────────────────────────┘
 ┌[2] PARA──────────────────────────────────────┐┌[0] Body────────────────────────────┐
 │ Inbox  Projects  Areas  Resources  Archives  ││                                    │
@@ -21,15 +21,15 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 
 | Key | Panel    | Content                                                                                                                                                                                           |
 | --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `1` | Notebook | Active notebook, chosen from the `notebooks` list in the config file.                                                                                                                             |
+| `1` | (reserved) | An empty slot at the top left, kept for a later feature. Not focusable. Notebooks are chosen with `B` (see chunk 7).                                                                              |
 | `2` | PARA     | Tabs: Inbox (first; contains the `daily/` directory) / Projects / Areas / Resources / Archives. Each tab is a Yazi-style directory browser rooted at the tab's folder. Cycle tabs with `[` / `]`. |
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
 | —   | Title    | Title of the selected note on one line, led by its kind badge. Display only: no number key, not in the focus cycle. |
 | `0` | Body     | Read-only plain-text view of the selected note (frontmatter hidden, lines wrapped).                                                                                                               |
 | `4` | Info     | Three standard rows (Kind, Source, Date; Tags; Aliases), then every other frontmatter property of the selected note (custom keys), scrolling. `uid` and `related` are hidden. Sits below Body. |
 
-Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Notebook, PARA, Related, Body, Info and
-back; the Title panel is never focusable. Mouse support follows lazytask.
+Focus: `0` and `2`-`4`, `Tab`, `Shift+Tab`. Tab goes PARA, Related, Body, Info and
+back; the Title panel and the reserved panel 1 are never focusable. Mouse support follows lazytask.
 
 ## Keybindings (consolidated; keys marked \* are new proposals)
 
@@ -47,7 +47,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | ------------------- | --------------------------------------------- |
 | `q` / `ctrl+c`      | Quit                                          |
 | `ctrl+z`            | Suspend                                       |
-| `0`-`4`             | Focus Body / Notebook / PARA / Related / Info |
+| `0`, `2`-`4`        | Focus Body / PARA / Related / Info            |
+| `B`                 | Choose the notebook to open (picker)          |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
 | `?`                 | Keybindings popup (see "Help popup")          |
 | `A`                 | Quick Add: form for a new inbox note          |
@@ -59,13 +60,6 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `T`                 | Open tomorrow's daily note                    |
 | `u` / `ctrl+r`      | Undo / redo                                   |
 | `ctrl+l`            | Refresh from disk                             |
-
-**Notebook (1)**
-
-| Key         | Action             |
-| ----------- | ------------------ |
-| `↑` `↓` | Select notebook    |
-| `enter`     | Switch to notebook |
 
 **PARA (2)** (Yazi parity; see "Yazi parity" below for markers and rules)
 
@@ -215,7 +209,7 @@ so the retention purge applies to it.
 `?` opens a scrollable "Keybindings" popup ported from lazytask, with three
 sections as in lazygit: **Local** (every key of the focused panel, a fuller
 list than the status bar hints), **Global** (keys that work in any panel:
-undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`-`4`, `Tab`,
+undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`, `2`-`4`, `Tab`,
 `Shift+Tab`). A panel with no keys of its own has no Local section. The up and down arrows
 scroll, `esc` or `?` closes, other keys are ignored. It lists
 only keys that are implemented, so each chunk that adds a key adds it to the
@@ -330,7 +324,7 @@ Conflict notes:
   directory's base name. `~` is expanded. Each path must be an existing
   directory; a missing path is listed as unavailable and cannot be selected,
   and an empty or absent `notebooks` list shows an error with this example
-  and exits. The Notebook panel lists the entries and `enter` switches
+  and exits. `B` lists the entries in a picker and `enter` switches
   between them. Session state remembers the last notebook used and keeps
   per-notebook state (tab, directory, cursor, link index) separate.
 - Notes store: markdown files under a notebook root containing `projects/`,
@@ -619,7 +613,7 @@ Numbers are kept stable; resolved items were removed.
 - `cmd/lazynote/` - root model, update, mouse, modal box, search.
 - `internal/ui/{panel,popup,helppopup,statusbar}` - shared widgets
   (port from lazytask).
-- `internal/ui/{notebook,para,related,info,body}` - one package per panel.
+- `internal/ui/{para,related,info,body}` - one package per panel.
 - `internal/store/` - notes backend interface plus markdown implementation.
 - `internal/state/` - SQLite session state.
 - `internal/{editor,config,undo,version}` - as in lazytask.
@@ -696,8 +690,7 @@ Numbers are kept stable; resolved items were removed.
    is not a plain relative path, or a name with a separator, is dropped, and a
    vanished directory falls back to its nearest ancestor. If the database
    cannot be opened or read, the app starts from the defaults and says so in
-   a warning popup. The notebook is still chosen by config until chunk 7
-   restores the last one used. Engine tests for `internal/state`; manual QA
+   a warning popup. The last notebook used is restored (chunk 7). Engine tests for `internal/state`; manual QA
    note for the restore.
    8a. Link engine (`internal/links`): `Target` parsing, `related` extraction
    (a list, one string, or an unquoted `[[Name]]`), name resolution, and an
@@ -935,7 +928,8 @@ Numbers are kept stable; resolved items were removed.
    left alone, and the folder must resolve inside the notebook root. The
    count is reported in an info popup (the app has no transient status-bar
    message); a failure shows a warning. Only the first notebook is purged for
-   now; the Notebook panel (7) must call it on the first switch to another.
+   now; the notebook picker (chunk 7) runs it on the first switch to each
+   other notebook in a session.
 10. Mouse support (done; config key `ui.mouse` tested). On by default; set
     `ui:` / `mouse: false` in the config file to turn it off (cell-motion
     reporting is not requested then).
@@ -953,10 +947,37 @@ Numbers are kept stable; resolved items were removed.
       confirmations is not supported yet (the keyboard is the way), so a
       stray click never discards typed text or answers a question.
     - Remaining config keys: none; `retention.daily` came with chunk 2.
-7. Notebook panel: list the configured notebooks, switch with `enter`, mark
-   unavailable paths, restore the last used notebook.
-   Deliberately scheduled last among the features (project owner decision);
-   until then the first available configured notebook is used.
+7. Notebooks (done; `Config.Select` and `store.CountNotes` tested, the rest is
+   UI with a manual QA note), handled as lazytask handles its taskbooks: there
+   is no panel; `B` opens a popup picker and the open notebook's name is
+   shown in the status bar (cyan, bold, before the key hints; it is also
+   there while a popup is open on top of it). The slot of panel 1 at the
+   top left stays in the layout as an empty frame titled `1`, reserved for
+   a later feature: it is not focusable, `1` does nothing and clicks on it
+   are ignored.
+   - The picker is titled "Notebook" and lists the configured notebooks in
+     config order, the highlight on the open one. Each row has the name and,
+     dim at the right, `open` (for the open one), the number of notes in the
+     PARA folders (hidden folders and symlinks left out), and the path with
+     `~` for home. A notebook whose folder does not exist is dim and says
+     `unavailable`, and choosing it only warns. Choosing the open one does
+     nothing. Type to filter, as in the other pickers.
+   - Opening saves the position in the notebook being left, then restores the
+     saved tab, directory and cursor of the new one and moves focus to PARA.
+     The session's last notebook is updated, so the next start opens it.
+   - Everything tied to the old notebook starts over: the undo/redo history
+     (its actions name files in the old notebook), the link index (rebuilt),
+     what Body remembers per note, Info, Related, Title and PARA's yank/cut
+     buffer and selection.
+   - The folder is checked again when opening; if it vanished since startup
+     a warning says so and nothing changes.
+   - The first time a notebook is opened in a session, startup included, its
+     archived daily notes past `retention.daily` are purged and the count is
+     reported (see 9h).
+   - At startup the notebook used last is opened when it is still configured
+     and available, else the first available one. `lazynote add` and
+     `lazynote import` choose the same way, so they save into the notebook
+     the TUI would open.
 11. Release tooling, CI (copy from lazytask) and the README, including the
     `.lazynote/` sync note.
 

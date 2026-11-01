@@ -22,6 +22,7 @@ const (
 	pickReference   pickerOp = iota // add a reference to the note at pickerFor
 	pickKind                        // set the kind of the note at pickerFor
 	pickExtractKind                 // choose the kind of a note being extracted
+	pickNotebook                    // choose the notebook to open
 )
 
 // openReferencePicker lists the notes the shown note could reference: every
@@ -66,6 +67,8 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 		item, _ := p.Chosen()
 		m.picker = nil
 		switch m.pickerOp {
+		case pickNotebook:
+			return m.chooseNotebook(item.Value), nil
 		case pickKind:
 			return m.setKind(m.pickerFor, store.ParseKind(item.Value)), nil
 		case pickExtractKind:

@@ -24,10 +24,14 @@ type startup struct {
 	sources       []string
 	retentionDays int
 	mouse         bool
+	// notebooks are all the configured notebooks and active the index of
+	// the one opened.
+	notebooks []config.Notebook
+	active    int
 }
 
-// openStore loads the config and opens the first available notebook. The
-// Notebook panel (a later chunk) will replace this with a real selection.
+// openStore loads the config and opens the notebook used last, or the first
+// available one when that is gone.
 func openStore() (startup, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
@@ -37,14 +41,13 @@ func openStore() (startup, error) {
 	if err != nil {
 		return startup{}, err
 	}
-	for _, nb := range cfg.Notebooks {
-		if nb.Available {
-			return startup{
-				store: store.NewMarkdown(nb.Path), root: nb.Path,
-				sources: cfg.Sources, retentionDays: cfg.Retention.DailyDays,
-				mouse: cfg.UI.MouseEnabled(),
-			}, nil
-		}
+	if i, ok := cfg.Select(lastNotebook()); ok {
+		nb := cfg.Notebooks[i]
+		return startup{
+			store: store.NewMarkdown(nb.Path), root: nb.Path,
+			sources: cfg.Sources, retentionDays: cfg.Retention.DailyDays,
+			mouse: cfg.UI.MouseEnabled(), notebooks: cfg.Notebooks, active: i,
+		}, nil
 	}
 	return startup{}, errors.New("none of the configured notebooks is an existing directory")
 }
@@ -88,6 +91,7 @@ func main() {
 	start := initialModel(boot.store)
 	start.sources = boot.sources
 	start.para = start.para.WithRetention(boot.retentionDays, time.Now)
+	start = start.withNotebooks(boot.notebooks, boot.active, boot.retentionDays)
 	if sessErr != nil {
 		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
 	}

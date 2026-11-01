@@ -66,6 +66,25 @@ type Notebook struct {
 	Available bool
 }
 
+// Select returns the index of the notebook to open: the one at the path last
+// used when it is still configured and available, else the first available
+// one. It reports false when none is available.
+func (c Config) Select(last string) (int, bool) {
+	first, found := 0, false
+	for i, nb := range c.Notebooks {
+		if !nb.Available {
+			continue
+		}
+		if last != "" && nb.Path == last {
+			return i, true
+		}
+		if !found {
+			first, found = i, true
+		}
+	}
+	return first, found
+}
+
 // Retention holds the daily-note retention settings.
 type Retention struct {
 	// DailyDays is how many days an archived daily note is kept.
