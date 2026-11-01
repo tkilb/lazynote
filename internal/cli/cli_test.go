@@ -165,6 +165,25 @@ func TestKindIsCaseInsensitiveAndUnsetIsAllowed(t *testing.T) {
 	assert.Nil(t, h.note("inbox/B.md").Frontmatter.Get("kind"))
 }
 
+func TestAddedKindsAreAcceptedAndNamedInMessages(t *testing.T) {
+	t.Cleanup(store.ResetKinds)
+	require.NoError(t, store.SetKinds([]store.KindSpec{{Name: "recipe"}}))
+
+	h := newHarness(t)
+	_, code, _, errOut := h.run("add", "Pie", "--kind", "Recipe")
+	require.Equal(t, 0, code, errOut)
+	assert.Equal(t, store.Kind("recipe"), h.note("inbox/Pie.md").Kind)
+
+	_, code, _, errOut = h.run("add", "Bad", "--kind", "nonsense")
+	assert.Equal(t, 1, code)
+	assert.Contains(t, errOut, "recipe", "the message lists the added kind")
+	assert.NoFileExists(t, filepath.Join(h.root, "inbox", "Bad.md"))
+
+	_, code, _, errOut = h.run("add", "-h")
+	assert.Equal(t, 0, code)
+	assert.Contains(t, errOut, "recipe", "the usage text lists it too")
+}
+
 func TestDoubleDashEndsTheFlags(t *testing.T) {
 	h := newHarness(t)
 	_, code, _, errOut := h.run("add", "--source", "web", "--", "--looks like a flag", "-5 degrees")

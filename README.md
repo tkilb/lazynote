@@ -44,6 +44,13 @@ sources:            # optional: the sources Quick Add offers
   - adhoc
   - meeting
   - conversation
+kinds:              # optional: restyle kinds or add your own (see Kinds)
+  - name: fact
+    color: "#2ea043"
+  - name: recipe
+    color: "#ff8800"
+    meaning: Something to cook
+    badge: cook
 ```
 
 - **`notebooks`**: the first available entry opens on the first run, and after that the notebook you used last. A path that is not an existing folder is listed as unavailable and cannot be opened. `~` is expanded.
@@ -102,6 +109,8 @@ Every note has one kind, stored in its `kind` property and shown as a badge:
 | `idea` | A loose thought |
 | `draft` | Incomplete, still being revised |
 | `web` | A web page saved by its address (the `source`) |
+
+Add your own kinds, or change how these look, with the `kinds` list in the config file. Each entry needs a `name`; `color` is a hex value such as `#ff8800`, `meaning` is a short description shown in the pickers, and `badge` is up to four characters for the PARA list (an added kind defaults to the first four letters of its name). An entry named like a built-in kind (`fact`, `web` and so on) changes that kind; any other name adds one after the built-in ones. Built-in kinds cannot be removed. A note whose kind is not in the list reads as unset and is left alone, so nothing is lost if you remove one.
 
 ## Keys
 

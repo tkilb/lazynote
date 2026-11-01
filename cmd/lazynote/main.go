@@ -41,6 +41,9 @@ func openStore() (startup, error) {
 	if err != nil {
 		return startup{}, err
 	}
+	if err := store.SetKinds(cfg.Kinds); err != nil {
+		return startup{}, err
+	}
 	if i, ok := cfg.Select(lastNotebook()); ok {
 		nb := cfg.Notebooks[i]
 		return startup{

@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tkilb/lazynote/internal/store"
 )
 
 func TestParse(t *testing.T) {
@@ -319,6 +321,56 @@ func TestSelect(t *testing.T) {
 			got, ok := tt.cfg.Select(tt.last)
 			assert.Equal(t, tt.ok, ok)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func kindsConfig(t *testing.T, kinds string) (Config, error) {
+	t.Helper()
+	return Parse([]byte("notebooks: [\"~\"]\n"+kinds), t.TempDir())
+}
+
+func TestParseKindsReadsTheArray(t *testing.T) {
+	cfg, err := kindsConfig(t, `kinds:
+  - name: fact
+    color: "#2EA043"
+  - name: Recipe
+    color: "#ff8800"
+    meaning: Something to cook
+    badge: cook
+  - name: quote
+`)
+	require.NoError(t, err)
+	assert.Equal(t, []store.KindSpec{
+		{Name: "fact", Color: "#2ea043"},
+		{Name: "recipe", Color: "#ff8800", Meaning: "Something to cook", Badge: "cook"},
+		{Name: "quote"},
+	}, cfg.Kinds)
+}
+
+func TestParseKindsAbsentOrEmptyMeansTheBuiltIns(t *testing.T) {
+	for _, in := range []string{"", "kinds: []\n", "kinds:\n"} {
+		cfg, err := kindsConfig(t, in)
+		require.NoError(t, err, in)
+		assert.Empty(t, cfg.Kinds)
+	}
+}
+
+func TestParseKindsRejectsMistakes(t *testing.T) {
+	tests := []struct{ name, in, want string }{
+		{"a bad color names the entry", "kinds:\n  - name: recipe\n    color: green\n", "recipe"},
+		{"a missing name", "kinds:\n  - color: \"#112233\"\n", "entry 1"},
+		{"a duplicate", "kinds:\n  - name: a\n  - name: A\n", "twice"},
+		{"a typo in a key is not ignored", "kinds:\n  - name: recipe\n    colour: \"#112233\"\n", "colour"},
+		{"not a list", "kinds: fact\n", "list"},
+		{"an entry that is not a mapping", "kinds:\n  - fact\n", "entry 1"},
+		{"a non-text value", "kinds:\n  - name: recipe\n    color: [1]\n", "color"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := kindsConfig(t, tt.in)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.want)
 		})
 	}
 }

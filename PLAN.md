@@ -313,6 +313,13 @@ Conflict notes:
     - adhoc
     - meeting
     - conversation
+  kinds:
+    - name: fact
+      color: "#2ea043"
+    - name: recipe
+      color: "#ff8800"
+      meaning: Something to cook
+      badge: cook
   ```
 
   `sources` (optional) lists the sources Quick Add offers; the first is the
@@ -321,6 +328,9 @@ Conflict notes:
   Each entry is trimmed and must be non-empty, free of control characters, at
   most 40 characters and distinct from the others ignoring case; a bad entry
   is a config error that names it.
+
+  `kinds` (optional) adds kinds to the built-in seven or changes how they
+  look (see the Kind decision and chunk 13).
 
   The first entry is the default notebook. The display name is the
   directory's base name. `~` is expanded. Each path must be an existing
@@ -510,7 +520,8 @@ Conflict notes:
   | `draft`    | A forming idea that is incomplete and still being revised. |
   | `web`      | A web page saved by its address, which is the `source` property (`o` opens it). Not offered when extracting lines. |
 
-  The set is closed and defined once in `internal/store` as a typed enum.
+  The built-in set is defined once in `internal/store` as a typed enum, and the
+  config can add kinds to it and restyle the built-in ones (chunk 13).
   A missing or unrecognized value is shown as `unset` and never
   rewritten silently. Matching on read is case-insensitive.
 
@@ -1045,6 +1056,39 @@ Numbers are kept stable; resolved items were removed.
       opened. If the database cannot be used they last for the session only.
     - Mouse: a click focuses the panel; once it is expanded, a click on a row
       also chooses it.
+13. Configurable kinds (done; `store.SetKinds`/`ValidateKindSpecs` and the
+    config parser are tested; the colors are UI with a manual QA note). The
+    `kinds` list in the config file adds kinds to the built-in seven and
+    restyles them:
+    ```yaml
+    kinds:
+      - name: fact              # a built-in name: overrides it
+        color: "#2ea043"
+      - name: recipe            # any other name: a new kind
+        color: "#ff8800"
+        meaning: Something to cook
+        badge: cook
+    ```
+    - An entry whose `name` is a built-in kind overrides what it sets (color,
+      meaning, badge); built-ins cannot be removed and keep their order. Any
+      other name adds a kind after the built-ins, in config order. Absent or
+      empty means the built-ins as they are.
+    - `name` is required: a lowercase letter then letters, digits and hyphens,
+      at most 20 characters, not `unset`, and not listed twice (ignoring
+      case). `color` is `#rrggbb` (hex, any case; a terminal without true
+      color gets the nearest one). `badge` is at most four printable
+      characters (default for an added kind: the first four letters of its
+      name; added kinds without a color are plain white). `meaning` is one line
+      of at most 60 characters. At most 20 entries may add a kind. Any mistake,
+      an unknown key (a typo such as `colour`) included, is a config error that
+      names the entry, and nothing starts.
+    - Everything that lists kinds follows: the `K` and "Extract as" pickers,
+      Quick Add's kind box, `lazynote add --kind` (and its error and `-h`
+      text), the badges in PARA, the Title pill and Info. `web` stays
+      special (clips, `o`) and stays out of the "Extract as" picker.
+    - A note whose `kind` is not configured (for example after you remove a
+      kind from the config) reads as `unset` and its property is never
+      rewritten, so adding the kind back brings it back.
 11. Release tooling, CI (copied from lazytask) and the README (done; shell and
     workflow files, checked by hand since they cannot run here):
     - `.github/workflows/build.yml`: build, vet and test on Linux and macOS

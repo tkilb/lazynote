@@ -15,6 +15,8 @@ import (
 	"unicode/utf8"
 
 	"go.yaml.in/yaml/v3"
+
+	"github.com/tkilb/lazynote/internal/store"
 )
 
 const (
@@ -53,6 +55,10 @@ type Config struct {
 	UI        UI
 	// Sources are the sources Quick Add offers, the first being the default.
 	Sources []string
+	// Kinds are the kinds the config adds to the built-in ones, or whose
+	// color, badge or meaning it changes. Empty means the built-ins as they
+	// are.
+	Kinds []store.KindSpec
 }
 
 // Notebook is one configured notebook root.
@@ -104,6 +110,7 @@ func (u UI) MouseEnabled() bool { return !u.MouseOff }
 type rawConfig struct {
 	Notebooks []string  `yaml:"notebooks"`
 	Sources   yaml.Node `yaml:"sources"`
+	Kinds     yaml.Node `yaml:"kinds"`
 	Retention struct {
 		Daily string `yaml:"daily"`
 	} `yaml:"retention"`
@@ -158,7 +165,12 @@ func Parse(data []byte, home string) (Config, error) {
 		return Config{}, err
 	}
 
-	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources}
+	kinds, err := parseKinds(&raw.Kinds)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds}
 	cfg.UI.MouseOff = raw.UI.Mouse != nil && !*raw.UI.Mouse
 	for _, p := range raw.Notebooks {
 		nb, err := newNotebook(p, home)
@@ -249,6 +261,50 @@ func parseSources(n *yaml.Node) ([]string, error) {
 		out = append(out, name)
 	}
 	return out, nil
+}
+
+// kindKeys are the keys an entry of the kinds list may have.
+var kindKeys = map[string]bool{"name": true, "color": true, "meaning": true, "badge": true}
+
+// parseKinds reads the kinds list: entries with a name and optionally a
+// color, meaning and badge. A key that is not one of those is an error, so a
+// typo is not silently ignored. Absent or empty means no changes.
+func parseKinds(n *yaml.Node) ([]store.KindSpec, error) {
+	if n.Kind == 0 || (n.Kind == yaml.ScalarNode && n.Tag == "!!null") {
+		return nil, nil
+	}
+	if n.Kind != yaml.SequenceNode {
+		return nil, errors.New("kinds must be a list, for example: kinds: [{name: recipe, color: \"#ff8800\"}]")
+	}
+	specs := make([]store.KindSpec, 0, len(n.Content))
+	for i, item := range n.Content {
+		where := fmt.Sprintf("kinds entry %d", i+1)
+		if item.Kind != yaml.MappingNode {
+			return nil, fmt.Errorf("%s must hold a name and optionally a color, meaning and badge", where)
+		}
+		var spec store.KindSpec
+		for j := 0; j+1 < len(item.Content); j += 2 {
+			key, val := item.Content[j], item.Content[j+1]
+			if !kindKeys[key.Value] {
+				return nil, fmt.Errorf("%s: unknown key %q (use name, color, meaning or badge)", where, key.Value)
+			}
+			if val.Kind != yaml.ScalarNode {
+				return nil, fmt.Errorf("%s: %s must be text", where, key.Value)
+			}
+			switch key.Value {
+			case "name":
+				spec.Name = val.Value
+			case "color":
+				spec.Color = val.Value
+			case "meaning":
+				spec.Meaning = val.Value
+			case "badge":
+				spec.Badge = val.Value
+			}
+		}
+		specs = append(specs, spec)
+	}
+	return store.ValidateKindSpecs(specs)
 }
 
 // ValidateSource trims name and checks that it can be a source: not blank, no

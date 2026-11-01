@@ -9,8 +9,9 @@ import (
 // kindKey is the frontmatter property that holds a note's kind.
 const kindKey = "kind"
 
-// Kind classifies how far a note can be trusted. The set is closed; a
-// missing or unrecognized value reads as KindUnset and is never rewritten.
+// Kind classifies a note, such as how far it can be trusted. The set is the
+// built-in kinds plus any the config adds (see SetKinds); a missing or
+// unrecognized value reads as KindUnset and is never rewritten.
 type Kind string
 
 const (
@@ -32,19 +33,21 @@ const (
 	KindWeb Kind = "web"
 )
 
-// kinds lists every assignable kind in display order.
-var kinds = []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb}
-
-// Kinds returns the seven assignable kinds (not KindUnset) in display order.
+// Kinds returns the assignable kinds (not KindUnset) in display order: the
+// built-in ones, then any the config added (see SetKinds).
 func Kinds() []Kind {
-	return append([]Kind(nil), kinds...)
+	kindMu.RLock()
+	defer kindMu.RUnlock()
+	return append([]Kind(nil), kindList...)
 }
 
 // ParseKind maps s to a kind, ignoring case and surrounding space. Anything
-// that is not one of the seven kinds is KindUnset.
+// that is not a configured kind is KindUnset.
 func ParseKind(s string) Kind {
 	k := Kind(strings.ToLower(strings.TrimSpace(s)))
-	for _, valid := range kinds {
+	kindMu.RLock()
+	defer kindMu.RUnlock()
+	for _, valid := range kindList {
 		if k == valid {
 			return k
 		}
@@ -68,9 +71,16 @@ func KindOf(fm *Frontmatter) Kind {
 	return ParseKind(v.Value)
 }
 
-// Meaning is a short description of the kind, shown when picking one. It is
-// empty for KindUnset.
+// Meaning is a short description of the kind, shown when picking one: the
+// config's, else the built-in one. It is empty for KindUnset and for an added
+// kind that has none.
 func (k Kind) Meaning() string {
+	kindMu.RLock()
+	m := kindSpecs[k].Meaning
+	kindMu.RUnlock()
+	if m != "" {
+		return m
+	}
 	switch k {
 	case KindFact:
 		return "Accurate information"

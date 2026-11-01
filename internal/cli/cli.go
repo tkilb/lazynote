@@ -49,18 +49,33 @@ type Env struct {
 	Clipboard func() (string, error)
 }
 
-const addUsage = `Usage: lazynote add [TITLE] [BODY] [flags]
+const addUsageFormat = `Usage: lazynote add [TITLE] [BODY] [flags]
 
 Adds a note to the inbox and prints its path. TITLE names the note. BODY, or
 text piped in, or the clipboard, is its body; with no TITLE the first line of
 that text is the title. Put -- before a title that starts with a dash.
 
 Flags:
-  --kind K       fact, rumor, proposal, fossil, idea, draft, web or unset (default unset)
+  --kind K       %s or unset (default unset)
   --source S     any word, such as meeting (default: the first configured source)
   --tags a,b     tag names separated by commas or spaces
   --clipboard    take the text from the clipboard
 `
+
+// addUsage is the usage text of add, naming the kinds that are configured.
+func addUsage() string {
+	return fmt.Sprintf(addUsageFormat, kindNames())
+}
+
+// kindNames lists the configured kinds for a message, such as "fact, rumor".
+func kindNames() string {
+	kinds := store.Kinds()
+	names := make([]string, len(kinds))
+	for i, k := range kinds {
+		names[i] = k.String()
+	}
+	return strings.Join(names, ", ")
+}
 
 const importUsage = `Usage: lazynote import FILE [flags]
 
@@ -142,14 +157,14 @@ func fail(env Env, format string, args ...any) int {
 }
 
 func runAdd(args []string, env Env) int {
-	fs := newFlagSet("add", addUsage, env)
+	fs := newFlagSet("add", addUsage(), env)
 	kindFlag := fs.String("kind", "", "")
 	sourceFlag := fs.String("source", "", "")
 	tagsFlag := fs.String("tags", "", "")
 	clipboard := fs.Bool("clipboard", false, "")
 	pos, err := parse(fs, args)
 	if err != nil {
-		return flagError(err, addUsage, env)
+		return flagError(err, addUsage(), env)
 	}
 	if len(pos) > 2 {
 		return fail(env, "too many arguments: give a title and at most one body")
@@ -209,11 +224,7 @@ func parseKind(s string) (store.Kind, error) {
 	if k := store.ParseKind(s); k != store.KindUnset {
 		return k, nil
 	}
-	names := make([]string, 0, 7)
-	for _, k := range store.Kinds() {
-		names = append(names, k.String())
-	}
-	return store.KindUnset, fmt.Errorf("unknown kind %q: use one of %s or unset", s, strings.Join(names, ", "))
+	return store.KindUnset, fmt.Errorf("unknown kind %q: use one of %s or unset", s, kindNames())
 }
 
 // addText works out the title and body of the note from the positional

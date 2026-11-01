@@ -32,16 +32,52 @@ var styles = map[store.Kind]struct {
 	store.KindWeb:      {"web", lipgloss.Color("111")},
 }
 
-// Badge returns the four-character badge and color for k.
+// addedColor is the color of a kind the config added without one.
+var addedColor = lipgloss.Color("7")
+
+// Badge returns the four-character badge and color for k: what the config
+// gave it, else the built-in style, else for a kind the config added a badge
+// made of the first letters of its name and a plain color.
 func Badge(k store.Kind) (string, lipgloss.Color) {
-	if s, ok := styles[k]; ok {
-		return fmt.Sprintf("%-*s", BadgeWidth, s.badge), s.color
+	cfgBadge, cfgColor := store.KindStyle(k)
+	builtin, isBuiltin := styles[k]
+	if !isBuiltin && !configured(k) {
+		return UnsetBadge, unsetColor
 	}
-	return UnsetBadge, unsetColor
+
+	badge, color := builtin.badge, builtin.color
+	if !isBuiltin {
+		badge, color = firstRunes(k.String(), BadgeWidth), addedColor
+	}
+	if cfgBadge != "" {
+		badge = cfgBadge
+	}
+	if cfgColor != "" {
+		color = lipgloss.Color(cfgColor)
+	}
+	return fmt.Sprintf("%-*s", BadgeWidth, badge), color
 }
 
 // Color returns the color for k.
 func Color(k store.Kind) lipgloss.Color {
 	_, c := Badge(k)
 	return c
+}
+
+// configured reports whether k is a kind the config added.
+func configured(k store.Kind) bool {
+	for _, known := range store.Kinds() {
+		if known == k {
+			return true
+		}
+	}
+	return false
+}
+
+// firstRunes returns at most n characters of s.
+func firstRunes(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n])
+	}
+	return s
 }
