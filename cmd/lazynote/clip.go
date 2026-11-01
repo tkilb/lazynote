@@ -12,6 +12,7 @@ import (
 
 	"github.com/tkilb/lazynote/internal/clip"
 	"github.com/tkilb/lazynote/internal/intake"
+	"github.com/tkilb/lazynote/internal/ui/clipform"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 )
 
@@ -29,32 +30,64 @@ type clipFetchedMsg struct {
 	err   error
 }
 
-// startClip asks for a web address, starting with the clipboard's text when
-// that is one, then fetches the page title in the background.
+// startClip opens the clip form, with the address filled in from the
+// clipboard when that holds one. Enter saves: with a title the note is saved
+// at once; without one the page's own title is fetched in the background.
 func (m model) startClip() (model, tea.Cmd) {
 	initial, _ := clipboard.ReadAll()
 	if _, err := clip.ParseURL(initial); err != nil {
 		initial = ""
 	}
-	return m.askClipURL(strings.TrimSpace(initial))
+	return m.openClipForm(clipform.Values{URL: strings.TrimSpace(initial)}, clipform.FieldURL)
 }
 
-// askClipURL opens the address prompt. A bad address says why and asks again,
-// keeping what was typed.
-func (m model) askClipURL(initial string) (model, tea.Cmd) {
-	return m.openRootInput("Clip URL", initial, func(m model, text string) (model, tea.Cmd) {
-		text = strings.TrimSpace(text)
-		if text == "" {
-			return m, nil
-		}
-		u, err := clip.ParseURL(text)
-		if err != nil {
-			m = m.notify(popup.Warning, capitalize(err.Error())+".")
-			return m.askClipURL(text)
-		}
+// openClipForm shows the clip form with v filled in and the keyboard on f.
+func (m model) openClipForm(v clipform.Values, f clipform.Field) (model, tea.Cmd) {
+	form, _ := clipform.New("", m.width, m.height)
+	form, cmd := form.WithValues(v, f)
+	m.clipForm = &form
+	return m, cmd
+}
+
+// clipFormKey handles a key while the clip form is open: esc cancels, enter
+// saves, and everything else edits the form.
+func (m model) clipFormKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.clipForm = nil
+		return m, nil
+	case "enter":
+		v := m.clipForm.Values()
+		m.clipForm = nil
+		return m.saveClip(v)
+	}
+	f, cmd := m.clipForm.Update(msg)
+	m.clipForm = &f
+	return m, cmd
+}
+
+// saveClip acts on the form. A bad address says why and brings the form back
+// with what was typed. A title saves the note at once, in the folder PARA is
+// showing; without one the page is asked for its title.
+func (m model) saveClip(v clipform.Values) (model, tea.Cmd) {
+	if strings.TrimSpace(v.URL) == "" && strings.TrimSpace(v.Title) == "" {
+		return m, nil // nothing typed
+	}
+	u, err := clip.ParseURL(v.URL)
+	if err != nil {
+		m = m.notify(popup.Warning, capitalize(err.Error())+".")
+		return m.openClipForm(v, clipform.FieldURL)
+	}
+	if strings.TrimSpace(v.Title) == "" {
 		m.clipping++
 		return m, m.fetchTitle(u, m.para.Dir())
-	})
+	}
+	res, err := intake.Clip(m.store, time.Now(), m.para.Dir(), u, v.Title)
+	m = m.finishIntake(res, err)
+	if err != nil {
+		return m.openClipForm(v, clipform.FieldTitle)
+	}
+	return m, nil
 }
 
 // fetchTitle returns the command that fetches the title of u.
@@ -77,7 +110,7 @@ func (m model) finishClip(msg clipFetchedMsg) (model, tea.Cmd) {
 	res, err := intake.Clip(m.store, time.Now(), msg.dir, msg.url, msg.title)
 	m = m.finishIntake(res, err)
 	if err != nil {
-		return m.askClipURL(msg.url.String())
+		return m.openClipForm(clipform.Values{URL: msg.url.String()}, clipform.FieldURL)
 	}
 	if msg.err != nil {
 		m = m.notify(popup.Warning, fmt.Sprintf("%s, so the note is named after the address.", capitalize(msg.err.Error())))

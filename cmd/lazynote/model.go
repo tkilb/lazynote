@@ -15,6 +15,7 @@ import (
 	"github.com/tkilb/lazynote/internal/links"
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/body"
+	"github.com/tkilb/lazynote/internal/ui/clipform"
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/noteform"
 	"github.com/tkilb/lazynote/internal/ui/panel"
@@ -192,6 +193,8 @@ type model struct {
 	writeClipboard func(string) error
 	// sources are the sources Quick Add offers, from the config.
 	sources []string
+	// clipForm is the open web clip form.
+	clipForm *clipform.Model
 	// form is the open quick-capture form; formSave handles its texts.
 	form     *noteform.Model
 	formSave func(model, noteform.Values) (model, tea.Cmd)
@@ -303,6 +306,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f := m.form.Resize(m.width, m.height)
 			m.form = &f
 		}
+		if m.clipForm != nil {
+			f := m.clipForm.Resize(m.width, m.height)
+			m.clipForm = &f
+		}
 		m = m.resizePanels()
 	case tea.FocusMsg:
 		// Files may have changed while the terminal was in the background.
@@ -335,6 +342,11 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.form = &f
 			return m, cmd
 		}
+		if m.clipForm != nil {
+			f, cmd := m.clipForm.Blink(msg)
+			m.clipForm = &f
+			return m, cmd
+		}
 		if m.input != nil {
 			var cmd tea.Cmd
 			m.input.field, cmd = m.input.field.Update(msg)
@@ -355,6 +367,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.updateHelp(msg), nil
 		case m.form != nil:
 			return m.formKey(msg)
+		case m.clipForm != nil:
+			return m.clipFormKey(msg)
 		case m.menu != nil:
 			return m.menuKey(key)
 		case m.question != nil:

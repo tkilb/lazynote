@@ -904,10 +904,15 @@ Numbers are kept stable; resolved items were removed.
      `archives/daily/`; the other keys are ignored.
    9f. URL clip (done for the TUI; `internal/clip`, `intake.Clip`, tested; a
    `lazynote clip URL` shell command is not built yet):
-   - `U` opens the prompt "Clip URL", starting with the clipboard's text when
-     that is a valid address. A bad address says why and asks again with the
-     text kept. Enter fetches the page title in the background (the status
-     bar says "Fetching the page title…"; the app stays usable).
+   - `U` opens a form of two boxes in the style of Quick Add: "Clip: Title"
+     (optional) and "URL" (required), with the keyboard on the URL. The URL
+     starts as the clipboard's text when that is a valid address. `tab`,
+     `shift+tab` and `↑`/`↓` move between the boxes, `enter` saves and `esc`
+     cancels. A bad address says why and brings the form back with
+     everything typed. With a title the note is saved at once, with no
+     network call. With the title blank the page's own title is fetched in
+     the background (the status bar says "Fetching the page title…"; the app
+     stays usable). Both boxes blank does nothing.
    - Address rules: `http` or `https` only, a host, no user name or password,
      no spaces or control characters, at most 2048 characters.
    - The fetch is bounded: a plain GET with no cookies or credentials and no

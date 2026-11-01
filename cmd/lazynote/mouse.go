@@ -49,7 +49,7 @@ func (m model) hitAt(x, y int) (hit, bool) {
 
 // modalOpen reports whether a popup, prompt or other modal has the keyboard.
 func (m model) modalOpen() bool {
-	return m.popups.Active() || m.showingHelp || m.form != nil || m.menu != nil ||
+	return m.popups.Active() || m.showingHelp || m.form != nil || m.clipForm != nil || m.menu != nil ||
 		m.question != nil || m.picker != nil || m.pending != nil || m.input != nil
 }
 

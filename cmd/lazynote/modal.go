@@ -193,6 +193,8 @@ func (m model) overlayModals(view string) string {
 		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll), m.width, m.height)
 	case m.form != nil:
 		view = popup.Overlay(view, m.form.View(), m.width, m.height)
+	case m.clipForm != nil:
+		view = popup.Overlay(view, m.clipForm.View(), m.width, m.height)
 	case m.picker != nil:
 		view = popup.Overlay(view, m.picker.View(m.width, m.height), m.width, m.height)
 	case m.menu != nil:
