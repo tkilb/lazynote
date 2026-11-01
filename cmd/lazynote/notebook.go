@@ -20,6 +20,7 @@ import (
 	"github.com/tkilb/lazynote/internal/ui/picker"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 	"github.com/tkilb/lazynote/internal/ui/related"
+	"github.com/tkilb/lazynote/internal/ui/stickies"
 	"github.com/tkilb/lazynote/internal/ui/title"
 	"github.com/tkilb/lazynote/internal/undo"
 )
@@ -124,10 +125,11 @@ func (m model) switchNotebook(i int) model {
 		purged, purgeErr = m.store.PurgeDailies(m.retentionDays, time.Now())
 	}
 	m.history, m.links, m.shown = &undo.Stack{}, nil, shownNote{}
+	m.stickyUIDs, m.stickies = nil, stickies.New()
 	m.body, m.info, m.related, m.title = body.New(), info.New(), related.New(), title.New()
 	m.para = para.New(m.store).WithRetention(m.retentionDays, time.Now)
 	m.session.notebook = nb.Path
-	m = m.restorePosition().resizePanels()
+	m = m.loadStickies().restorePosition().resizePanels()
 	m.activeNotebook = i
 	m.focus = panelPARA
 	return m.notifyPurge(purged, purgeErr).refreshLinks()

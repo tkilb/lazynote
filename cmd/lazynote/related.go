@@ -48,5 +48,5 @@ func (m model) refreshLinks() model {
 		m = m.notify(popup.Warning, fmt.Sprintf("Could not read the related links: %s.", err))
 	}
 	m.shown = shownNote{}
-	return m
+	return m.syncStickies()
 }

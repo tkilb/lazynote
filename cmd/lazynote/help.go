@@ -10,6 +10,7 @@ import (
 // helpGlobalBindings are the keys that work whatever panel has focus. Panel
 // switching is movement, so it is under Navigation, as in lazygit.
 var helpGlobalBindings = []statusbar.Binding{
+	{Key: "s", Label: "pin the selected note as a sticky (or unpin it)"},
 	{Key: "ctrl+f", Label: "find a note by name anywhere in the notebook"},
 	{Key: "ctrl+/ or F", Label: "find text in any note (opens it at the line)"},
 	{Key: "B", Label: "choose the notebook to open (your place in each is remembered)"},
@@ -27,7 +28,7 @@ var helpGlobalBindings = []statusbar.Binding{
 }
 
 var helpNavigationBindings = []statusbar.Binding{
-	{Key: "0,2-4", Label: "jump to panel"},
+	{Key: "0-4", Label: "jump to panel"},
 	{Key: "tab/shift+tab", Label: "next/prev panel"},
 }
 
@@ -55,6 +56,13 @@ var helpParaBindings = []statusbar.Binding{
 	{Key: "/", Label: "search names"},
 	{Key: "n/N", Label: "next/previous match"},
 	{Key: ".", Label: "show hidden files"},
+}
+
+var helpStickiesBindings = []statusbar.Binding{
+	{Key: "↑/↓", Label: "choose a sticky"},
+	{Key: "enter", Label: "jump to the note"},
+	{Key: "d", Label: "unpin the sticky"},
+	{Key: "esc/←", Label: "back to PARA"},
 }
 
 var helpRelatedBindings = []statusbar.Binding{
@@ -100,6 +108,8 @@ func (m model) helpSections() []helppopup.Section {
 
 func (m model) helpLocalBindings() []statusbar.Binding {
 	switch m.focus {
+	case panelStickies:
+		return helpStickiesBindings
 	case panelPARA:
 		return helpParaBindings
 	case panelRelated:

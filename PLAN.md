@@ -6,7 +6,7 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 ## Layout (from the paper mock)
 
 ```
-┌[1]───────────────────────────────────────────┐┌Title───────────────────────────────┐
+┌[1] Stickies─────────────────────────────────┐┌Title───────────────────────────────┐
 └──────────────────────────────────────────────┘└────────────────────────────────────┘
 ┌[2] PARA──────────────────────────────────────┐┌[0] Body────────────────────────────┐
 │ Inbox  Projects  Areas  Resources  Archives  ││                                    │
@@ -21,15 +21,15 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 
 | Key | Panel    | Content                                                                                                                                                                                           |
 | --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `1` | (reserved) | An empty slot at the top left, kept for a later feature. Not focusable. Notebooks are chosen with `B` (see chunk 7).                                                                              |
+| `1` | Stickies | Notes you pinned with `s`, for quick jumps. One row of names until focused, then one row each (up to five). See chunk 12.                                                                          |
 | `2` | PARA     | Tabs: Inbox (first; contains the `daily/` directory) / Projects / Areas / Resources / Archives. Each tab is a Yazi-style directory browser rooted at the tab's folder. Cycle tabs with `[` / `]`. |
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
 | —   | Title    | Title of the selected note on one line, led by its kind badge. Display only: no number key, not in the focus cycle. |
 | `0` | Body     | Read-only plain-text view of the selected note (frontmatter hidden, lines wrapped).                                                                                                               |
 | `4` | Info     | Three standard rows (Kind, Source, Date; Tags; Aliases), then every other frontmatter property of the selected note (custom keys), scrolling. `uid` and `related` are hidden. Sits below Body. |
 
-Focus: `0` and `2`-`4`, `Tab`, `Shift+Tab`. Tab goes PARA, Related, Body, Info and
-back; the Title panel and the reserved panel 1 are never focusable. Mouse support follows lazytask.
+Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Stickies, PARA, Related, Body, Info and
+back; the Title panel is never focusable. Mouse support follows lazytask.
 
 ## Keybindings (consolidated; keys marked \* are new proposals)
 
@@ -47,7 +47,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | ------------------- | --------------------------------------------- |
 | `q` / `ctrl+c`      | Quit                                          |
 | `ctrl+z`            | Suspend                                       |
-| `0`, `2`-`4`        | Focus Body / PARA / Related / Info            |
+| `0`-`4`             | Focus Body / Stickies / PARA / Related / Info |
+| `s`                 | Pin or unpin the selected note as a sticky    |
 | `B`                 | Choose the notebook to open (picker)          |
 | `ctrl+f`            | Find a note by name anywhere (picker)         |
 | `ctrl+/` or `F`     | Find text in any note (picker)                |
@@ -210,7 +211,7 @@ so the retention purge applies to it.
 `?` opens a scrollable "Keybindings" popup ported from lazytask, with three
 sections as in lazygit: **Local** (every key of the focused panel, a fuller
 list than the status bar hints), **Global** (keys that work in any panel:
-undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`, `2`-`4`, `Tab`,
+undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`-`4`, `Tab`,
 `Shift+Tab`). A panel with no keys of its own has no Local section. The up and down arrows
 scroll, `esc` or `?` closes, other keys are ignored. It lists
 only keys that are implemented, so each chunk that adds a key adds it to the
@@ -623,7 +624,7 @@ Numbers are kept stable; resolved items were removed.
 - `cmd/lazynote/` - root model, update, mouse, modal box, search.
 - `internal/ui/{panel,popup,helppopup,statusbar}` - shared widgets
   (port from lazytask).
-- `internal/ui/{para,related,info,body}` - one package per panel.
+- `internal/ui/{para,related,info,body,stickies}` - one package per panel.
 - `internal/store/` - notes backend interface plus markdown implementation.
 - `internal/state/` - SQLite session state.
 - `internal/{editor,config,undo,version}` - as in lazytask.
@@ -990,10 +991,8 @@ Numbers are kept stable; resolved items were removed.
    UI with a manual QA note), handled as lazytask handles its taskbooks: there
    is no panel; `B` opens a popup picker and the open notebook's name is
    shown in the status bar (cyan, bold, before the key hints; it is also
-   there while a popup is open on top of it). The slot of panel 1 at the
-   top left stays in the layout as an empty frame titled `1`, reserved for
-   a later feature: it is not focusable, `1` does nothing and clicks on it
-   are ignored.
+   there while a popup is open on top of it). Panel 1 at the top left is
+   Stickies (chunk 12), not a Notebook panel.
    - The picker is titled "Notebook" and lists the configured notebooks in
      config order, the highlight on the open one. Each row has the name and,
      dim at the right, `open` (for the open one), the number of notes in the
@@ -1017,6 +1016,35 @@ Numbers are kept stable; resolved items were removed.
      and available, else the first available one. `lazynote add` and
      `lazynote import` choose the same way, so they save into the notebook
      the TUI would open.
+12. Stickies (done; `state.LoadStickies`/`SaveStickies`, `Index.ByUID` and the
+    nil-safe `Frontmatter.Get` tested; the panel is UI with a manual QA
+    note). Panel 1, top left, lists the notes you pinned, as lazytask's
+    Suggested panel lists suggestions: it is one row until it has focus, then
+    one row per sticky, up to five (the rest scroll), pushing PARA and
+    Related down while it is focused.
+    - `s` (from any panel) pins the note under the PARA cursor, or unpins it
+      when it is already pinned. Up to 50 per notebook; the order is the
+      order pinned. A folder or an empty list only gets a notice.
+    - A sticky follows the note's `uid`, so renames and moves keep it (the
+      link index finds the note by uid; a uid shared by a copy made outside
+      lazynote goes to the shortest path). Pinning a note that has no `uid`
+      writes one first, as any edit does, as an undoable edit. A note that
+      cannot be found (deleted) shows dim as `(missing note)`, and `enter`
+      on it says so; `d` removes it.
+    - Collapsed, the row only counts them (`5 stickies`, `1 sticky`), since
+      names strung together read as a mess; with none it says
+      `(press s on a note to pin it)`. Focused (`1`), each
+      sticky has a row with its folder dim at the right, the chosen one
+      highlighted, `i/N` at the right and `enter jump  d unpin` at the left
+      of the bottom border. `↑`/`↓` choose, `enter` jumps PARA to the note
+      (tab, folder, cursor) and focuses PARA, `d` unpins, `esc` and `←`
+      return to PARA. `s` still pins PARA's selected note, not the sticky.
+    - Saved per notebook in the state database (a new `sticky` table; the
+      schema version is 2 and a version 1 database is upgraded when opened)
+      with the position; they load at startup and when a notebook is
+      opened. If the database cannot be used they last for the session only.
+    - Mouse: a click focuses the panel; once it is expanded, a click on a row
+      also chooses it.
 11. Release tooling, CI (copy from lazytask) and the README, including the
     `.lazynote/` sync note.
 

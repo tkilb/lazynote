@@ -20,18 +20,18 @@ type hit struct {
 // reports false over the Title panel (never focusable), the status bar and
 // anything outside the grid.
 func (m model) hitAt(x, y int) (hit, bool) {
-	g := computeGrid(m.width, m.height-1)
+	g := m.grid()
 	if x < 0 || y < 0 {
 		return hit{}, false
 	}
 	if x < g.leftWidth {
 		switch {
-		case y < g.reservedHeight:
-			return hit{}, false // the reserved slot takes no clicks
-		case y < g.reservedHeight+g.paraHeight:
-			return hit{panelPARA, x, y - g.reservedHeight}, true
-		case y < g.reservedHeight+g.paraHeight+g.relatedHeight:
-			return hit{panelRelated, x, y - g.reservedHeight - g.paraHeight}, true
+		case y < g.stickiesHeight:
+			return hit{panelStickies, x, y}, true
+		case y < g.stickiesHeight+g.paraHeight:
+			return hit{panelPARA, x, y - g.stickiesHeight}, true
+		case y < g.stickiesHeight+g.paraHeight+g.relatedHeight:
+			return hit{panelRelated, x, y - g.stickiesHeight - g.paraHeight}, true
 		}
 		return hit{}, false
 	}
@@ -104,9 +104,17 @@ func (m model) modalMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 // click focuses the clicked panel and then selects what is under the pointer.
 // The row is found before the focus changes, against the layout the user saw.
 func (m model) click(h hit) model {
-	g := computeGrid(m.width, m.height-1)
+	g := m.grid()
 	row := h.y - 1 // the first content row is under the top border
 	switch h.panel {
+	case panelStickies:
+		// While collapsed there is one row, so a click only focuses; once
+		// expanded it also chooses the row clicked.
+		if m.focus == panelStickies {
+			if i, ok := m.stickies.RowAt(row, g.stickiesHeight); ok {
+				m.stickies = m.stickies.SelectRow(i)
+			}
+		}
 	case panelPARA:
 		if h.y == 0 {
 			if i, ok := m.para.TabAt(h.x, g.leftWidth); ok {

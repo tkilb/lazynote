@@ -18,6 +18,7 @@ import (
 
 const (
 	relatedKey = "related"
+	uidKey     = "uid"
 	noteExt    = ".md"
 	linkOpen   = "[["
 	linkClose  = "]]"
@@ -61,6 +62,7 @@ func Target(raw string) (string, bool) {
 // whether to read it again, and the names it links to.
 type noteInfo struct {
 	mod     time.Time
+	uid     string
 	targets []string
 }
 
@@ -69,6 +71,7 @@ type Index struct {
 	notes        map[string]noteInfo // by rel
 	byName       map[string]string   // lowercased name -> rel
 	referencedBy map[string][]string // rel -> sorted rels linking to it
+	byUID        map[string]string   // uid -> rel
 }
 
 // Build indexes every note in s.
@@ -98,6 +101,7 @@ func (x *Index) Refresh(s store.Store) error {
 		info := noteInfo{mod: e.ModTime}
 		if n, err := s.ReadNote(e.Rel); err == nil {
 			info.targets = relatedTargets(n.Frontmatter)
+			info.uid = uidOf(n.Frontmatter)
 		}
 		next[e.Rel] = info
 	}
@@ -130,6 +134,12 @@ func walk(s store.Store, dir string) ([]store.Entry, error) {
 // resolveAll rebuilds the name table and the backlinks from the notes.
 func (x *Index) resolveAll() {
 	x.byName = make(map[string]string, len(x.notes))
+	x.byUID = make(map[string]string, len(x.notes))
+	for rel, info := range x.notes {
+		if cur, ok := x.byUID[info.uid]; info.uid != "" && (!ok || shorter(rel, cur)) {
+			x.byUID[info.uid] = rel
+		}
+	}
 	for rel := range x.notes {
 		key := strings.ToLower(nameOf(rel))
 		if cur, ok := x.byName[key]; !ok || shorter(rel, cur) {
@@ -247,6 +257,29 @@ type Note struct {
 	Name string
 	// Rel is the note's path relative to the notebook root.
 	Rel string
+}
+
+// ByUID returns the path of the note whose uid property is uid. A uid that
+// two notes share (a copy made outside lazynote) goes to the one with the
+// shortest path.
+func (x *Index) ByUID(uid string) (string, bool) {
+	if x == nil || uid == "" {
+		return "", false
+	}
+	rel, ok := x.byUID[uid]
+	return rel, ok
+}
+
+// uidOf reads the uid property of fm as plain text, or "" when it has none.
+func uidOf(fm *store.Frontmatter) string {
+	if fm == nil {
+		return ""
+	}
+	v := fm.Get(uidKey)
+	if v == nil || v.Kind != yaml.ScalarNode {
+		return ""
+	}
+	return strings.TrimSpace(v.Value)
 }
 
 // Rels returns the path of every note in the index, sorted by file name

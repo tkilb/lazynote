@@ -36,6 +36,7 @@ func (m model) withSession(s session) model {
 	if s.db == nil {
 		return m
 	}
+	m = m.loadStickies()
 	nb, err := s.db.LoadNotebook(s.notebook)
 	if err != nil {
 		return m.notify(popup.Warning, fmt.Sprintf("Could not restore your last position: %s.", err))

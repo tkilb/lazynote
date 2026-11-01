@@ -272,3 +272,42 @@ func TestRelsListsEveryNoteIncludingDuplicateNames(t *testing.T) {
 		"every note, sorted by name ignoring case, then by path")
 	assert.Nil(t, (*Index)(nil).Rels())
 }
+
+func TestByUIDFindsANoteWhereverItLives(t *testing.T) {
+	root := t.TempDir()
+	put(t, root, "projects/Alpha.md", "---\nuid: u-alpha\n---\nbody\n")
+	put(t, root, "areas/x/Beta.md", "---\nuid: \"u-beta\"\n---\nbody\n")
+	put(t, root, "inbox/NoUID.md", "---\ntitle: t\n---\nbody\n")
+	put(t, root, "inbox/Plain.md", "no properties\n")
+	x := build(t, root)
+
+	rel, ok := x.ByUID("u-alpha")
+	assert.True(t, ok)
+	assert.Equal(t, "projects/Alpha.md", rel)
+	rel, ok = x.ByUID("u-beta")
+	assert.True(t, ok)
+	assert.Equal(t, "areas/x/Beta.md", rel)
+	_, ok = x.ByUID("nope")
+	assert.False(t, ok)
+	_, ok = x.ByUID("")
+	assert.False(t, ok, "a note without a uid is never found by an empty one")
+
+	// A move keeps the uid, so a refresh finds it in its new place.
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "resources"), 0o755))
+	require.NoError(t, os.Rename(filepath.Join(root, "projects/Alpha.md"), filepath.Join(root, "resources/Renamed.md")))
+	require.NoError(t, x.Refresh(store.NewMarkdown(root)))
+	rel, ok = x.ByUID("u-alpha")
+	assert.True(t, ok)
+	assert.Equal(t, "resources/Renamed.md", rel)
+}
+
+func TestByUIDWithACopiedUIDPicksTheShortestPath(t *testing.T) {
+	root := t.TempDir()
+	put(t, root, "projects/deep/er/Copy.md", "---\nuid: same\n---\n")
+	put(t, root, "areas/Original.md", "---\nuid: same\n---\n")
+	rel, ok := build(t, root).ByUID("same")
+	assert.True(t, ok)
+	assert.Equal(t, "areas/Original.md", rel)
+	_, ok = (*Index)(nil).ByUID("same")
+	assert.False(t, ok)
+}

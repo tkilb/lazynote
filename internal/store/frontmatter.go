@@ -122,8 +122,12 @@ func (f *Frontmatter) Delete(key string) bool {
 	return false
 }
 
-// Get returns the value node for key, or nil when the key is absent.
+// Get returns the value node for key, or nil when the key is absent. A nil
+// Frontmatter, which is what a note without properties has, has no keys.
 func (f *Frontmatter) Get(key string) *yaml.Node {
+	if f == nil {
+		return nil
+	}
 	for i := 0; i+1 < len(f.node.Content); i += 2 {
 		if k := f.node.Content[i]; k.Kind == yaml.ScalarNode && k.Value == key {
 			return f.node.Content[i+1]

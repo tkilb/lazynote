@@ -18,11 +18,15 @@ import (
 const (
 	// TabCount is the number of PARA tabs.
 	TabCount = 5
+	// MaxStickies is how many stickies a notebook keeps.
+	MaxStickies = 50
+	// maxUIDLen bounds a saved uid, so a damaged value cannot grow the file.
+	maxUIDLen = 128
 
 	dbFile        = "state.db"
 	dirPerm       = 0o700
 	filePerm      = 0o600
-	schemaVersion = 1
+	schemaVersion = 2
 	busyTimeoutMS = 5000
 )
 
@@ -135,6 +139,12 @@ CREATE TABLE IF NOT EXISTS tab (
 	name     TEXT NOT NULL,
 	PRIMARY KEY (notebook, idx)
 );
+CREATE TABLE IF NOT EXISTS sticky (
+	notebook TEXT NOT NULL,
+	pos      INTEGER NOT NULL,
+	uid      TEXT NOT NULL,
+	PRIMARY KEY (notebook, pos)
+);
 PRAGMA user_version = %d;`, schemaVersion))
 	if err != nil {
 		return fmt.Errorf("prepare state database: %w", err)
@@ -235,4 +245,66 @@ ON CONFLICT(path) DO UPDATE SET active_tab = excluded.active_tab`, path, nb.Acti
 		return fmt.Errorf("save notebook state: %w", err)
 	}
 	return nil
+}
+
+// LoadStickies returns the uids of the notes pinned in the notebook at path,
+// in the order they were pinned. Blank or oversized values are dropped.
+func (d *DB) LoadStickies(path string) ([]string, error) {
+	rows, err := d.sql.Query(`SELECT uid FROM sticky WHERE notebook = ? ORDER BY pos`, path)
+	if err != nil {
+		return nil, fmt.Errorf("load stickies: %w", err)
+	}
+	defer rows.Close()
+	var uids []string
+	for rows.Next() {
+		var uid string
+		if err := rows.Scan(&uid); err != nil {
+			return nil, fmt.Errorf("load stickies: %w", err)
+		}
+		uids = append(uids, uid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load stickies: %w", err)
+	}
+	return cleanStickies(uids), nil
+}
+
+// SaveStickies replaces the stickies of the notebook at path, all or nothing.
+// Blank, oversized and repeated uids are dropped and at most MaxStickies are
+// kept.
+func (d *DB) SaveStickies(path string, uids []string) error {
+	tx, err := d.sql.Begin()
+	if err != nil {
+		return fmt.Errorf("save stickies: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`DELETE FROM sticky WHERE notebook = ?`, path); err != nil {
+		return fmt.Errorf("save stickies: %w", err)
+	}
+	for i, uid := range cleanStickies(uids) {
+		if _, err := tx.Exec(`INSERT INTO sticky (notebook, pos, uid) VALUES (?, ?, ?)`, path, i, uid); err != nil {
+			return fmt.Errorf("save stickies: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("save stickies: %w", err)
+	}
+	return nil
+}
+
+// cleanStickies drops blank, oversized and repeated uids, keeps the order and
+// stops at MaxStickies.
+func cleanStickies(uids []string) []string {
+	seen := make(map[string]bool, len(uids))
+	var out []string
+	for _, uid := range uids {
+		if uid == "" || len(uid) > maxUIDLen || seen[uid] {
+			continue
+		}
+		seen[uid] = true
+		if out = append(out, uid); len(out) == MaxStickies {
+			break
+		}
+	}
+	return out
 }

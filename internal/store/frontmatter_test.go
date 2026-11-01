@@ -198,3 +198,12 @@ func TestSetStringListAndDelete(t *testing.T) {
 	assert.Nil(t, fm.Get("list"))
 	assert.NotNil(t, fm.Get("z"))
 }
+
+func TestGetOnANoteWithoutPropertiesFindsNothing(t *testing.T) {
+	var nilFM *Frontmatter
+	assert.Nil(t, nilFM.Get("source"))
+
+	n := ParseNote("plain.md", []byte("just text, no properties\n"))
+	assert.Nil(t, n.Frontmatter.Get("source"), "a plain note has no properties and must not crash a lookup")
+	assert.Nil(t, n.Frontmatter.Get("uid"))
+}
