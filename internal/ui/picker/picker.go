@@ -5,6 +5,7 @@
 package picker
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -72,6 +73,9 @@ type Model struct {
 	field   textinput.Model
 	matches []match
 	cursor  int
+	// screenHeight is the terminal height, which sets how many rows a page
+	// is; zero (unknown) means a full list.
+	screenHeight int
 }
 
 // New returns a picker over items, listed in the given order until the user
@@ -82,6 +86,21 @@ func New(title string, items []Item) (Model, tea.Cmd) {
 	field.Focus()
 	m := Model{title: title, items: items, field: field}
 	return m.refilter(), textinput.Blink
+}
+
+// WithScreenHeight tells the picker how tall the terminal is, so page up and
+// page down move by the rows the list shows.
+func (m Model) WithScreenHeight(h int) Model {
+	m.screenHeight = h
+	return m
+}
+
+// pageRows is how many list rows fit for a terminal screenHeight rows tall.
+func pageRows(screenHeight int) int {
+	if screenHeight <= 0 {
+		return maxListRows
+	}
+	return min(max(screenHeight-boxMargin-chromeRows, minListRows), maxListRows)
 }
 
 // WithCursor starts the highlight on the i-th listed item (before the user
@@ -95,26 +114,52 @@ func (m Model) WithCursor(i int) Model {
 // on the best one.
 func (m Model) refilter() Model {
 	m.cursor = 0
-	query := m.field.Value()
-	if query == "" {
+	words := strings.Fields(m.field.Value())
+	if len(words) == 0 {
 		m.matches = make([]match, len(m.items))
 		for i := range m.items {
 			m.matches[i] = match{item: i}
 		}
 		return m
 	}
-	labels := make([]string, len(m.items))
-	for i, it := range m.items {
-		labels[i] = it.Label
+	// Each word is matched on its own, so "deep rocket" finds
+	// "projects/deep/Rocket Plan": an item has to match every word, ranked by
+	// the words' scores added up, and all the matched characters are marked.
+	type candidate struct {
+		item  int
+		score int
+		at    map[int]bool
 	}
-	found := fuzzy.Find(query, labels)
-	m.matches = make([]match, len(found))
-	for i, f := range found {
-		at := make(map[int]bool, len(f.MatchedIndexes))
-		for _, b := range f.MatchedIndexes {
-			at[b] = true
+	cands := make([]candidate, len(m.items))
+	for i := range m.items {
+		cands[i] = candidate{item: i}
+	}
+	for _, word := range words {
+		labels := make([]string, len(cands))
+		for i, c := range cands {
+			labels[i] = m.items[c.item].Label
 		}
-		m.matches[i] = match{item: f.Index, at: at}
+		found := fuzzy.Find(word, labels)
+		next := make([]candidate, 0, len(found))
+		for _, f := range found {
+			c := cands[f.Index]
+			c.score += f.Score
+			at := make(map[int]bool, len(c.at)+len(f.MatchedIndexes))
+			for b := range c.at {
+				at[b] = true
+			}
+			for _, b := range f.MatchedIndexes {
+				at[b] = true
+			}
+			c.at = at
+			next = append(next, c)
+		}
+		cands = next
+	}
+	sort.SliceStable(cands, func(i, j int) bool { return cands[i].score > cands[j].score })
+	m.matches = make([]match, len(cands))
+	for i, c := range cands {
+		m.matches[i] = match{item: c.item, at: c.at}
 	}
 	return m
 }
@@ -128,7 +173,8 @@ func (m Model) Chosen() (Item, bool) {
 }
 
 // Update handles a message while the picker is open: up and down move,
-// enter picks, esc cancels, and everything else edits the query.
+// enter picks, esc cancels, page up and down (or ctrl+u and ctrl+d) move a
+// page, and everything else edits the query.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	key, isKey := msg.(tea.KeyMsg)
 	if isKey {
@@ -146,6 +192,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 		case "down":
 			m.cursor = min(m.cursor+1, max(len(m.matches)-1, 0))
 			return m, nil, Pending
+		case "pgup", "ctrl+u":
+			m.cursor = max(m.cursor-pageRows(m.screenHeight), 0)
+			return m, nil, Pending
+		case "pgdown", "ctrl+d":
+			m.cursor = min(m.cursor+pageRows(m.screenHeight), max(len(m.matches)-1, 0))
+			return m, nil, Pending
 		}
 	}
 	before := m.field.Value()
@@ -162,8 +214,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 func (m Model) View(screenWidth, screenHeight int) string {
 	boxWidth := min(max(screenWidth-boxMargin, minBoxWidth), maxBoxWidth)
 	inner := boxWidth - 2
-	rows := min(max(screenHeight-boxMargin-chromeRows, minListRows), maxListRows)
-	rows = min(rows, max(len(m.matches), 1))
+	rows := min(pageRows(screenHeight), max(len(m.matches), 1))
 
 	m.field.Width = max(inner-lipgloss.Width(m.field.Prompt)-1, 1)
 	lines := []string{m.field.View()}

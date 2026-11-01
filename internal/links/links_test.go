@@ -258,3 +258,17 @@ func TestNotesListsOneNotePerNameSortedIgnoringCase(t *testing.T) {
 }
 
 func timeLater() time.Time { return time.Now().Add(time.Hour) }
+
+func TestRelsListsEveryNoteIncludingDuplicateNames(t *testing.T) {
+	root := t.TempDir()
+	put(t, root, "projects/Zed.md", note())
+	put(t, root, "areas/Same.md", note())
+	put(t, root, "resources/deep/Same.md", note())
+	put(t, root, "inbox/alpha.md", note())
+	put(t, root, "other/ignored.md", note())
+
+	got := build(t, root).Rels()
+	assert.Equal(t, []string{"inbox/alpha.md", "areas/Same.md", "resources/deep/Same.md", "projects/Zed.md"}, got,
+		"every note, sorted by name ignoring case, then by path")
+	assert.Nil(t, (*Index)(nil).Rels())
+}

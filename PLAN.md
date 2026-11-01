@@ -49,6 +49,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `ctrl+z`            | Suspend                                       |
 | `0`, `2`-`4`        | Focus Body / PARA / Related / Info            |
 | `B`                 | Choose the notebook to open (picker)          |
+| `ctrl+f`            | Find a note by name anywhere (picker)         |
+| `ctrl+/` or `F`     | Find text in any note (picker)                |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
 | `?`                 | Keybindings popup (see "Help popup")          |
 | `A`                 | Quick Add: form for a new inbox note          |
@@ -919,6 +921,34 @@ Numbers are kept stable; resolved items were removed.
    9g. Open daily notes (done; `intake.Daily`, tested): `b`/`t`/`T` as in
    the Daily notes decision. A note that exists is never changed; an archived
    one is found before a new one is made.
+   9i. Find (done; `Index.Rels` and `internal/findtext` tested). Two pickers
+   that work from any panel and reuse the fuzzy picker:
+   - `ctrl+f` "Find note": every note of the five PARA folders, one row per
+     file, shown by its path without `.md` (`projects/deep/Rocket Plan`) and
+     sorted by path ignoring case. What is typed is matched against the whole
+     path, so a folder name narrows the list as well as the note's name.
+     `enter` jumps PARA to the note (tab, folder, cursor) and focuses PARA.
+   - Every picker (these two, the reference picker, `K`, the notebook picker)
+     treats words separated by spaces as separate fuzzy terms that must all
+     match, so `deep rocket` finds `projects/deep/Rocket Plan`; the matches are
+     ranked by the terms' scores added up and every matched character is
+     marked. One word matches as before.
+     In every picker `pgup`/`pgdown` and `ctrl+u`/`ctrl+d` move the highlight
+     by the rows the list shows (3 to 10, by the terminal height), stopping
+     at the ends. (In the query field `ctrl+u` and `ctrl+d` no longer clear
+     text or delete a character.)
+   - `ctrl+/` or `F` "Find text": every non-blank line of every note (its
+     properties are not searched), the note's name and line number dim at
+     the right (`Rocket Plan:3`). Typing narrows the list with the same fuzzy
+     match as the other pickers, best first. `enter` opens the note, puts
+     Body's cursor on that line and focuses Body. Lines are as Body shows
+     them (control characters removed), cut to 160 characters, and at most
+     100000 are kept (the title then says so). The lines are read when the
+     picker opens, so a note changed since is read afresh next time.
+   - Terminals send `ctrl+/` as `ctrl+_`, which is what is bound; some send
+     nothing useful, so `F` does the same.
+   - `ctrl+f` was the full-page key; it is free since the page keys became
+     `ctrl+u`, `ctrl+d`, `pgup` and `pgdown`.
    9h. Daily retention (done; `Store.PurgeDailies`, tested): once at startup,
    before the lists load, files in `archives/daily/` named `YYYY-MM-DD.md`
    whose date is `retention.daily` or more calendar days before today are
@@ -987,7 +1017,7 @@ adds, `go build ./...` and `go test ./...` passing, one commit.
 
 Tests cover the engine only; the UI is verified by manual QA.
 
-- Engine packages (tested): `internal/store` (path safety, move, copy,
+- Engine packages (tested): `internal/findtext`, `internal/store` (path safety, move, copy,
   trash, overwrite, create, rename with link rewriting, frontmatter
   round-trip, kind parsing, retention purge), `internal/state`,
   `internal/undo`, `internal/config`, and the link index. Use table-driven

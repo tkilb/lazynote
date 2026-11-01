@@ -81,6 +81,7 @@ func (p panelID) cycleIndex() int {
 var globalBindings = []statusbar.Binding{
 	{Key: "0,2-4", Label: "focus panel"},
 	{Key: "B", Label: "notebook"},
+	{Key: "ctrl+f", Label: "find note"},
 	{Key: "tab", Label: "next panel"},
 	{Key: "u", Label: "undo"},
 	{Key: "?", Label: "help"},
@@ -354,6 +355,12 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m, cmd = m.startImport()
 	case "B":
 		m, cmd = m.openNotebookPicker()
+	case "ctrl+f":
+		m, cmd = m.openFileFinder()
+	case "ctrl+_", "F":
+		// ctrl+/ reaches the program as ctrl+_ ; F is for terminals that
+		// send nothing useful for it.
+		m, cmd = m.openTextFinder()
 	case "U":
 		m, cmd = m.startClip()
 	case "o":

@@ -23,6 +23,8 @@ const (
 	pickKind                        // set the kind of the note at pickerFor
 	pickExtractKind                 // choose the kind of a note being extracted
 	pickNotebook                    // choose the notebook to open
+	pickFile                        // jump to a note found by name
+	pickText                        // jump to a line found by its text
 )
 
 // openReferencePicker lists the notes the shown note could reference: every
@@ -58,7 +60,7 @@ func folderOf(rel string) string {
 
 // pickerKey feeds a message to the open picker and applies its outcome.
 func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
-	p, cmd, out := m.picker.Update(msg)
+	p, cmd, out := m.picker.WithScreenHeight(m.height).Update(msg)
 	m.picker = &p
 	switch out {
 	case picker.Cancelled:
@@ -69,6 +71,8 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 		switch m.pickerOp {
 		case pickNotebook:
 			return m.chooseNotebook(item.Value), nil
+		case pickFile, pickText:
+			return m.chooseFoundNote(item.Value), nil
 		case pickKind:
 			return m.setKind(m.pickerFor, store.ParseKind(item.Value)), nil
 		case pickExtractKind:

@@ -249,6 +249,27 @@ type Note struct {
 	Rel string
 }
 
+// Rels returns the path of every note in the index, sorted by file name
+// ignoring case and then by path. Unlike Notes it keeps notes that share a
+// name.
+func (x *Index) Rels() []string {
+	if x == nil {
+		return nil
+	}
+	rels := make([]string, 0, len(x.notes))
+	for rel := range x.notes {
+		rels = append(rels, rel)
+	}
+	sort.Slice(rels, func(i, j int) bool {
+		a, b := strings.ToLower(nameOf(rels[i])), strings.ToLower(nameOf(rels[j]))
+		if a != b {
+			return a < b
+		}
+		return rels[i] < rels[j]
+	})
+	return rels
+}
+
 // Notes returns every note a link can name, one per distinct name (the one a
 // link to that name resolves to), sorted by name ignoring case.
 func (x *Index) Notes() []Note {
