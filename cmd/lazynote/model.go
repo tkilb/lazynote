@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/tkilb/lazynote/internal/clip"
 	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/links"
 	"github.com/tkilb/lazynote/internal/store"
@@ -147,6 +148,10 @@ type model struct {
 	pickerKind store.Kind
 	// extract is the extraction in progress, if any.
 	extract *extractState
+	// fetcher gets page titles for URL clips; clipping counts the fetches
+	// still running.
+	fetcher  *clip.Fetcher
+	clipping int
 	// writeClipboard copies text to the system clipboard (a yank).
 	writeClipboard func(string) error
 	// sources are the sources Quick Add offers, from the config.
@@ -182,7 +187,7 @@ func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
 		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{},
-		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll,
+		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(),
 	}
 }
 
@@ -254,6 +259,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.refreshLinks()
 		}
 		return m, nil
+	case clipFetchedMsg:
+		return m.finishClip(msg)
 	case editDoneMsg:
 		return m.finishEdit(msg), tea.ClearScreen
 	case tea.ResumeMsg:
@@ -318,6 +325,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m, cmd = m.startQuickAdd()
 	case "I":
 		m, cmd = m.startImport()
+	case "U":
+		m, cmd = m.startClip()
 	case "b":
 		m = m.openDaily(-1)
 	case "t":

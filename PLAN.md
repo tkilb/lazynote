@@ -544,8 +544,8 @@ Also confirmed:
 - Shell capture: `lazynote add "Title" "body" --kind idea`, and
   `pbpaste | lazynote add --source clipboard` or `lazynote add --clipboard`,
   so capture works from a hotkey or script without opening the TUI.
-- URL clip: save a link, named after the page title, with `source: <url>`
-  and `kind: rumor`.
+- URL clip (`U`, chunk 9f): save a link, named after the page title, with
+  `source: <url>` and `kind: rumor`. See chunk 9f for the rules.
 - Daily retention: when a notebook is first opened in a session (at startup for the
   active one, on first switch for others), lazynote
   permanently deletes files in `archives/daily/` named `YYYY-MM-DD.md` whose date is
@@ -883,7 +883,35 @@ Numbers are kept stable; resolved items were removed.
      has no kind.
    - `m` on a daily note offers only `A` (Archives), where it goes to
      `archives/daily/`; the other keys are ignored.
-   9f. URL clip (title fetch needs a network call; confirm design first).
+   9f. URL clip (done for the TUI; `internal/clip`, `intake.Clip`, tested; a
+   `lazynote clip URL` shell command is not built yet):
+   - `U` opens the prompt "Clip URL", starting with the clipboard's text when
+     that is a valid address. A bad address says why and asks again with the
+     text kept. Enter fetches the page title in the background (the status
+     bar says "Fetching the page title…"; the app stays usable).
+   - Address rules: `http` or `https` only, a host, no user name or password,
+     no spaces or control characters, at most 2048 characters.
+   - The fetch is bounded: a plain GET with no cookies or credentials and no
+     proxy, a 5 second timeout, at most 3 redirects (each checked again), at
+     most 512 KB read (64 KB of headers), and only an HTML response; a redirect
+     from https to http is refused and no `Referer` is sent. A connection to
+     a loopback, private, link-local, multicast, unspecified or other
+     special-purpose address (carrier-grade NAT, documentation, benchmarking,
+     reserved, Teredo, 6to4, NAT64; an IPv6 address must be in 2000::/3) is
+     refused at connect time, so a name that resolves to one and a
+     redirect to one are refused too. Only the standard library is used; the
+     title is the first `<title>` element, entities decoded, control
+     characters and invisible format characters (such as right-to-left
+     overrides) removed, white space collapsed. A file name is cut to 200
+     bytes (on a character boundary) for every intake note, so a title of
+     four-byte characters still saves.
+   - The note is `inbox/<title>.md` (cleaned and numbered like Quick Add)
+     with `uid`, `title`, `kind: rumor`, `source` (the address), `date` and
+     empty `tags`; the body is the address. Undo moves it to the trash. If
+     the note cannot be saved, the prompt comes back with the address.
+   - When the fetch fails or the page has no title, the note is still saved,
+     named after the address (`example.com - docs - intro`), and a warning
+     says why. Errors never show the address.
    9g. Open daily notes (done; `intake.Daily`, tested): `b`/`t`/`T` as in
    the Daily notes decision. A note that exists is never changed; an archived
    one is found before a new one is made.

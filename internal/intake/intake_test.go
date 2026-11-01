@@ -1,14 +1,18 @@
 package intake
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tkilb/lazynote/internal/clip"
 	"github.com/tkilb/lazynote/internal/store"
 )
 
@@ -400,4 +404,71 @@ func TestDailyFindsAnArchivedNoteInsteadOfMakingANewOne(t *testing.T) {
 	assert.Equal(t, "archives/daily/2026-10-29.md", res.Rel)
 	assert.True(t, res.Existed)
 	assert.NoFileExists(t, filepath.Join(root, "inbox", "daily", "2026-10-29.md"))
+}
+
+func mustURL(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	u, err := clip.ParseURL(raw)
+	require.NoError(t, err)
+	return u
+}
+
+func TestClipWritesARumorNoteNamedAfterThePage(t *testing.T) {
+	root, s := newStore(t)
+	res, err := Clip(s, now, mustURL(t, "https://example.com/a/b?x=1"), "Tom: a / b?")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Tom a b.md", res.Rel)
+
+	data, err := os.ReadFile(filepath.Join(root, res.Rel))
+	require.NoError(t, err)
+	n := store.ParseNote("x.md", data)
+	assert.Equal(t, store.KindRumor, n.Kind)
+	assert.Equal(t, "https://example.com/a/b?x=1", n.Frontmatter.Get("source").Value)
+	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
+	assert.Equal(t, "Tom a b", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, "https://example.com/a/b?x=1\n", n.Body)
+
+	require.NoError(t, res.Action.Undo())
+	assert.NoFileExists(t, filepath.Join(root, res.Rel))
+}
+
+func TestClipFallsBackToTheAddressWithoutATitle(t *testing.T) {
+	tests := []struct{ raw, title, want string }{
+		{"https://example.com/docs/intro", "", "inbox/example.com - docs - intro.md"},
+		{"https://example.com/", "  ", "inbox/example.com.md"},
+		{"http://example.com:8080", "///", "inbox/example.com.md"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.raw, func(t *testing.T) {
+			_, s := newStore(t)
+			res, err := Clip(s, now, mustURL(t, tt.raw), tt.title)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, res.Rel)
+		})
+	}
+}
+
+func TestClipNumbersATakenName(t *testing.T) {
+	_, s := newStore(t)
+	u := mustURL(t, "https://example.com/x")
+	first, err := Clip(s, now, u, "Same")
+	require.NoError(t, err)
+	second, err := Clip(s, now, u, "Same")
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/Same.md", first.Rel)
+	assert.Equal(t, "inbox/Same 2.md", second.Rel)
+}
+
+func TestNameFitsAFileName(t *testing.T) {
+	name := Name(strings.Repeat("😀", 80))
+	require.NotEmpty(t, name)
+	assert.LessOrEqual(t, len(name)+len(" 999"), 255, "room for the number a taken name gets")
+	assert.True(t, utf8.ValidString(name), "cut on a character boundary")
+	assert.True(t, strings.HasSuffix(name, ".md"))
+}
+
+func TestClipWithAHugeTitleStillSaves(t *testing.T) {
+	_, s := newStore(t)
+	_, err := Clip(s, now, mustURL(t, "https://example.com/x"), strings.Repeat("😀", 80))
+	require.NoError(t, err)
 }

@@ -9,10 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/undo"
@@ -35,6 +37,10 @@ const (
 	dayLayout    = "2006-01-02"
 	noteExt      = ".md"
 	maxNameTries = 1000
+	// maxStemBytes keeps a file name, with its extension and a number added
+	// for a taken name, inside the 255 bytes most file systems allow, even
+	// for a title of four-byte characters.
+	maxStemBytes = 200
 )
 
 // Errors never echo a path, because they are shown in the interface.
@@ -71,6 +77,10 @@ type Result struct {
 // title with .md, or "" when nothing usable is left.
 func Name(title string) string {
 	clean := store.CleanTitle(title)
+	for len(clean) > maxStemBytes {
+		_, size := utf8.DecodeLastRuneInString(clean)
+		clean = strings.TrimRight(clean[:len(clean)-size], " .")
+	}
 	if clean == "" {
 		return ""
 	}
@@ -298,4 +308,33 @@ func Daily(s store.Store, t time.Time) (Result, error) {
 		return Result{}, err
 	}
 	return Result{Rel: rel, Action: act}, nil
+}
+
+// Clip creates an inbox note for a web page: named after title (or, when the
+// title has nothing usable, after the address), with kind rumor, the address
+// as its source and as its body. u must come from clip.ParseURL.
+func Clip(s store.Store, now time.Time, u *url.URL, title string) (Result, error) {
+	name := Name(title)
+	if name == "" {
+		name = Name(addressTitle(u))
+	}
+	if name == "" {
+		return Result{}, ErrEmpty
+	}
+	address := u.String()
+	return createUnique(s, name, func(final string) ([]byte, error) {
+		return store.IntakeNote(final, store.KindRumor, address, now.Format(dayLayout), address+"\n", nil)
+	})
+}
+
+// addressTitle names a page by its address: the host, then the path
+// segments, such as "example.com - docs - intro".
+func addressTitle(u *url.URL) string {
+	parts := []string{u.Hostname()}
+	for _, seg := range strings.Split(u.Path, "/") {
+		if seg != "" {
+			parts = append(parts, seg)
+		}
+	}
+	return strings.Join(parts, " - ")
 }
