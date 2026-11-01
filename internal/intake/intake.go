@@ -26,8 +26,12 @@ const (
 	SourceTranscript = "transcript"
 	// SourceExtract is the source of a note extracted from another note.
 	SourceExtract = "extract"
+	// SourceDaily is the source of a daily note lazynote creates.
+	SourceDaily = "daily"
 
 	inboxDir     = "inbox"
+	archivesDir  = "archives"
+	dailyDir     = "daily"
 	dayLayout    = "2006-01-02"
 	noteExt      = ".md"
 	maxNameTries = 1000
@@ -58,6 +62,9 @@ type Result struct {
 	// Unchanged is set when an imported note was saved exactly as it was,
 	// because its properties could not be parsed: it keeps its original uid.
 	Unchanged bool
+	// Existed is set by Daily when the note was already there, so nothing was
+	// created and there is nothing to undo.
+	Existed bool
 }
 
 // Name returns the file name of an intake note titled title: the cleaned
@@ -263,4 +270,32 @@ func originLink(rel string) string {
 		return ""
 	}
 	return "[[" + stem + "]]"
+}
+
+// Daily returns the daily note for the day of t: the dated note
+// (YYYY-MM-DD.md) in inbox/daily, or else the archived one in archives/daily.
+// When neither exists, an empty inbox/daily note with a uid, a title, a date
+// and no kind is created, and Result.Action undoes that.
+func Daily(s store.Store, t time.Time) (Result, error) {
+	name := t.Format(dayLayout) + noteExt
+	for _, dir := range []string{inboxDir, archivesDir} {
+		rel := filepath.ToSlash(filepath.Join(dir, dailyDir, name))
+		_, err := s.ReadNote(rel)
+		if err == nil {
+			return Result{Rel: rel, Existed: true}, nil
+		}
+		if !errors.Is(err, store.ErrNotFound) {
+			return Result{}, err
+		}
+	}
+	rel := filepath.ToSlash(filepath.Join(inboxDir, dailyDir, name))
+	data, err := store.IntakeNote(name, store.KindUnset, SourceDaily, t.Format(dayLayout), "", nil)
+	if err != nil {
+		return Result{}, err
+	}
+	act, err := s.Create(rel, data)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Rel: rel, Action: act}, nil
 }

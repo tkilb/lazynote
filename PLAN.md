@@ -53,8 +53,9 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `A`                 | Quick Add: form for a new inbox note          |
 | `I`                 | Import transcript or note (path prompt)       |
 | `U`                 | URL clip                                      |
-| `t`                 | Append to today's daily note                  |
-| `T`                 | Append to tomorrow's daily note               |
+| `b`                 | Open yesterday's daily note                   |
+| `t`                 | Open today's daily note                       |
+| `T`                 | Open tomorrow's daily note                    |
 | `u` / `ctrl+r`      | Undo / redo                                   |
 | `ctrl+l`            | Refresh from disk                             |
 
@@ -238,7 +239,7 @@ Conflict notes:
   decision 9). `/` is a search that jumps and highlights, as in lazytask, never a filter; `n`/`N`
   step through its matches.
 - Yazi's `D` is permanent delete in PARA, which does not clash since daily
-  append moved to `t` and `T`.
+  opening a daily note moved to `b`, `t` and `T`.
 - In PARA, `enter` and `→` drill a directory or open a note (focus
   Body); `←` goes to the parent directory, and in Body `←` or `esc`
   returns focus to PARA. In Related, `enter` jumps to the note.
@@ -550,9 +551,12 @@ Also confirmed:
   for days, and anything else is a config error). It never touches other folders or
   other filenames, resolves paths within the notebook root, and reports the
   count in the status bar. Permanent deletion is not undoable.
-- Daily note append: `t` adds a timestamped line to today's
-  `inbox/daily/YYYY-MM-DD.md`, `T` to tomorrow's. The file is created when
-  missing.
+- Daily notes: `b`, `t` and `T` open yesterday's, today's and tomorrow's
+  daily note (they do not append). PARA jumps to `inbox/daily/YYYY-MM-DD.md`
+  and takes focus. Nothing is typed into the note: edit it with `e`. When the
+  day has no note in `inbox/daily` or `archives/daily`, an empty one is
+  created in `inbox/daily` (uid, title, date, source `daily`, no kind); undo
+  removes it.
 - Sorting the inbox: there is no separate triage mode. Work through the
   Inbox tab with the ordinary PARA keys: `K` to set a kind, `m` then a
   key to file a note, the add-relation key in Related, and Body line
@@ -877,7 +881,9 @@ Numbers are kept stable; resolved items were removed.
    - `m` on a daily note offers only `A` (Archives), where it goes to
      `archives/daily/`; the other keys are ignored.
    9f. URL clip (title fetch needs a network call; confirm design first).
-   9g. Daily note append.
+   9g. Open daily notes (done; `intake.Daily`, tested): `b`/`t`/`T` as in
+   the Daily notes decision. A note that exists is never changed; an archived
+   one is found before a new one is made.
    9h. Daily retention (done; `Store.PurgeDailies`, tested): once at startup,
    before the lists load, files in `archives/daily/` named `YYYY-MM-DD.md`
    whose date is `retention.daily` or more calendar days before today are

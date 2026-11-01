@@ -12,6 +12,7 @@ import (
 var helpGlobalBindings = []statusbar.Binding{
 	{Key: "A", Label: "Quick Add a note to the inbox (tab, ctrl+s saves)"},
 	{Key: "I", Label: "import a file (transcript or note)"},
+	{Key: "b/t/T", Label: "open yesterday's/today's/tomorrow's daily note"},
 	{Key: "u", Label: "undo"},
 	{Key: "ctrl+r", Label: "redo"},
 	{Key: "ctrl+l", Label: "refresh from disk"},

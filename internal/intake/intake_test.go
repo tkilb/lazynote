@@ -353,3 +353,51 @@ func TestExtractNumbersACollidingName(t *testing.T) {
 	assert.Equal(t, "inbox/Same.md", a.Rel)
 	assert.Equal(t, "inbox/Same 2.md", b.Rel)
 }
+
+func TestDailyCreatesTheNoteForADay(t *testing.T) {
+	root, s := newStore(t)
+	tomorrow := now.AddDate(0, 0, 1)
+
+	res, err := Daily(s, tomorrow)
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/daily/2026-10-31.md", res.Rel)
+	assert.False(t, res.Existed)
+
+	data, err := os.ReadFile(filepath.Join(root, res.Rel))
+	require.NoError(t, err)
+	n := store.ParseNote("x.md", data)
+	assert.Equal(t, "2026-10-31", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, "2026-10-31", n.Frontmatter.Get("date").Value)
+	assert.Equal(t, store.KindUnset, n.Kind, "a daily has no kind")
+	assert.NotEmpty(t, n.Frontmatter.Get("uid").Value)
+
+	require.NoError(t, res.Action.Undo())
+	assert.NoFileExists(t, filepath.Join(root, res.Rel))
+}
+
+func TestDailyKeepsAnExistingNote(t *testing.T) {
+	root, s := newStore(t)
+	path := filepath.Join(root, "inbox", "daily", "2026-10-30.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("mine\n"), 0o644))
+
+	res, err := Daily(s, now)
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/daily/2026-10-30.md", res.Rel)
+	assert.True(t, res.Existed)
+	got, _ := os.ReadFile(path)
+	assert.Equal(t, "mine\n", string(got), "left untouched")
+}
+
+func TestDailyFindsAnArchivedNoteInsteadOfMakingANewOne(t *testing.T) {
+	root, s := newStore(t)
+	path := filepath.Join(root, "archives", "daily", "2026-10-29.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("old\n"), 0o644))
+
+	res, err := Daily(s, now.AddDate(0, 0, -1))
+	require.NoError(t, err)
+	assert.Equal(t, "archives/daily/2026-10-29.md", res.Rel)
+	assert.True(t, res.Existed)
+	assert.NoFileExists(t, filepath.Join(root, "inbox", "daily", "2026-10-29.md"))
+}

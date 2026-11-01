@@ -316,6 +316,12 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m, cmd = m.startQuickAdd()
 	case "I":
 		m, cmd = m.startImport()
+	case "b":
+		m = m.openDaily(-1)
+	case "t":
+		m = m.openDaily(0)
+	case "T":
+		m = m.openDaily(1)
 	case "ctrl+z":
 		return m.saveOrWarn(), tea.Suspend
 	case "ctrl+l":
