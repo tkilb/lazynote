@@ -599,8 +599,8 @@ Also confirmed:
   `inbox/` and show up in the Inbox tab. From a transcript they `related`-link
   back to it. From a daily note they must not link back, because the daily
   note will eventually be deleted; they record `source: daily YYYY-MM-DD` as plain
-  text instead. (Automatic extraction with an LLM is out of scope.) See 9d
-  for the exact behavior.
+  text instead. Manual extraction is chunk 9d. Agentic extraction from a
+  transcript is chunk 14.
 
 ## Open decisions (defaults assumed until answered)
 
@@ -620,6 +620,11 @@ Numbers are kept stable; resolved items were removed.
    and omit the Yazi behavior.
 11. Trash retention. Items trashed with `d` sit in `.lazynote/trash/` and
     accumulate. Default: no automatic purge yet.
+12. Digester backend and privacy (chunk 14). Default: run the Claude Code
+    CLI in print mode; the transcript leaves the machine only for the
+    configured backend, after a one-time confirmation that names it. Open:
+    the Claude API directly (needs a new dependency and key handling), or a
+    local model. Whether a `todo` kind should be added to the built-ins.
 
 ## Future enhancements
 
@@ -643,488 +648,77 @@ Numbers are kept stable; resolved items were removed.
 
 ## Chunks (one objective each, human checkpoint between chunks)
 
-1. Scaffold: module, Makefile, VERSION, root model, five-panel grid, focus
-   cycling, quit, `ctrl+z` suspend and resume, plus repository basics:
-   `AGENTS.md` (Go version, build and test commands, the engine-only testing
-   policy, one commit per chunk, pointer to `PLAN.md`) and `.gitignore` (the
-   built binary and `.lazynote/`).
-2. Config loading (`notebooks`, `retention.daily`) and the path-safety
-   function in `internal/store`, with their tests.
-   2a. `store.Store` interface and read operations: list a directory, read a
-   note, parse frontmatter (round-trip safe, `yaml.Node`) and split off the
-   body; tests against a temp notebook directory. Write operations come
-   later, in 3e.
-   2b. Kind enum, parsing from frontmatter, `unset` fallback;
-   unit tests.
-3. PARA panel: five tabs (Inbox, Projects, Areas, Resources, Archives), `[`/`]` switching, note list with selection,
-   `enter` to focus Body, kind badge per row.
-   3c. Directory browsing in PARA: Yazi-style navigation (arrows,
-   `enter`, `gg`/`G`, half and full page), breadcrumb in the panel title,
-   hidden-file toggle (`.`).
-   3d. Selection: `space`, `v`/`V`, `ctrl+a`, `esc`, with the yellow marker.
-   3e. Undo/redo infrastructure: port `internal/undo`, wire `u` / `ctrl+r`,
-   and define the store operations that record undo entries.
-   3f. Yank, cut and paste: `y`, `x`, `Y`/`X`, `p`, `P`, green and red
-   markers, buffer persisting across directories and tabs, undoable.
-   3g. Trash, delete and create: `d` (to `.lazynote/trash/`), `D`
-   (permanent), `a` (note, or directory with a trailing `/`), confirmations.
-   3h. Search: `/` name search in the current directory with `n`/`N`.
-   3i. Refresh from disk: `ctrl+l` and terminal focus. Later chunks extend it
-   to the link index (8) and hook it to `$EDITOR` returning (9).
-4. Body panel: show the selected note as plain text, frontmatter stripped,
-   long lines wrapped, scrollable.
-5. Info panel (and the display-only Title panel): kind and all
-   frontmatter properties except `uid`,
-   rendered generically (scalars, lists, nested values), in file order.
-   5b. Interrupt, next: unique note identity. The link index (chunk 8) keys
-   on `uid`, so no two notes may share one, yet a copy made with `y` then
-   `p`/`P` (including the `_N` duplicate) currently repeats its source's
-   `uid`. From this chunk on, every note a copy writes gets a fresh `uid` and
-   its `title` set to its file name: the one note for a file copy, and every
-   `.md` note inside a copied folder (other files are copied verbatim). A
-   note with no frontmatter gets a block holding both; a note whose
-   frontmatter cannot be parsed is copied byte for byte and a warning popup
-   says it kept its source's `uid`. Cut, move and `m` keep the `uid` (the
-   note is the same note). Undo and redo of a copy bring back the same copy
-   with the same new `uid`, and the source is never touched. The yank and
-   paste rule in "Yazi parity" is reworded to match. Notes already
-   duplicated before this chunk are not repaired, because lazynote never
-   rewrites a note on read. Engine tests: file, folder tree, no frontmatter,
-   invalid frontmatter, undo and redo stability, source untouched, uniqueness
-   across many copies. Import (9b) follows the same rule.
-   5c. Standard metadata rows in Info (confirmed layout, see the Info
-   decision): Kind | Source | Date on row 1, Tags on row 2, Aliases on row 3,
-   other properties scrolling below, `related` hidden, Info 3 content rows.
-   `store.DateOnly` carries the date rule, with a table test; manual QA note
-   for Info. Writing new notes' frontmatter in this order is left to the
-   intake chunks (9b), which are the first to write these fields.
-   5d. Edit in `$EDITOR` (`e` in PARA), moved up from chunk 9 so notes can be
-   opened for testing. `e` on a note hands the terminal to `$EDITOR` (falling
-   back to `vi`; the value may carry arguments) with the note's real path,
-   and PARA reloads when it exits; the editor not starting shows an error
-   popup. A folder under the cursor ignores `e`. Editor changes are not
-   undoable. Engine tests for the command; manual QA note for the key.
-6. `internal/state`: SQLite persistence and restore on launch, including
-   the current directory for each PARA tab.
-   Saved: the last notebook and focused panel, and per notebook its active
-   tab and, for each tab, the current directory and the note under the cursor
-   (by name). Written on quit, on `ctrl+z` and just before `$EDITOR` starts,
-   not on every key. Restore treats saved text as untrusted: a directory that
-   is not a plain relative path, or a name with a separator, is dropped, and a
-   vanished directory falls back to its nearest ancestor. If the database
-   cannot be opened or read, the app starts from the defaults and says so in
-   a warning popup. The last notebook used is restored (chunk 7). Engine tests for `internal/state`; manual QA
-   note for the restore.
-   8a. Link engine (`internal/links`): `Target` parsing, `related` extraction
-   (a list, one string, or an unquoted `[[Name]]`), name resolution, and an
-   index with references and referenced-by backlinks over the five PARA
-   folders, refreshed by modification time. In memory for now; the SQLite
-   cache named in the Decisions (open for the project owner to confirm) is
-   added only if startup scans prove slow. Engine tests only.
-8. Related panel, read-only (UI part, after 8a). Built: two groups (References,
-   Referenced by; an empty group is omitted, `(none)` when both are), each entry
-   with its PARA folder at the right, unresolved entries dimmed with
-   `unresolved`; `↑`/`↓` move over entries only; `enter` jumps
-   PARA to the note (tab, directory and cursor) and moves focus to PARA, and
-   on an unresolved entry shows an info popup instead; `esc`/`←` returns to
-   PARA. The index is built at startup and refreshed with `ctrl+l`, terminal
-   focus, the editor returning, and every undoable change or undo/redo.
-   Original description: `related` parsing, wikilink resolution,
-   backlink index, panel follows PARA selection, `enter`/`space` to jump.
-   8b. Related panel, editing (done): `l` opens a fuzzy picker of every note
-   except the shown one and those it already references, and appends
-   `[[Name]]` to its `related` property; `d` on a References entry asks to
-   confirm, then removes every spelling of that name (a Referenced by entry
-   only explains that the link lives in the other note). Edits go through
-   `Store.Edit`, which changes only the named property and adds a `uid` and
-   the `title` when missing (a list is rewritten as quoted strings; entries it
-   does not own stay; the property is dropped when it empties). A note with
-   invalid frontmatter is refused and left untouched. Each edit is one undo
-   entry that restores the exact previous bytes, including the modification
-   time, so stacked edits of one note undo in order; undo refuses if the note
-   changed on disk meanwhile. A link names a note by file name only, so with
-   duplicate names it resolves to the shortest path.
-   8c. Rename (`r`, done): rename the hovered item. The prompt starts with
-   the current name (a note's without `.md`); the name follows the `a` rules
-   (no `/`, `.md` added to a note), is refused when it already exists, and an
-   unchanged name only says so. For a note, the `title` property is set to
-   the new file name, a missing `uid` is added (an existing one never
-   changes), and every note that references it has its `related` entries
-   rewritten, keeping any folder prefix, `#heading` and `|alias`. When other
-   notes reference it, a confirmation first says "updates N notes". A name
-   containing `|`, `#`, `[` or `]` is refused while other notes reference
-   the note, because a link could not name it. A folder rename only moves it:
-   links name files, so none change. The move, the title and every rewrite
-   are one undo entry; a failure partway undoes what was done. A note whose
-   properties are invalid (or too large) is renamed without touching its
-   title, or skipped as a referrer, and a warning popup says so; a note with
-   invalid properties is not seen as a referrer at all, so a link in it is
-   not rewritten. The cursor lands on the renamed item.
-9. Remaining actions: set kind (`K` picker, done) and the `m` move popup (done).
-   `K` on a note opens the fuzzy picker titled "Set kind" with the seven kinds
-   and their meanings, the highlight on the current one; `enter` writes only
-   the `kind` property through `Store.Edit` (so a missing `uid` is added and
-   the title set, as for any write), as one undo entry; choosing the current
-   kind changes nothing; on a folder `K` does nothing. The daily-note rule
-   (9e) is still to come.
-   `m` on a note opens a "Move to" menu (`i` Inbox, `p` Projects, `a` Areas,
-   `r` Resources, `A` Archives); the next key moves the note at once to the
-   root of that tab (or `↑`/`↓` highlight a row, starting on Inbox, and
-   `enter` moves to it), keeping its name and `uid`, as one undo entry; `esc`
-   cancels and other keys are ignored. A dated daily note moved with `A`
-   goes to `archives/daily/` (`store.MoveDestination`). A note already at the
-   destination root says so; a name collision shows an error and moves
-   nothing. `m` on a folder does nothing (cut and paste moves folders). The
-   rule that a daily accepts only `A` is still to come (9e). Cut/paste, delete, create and undo are already
-   in chunks 3e to 3g.
-   9b. Intake core (done for the TUI; `lazynote import` comes with 9c):
-   Quick Add (`A`), transcript and note import (`I`). The Inbox tab already exists from chunk 3; `inbox/` is
-   created on first use. Engine in `internal/intake`, tested.
-   - Quick Add: a form ported from lazytask's add-task form
-     (`internal/ui/noteform`), opened with `A` from any panel. Five boxes, in
-     tab order: "Quick Add: Title", "Body", "Kind", "Source" and "Tags", each its own
-     bordered box with the field name in the border and the focused one
-     highlighted. `tab` and `shift+tab` move between them (they wrap around),
-     and so do `↑`/`↓` (they stop at the first and last box). In the body the
-     arrows first move its own cursor and only leave it from the first or
-     last displayed row, wrapped lines counted. The body is multi-line and scrolls inside a fixed
-     height of 3 to 8 lines (more on a tall terminal), with the cursor line
-     and total shown at the bottom left once it overflows; `enter` there
-     starts a new line. The kind box shows `‹ kind ›` in its color with its
-     meaning and changes with `←`/`→` through unset, fact, rumor, proposal,
-     fossil, idea, draft and web (unset by default). The source box works the same
-     way through the `sources` list of the config file (see Config; the
-     built-in list is adhoc, meeting, conversation, email, web, document,
-     and the first entry is the default). Tags are names separated by
-     commas or white space, `#` optional, letters, digits, `_`, `-` and `/`
-     only, not all digits, duplicates dropped. `enter` in any one-line field
-     and `ctrl+s` anywhere save, `esc` cancels; the key hints are on the last
-     box's border and follow the focused field. (`ctrl+s` is an addition:
-     lazytask's form can only save from a single-line field.) The note is
-     `inbox/<title>.md`: the title with `/ \ : * ? " < > | # [ ] ^` and
-     control characters removed, white space collapsed, leading and trailing
-     dots and spaces trimmed, at most 80 characters, case kept. It has `uid`,
-     `title` (the file name), `kind` (omitted when unset), `source` (as chosen, `adhoc` by default),
-     `date` (`YYYY-MM-DD`, unquoted so Obsidian reads a date) and `tags`
-     (empty when none), and the body text (none when blank). A name already
-     taken gets ` 2`, ` 3` and so on, and the title property follows. Both
-     title and body blank does nothing. A missing title, or a bad tag, shows
-     a warning and puts the form back with everything typed and the focus on
-     the field to fix. Undo moves the note to the trash.
-   - Import: `I` asks for a file path (`~` is expanded), then a menu: `t`
-     transcript or `n` note. The file is only read: it must be a regular
-     file (a symlink to one is fine) of at most 10 MB, and nothing is ever
-     written outside the notebook. A transcript becomes a note named from
-     the file's name (without its extension, cleaned the same way), with the whole text unmodified as its body,
-     `source: transcript` and `kind: rumor`. A note must be a `.md` file; it
-     is copied under its own name (numbered on a collision) with its
-     properties kept, `source: import` and `date` added only when missing or
-     blank, `kind` left as it is, a fresh `uid` and `title` set to its new
-     name (the original `uid` would otherwise exist twice, as with copies in
-     5b). A note whose properties cannot be parsed is saved byte for byte and
-     a warning says it keeps its original `uid`.
-   - When the new note is not in the list on screen (another tab or folder),
-     a notice says it was saved to the Inbox; otherwise there is no popup.
-   - The popup menus (`m` move, import) share one menu widget.
-   9c. Shell capture (done, `internal/cli`, tested; hooked up in `main`):
-   `lazynote add [TITLE] [BODY] [--kind K] [--source S] [--tags a,b]
-   [--clipboard]` and `lazynote import FILE [--type transcript|note]`. Both
-   print the new note's path (relative to the notebook) and report problems on
-   standard error with exit 1 (a flag mistake exits 2, `-h` exits 0). The
-   notebook is the first available one in the config, as in the TUI.
-   - Every flag is optional and flags may come before, between or after the
-     positionals; `--` ends the flags (a title may start with a dash). The
-     title is required: one positional, or the first line of the text.
-   - `--kind`: one of the seven kinds in any case, or `unset`; default none, so
-     no `kind` property. `--source`: any word (not blank, no control
-     characters, at most 40 characters, the same rule as the config);
-     default the first source of the config (`adhoc`). `--tags`: the form's
-     rules. Everything is checked before anything is written.
-   - Text: with two positionals the second is the body. Otherwise the body
-     is the clipboard (`--clipboard`, which wins) or piped text (only when
-     stdin is not a terminal): with a title it is the whole body; with no
-     title its first non-blank line is the title and the rest the body (a
-     single line is all title). An empty clipboard or empty piped text is an
-     error. A clipboard failure says it needs `pbpaste` (macOS) or `xclip`,
-     `xsel` or `wl-paste` (Linux).
-   - `import`: the type defaults to `note` for a `.md` file and `transcript`
-     otherwise; the rules are those of `I`. Errors never show the path.
-   9d. Extract (done; engine `intake.Extract`, tested):
-   - In Body (`0`), select lines as described in the Body decision above
-     (cursor line, `space` to cherry-pick, `v`/`V` for ranges). The selection
-     is whole source lines, in file order; lines that were not next to each
-     other are separated by a blank line in the new note, so the gaps show.
-     `esc` closes a range, then clears the selection, then leaves the panel.
-   - `y` yanks the selection (or the cursor line) to the system clipboard
-     (`pbcopy` on macOS; `xclip`, `xsel` or `wl-copy` on Linux, named in the
-     error when missing) and clears the selection, as a yank does in PARA; the
-     footer says `N yanked` until the next key. On failure the error shows and
-     the selection stays.
-   - `enter` (with lines selected) opens the "Extract as" picker with the six kinds (colored, with
-     their meanings), then a title prompt "Extract as <kind>: title" starting
-     with the first selected line (cleaned for a file name); `enter` creates
-     the note. Selecting only blank lines says so instead. A missing title
-     shows an error and keeps the selection.
-   - The note is `inbox/<title>.md`, named and numbered like a Quick Add note,
-     with `uid`, `title`, the chosen `kind`, `date`, an empty `tags` list and
-     the selected text (as shown: control characters removed, tabs as spaces)
-     as its body. The origin note is never changed.
-   - Source and link: from a dated daily note (`inbox/daily/` or
-     `archives/daily/`, `YYYY-MM-DD.md`), `source: daily YYYY-MM-DD` as plain
-     text and no `related`, because the daily will be deleted. From any other
-     note, `source: extract` and `related: ["[[Origin name]]"]` so it links
-     back (this covers transcripts); if the origin's name holds `| # [ ] ^`
-     the note is made without the link and a warning says so.
-   - Undo moves the new note to the trash.
-   Title follows the editor (done, after 9e; `links.RenameToTitle`, tested):
-   when `$EDITOR` exits cleanly after `e`, the note is read again; if its
-   `title` property differs from the file name, the file is renamed to the
-   title, made safe for a file name with the same cleaning as Quick Add titles
-   (`store.CleanTitle`, which moved into `store`). When that name is taken, `_1`,
-   `_2` and so on (counting from 1) are added before the extension until it
-   is free, and a notice says the note was renamed. The `title` property is
-   set to the final name, references to the note in other notes are rewritten
-   and the cursor follows the note, all as the `r` rename does; the rename is
-   one undo entry (the editing itself is not undoable). Nothing happens when
-   the title is missing, blank, not plain text, or already the file name, or
-   when the properties are invalid. A title that differs only by case is not
-   renamed (a case-only rename cannot be done safely on a case-insensitive
-   disk) and a notice says so; a title with no usable characters shows a
-   warning. A file the editor removed is ignored.
-   9e. Daily-note rules (done; `store.DailyDate`, `store.DailyOverdue`, tested):
-   - Overdue marker: a dated daily note (`YYYY-MM-DD.md`) still in
-     `inbox/daily/` whose date is `retention.daily` or more calendar days
-     before today shows its name in orange in the PARA list (also on the
-     cursor row). Archived dailies, notes with other names and notes outside
-     `inbox/daily/` are never marked. The days come from the config, read at
-     startup. Nothing is deleted or moved automatically.
-   - `K` on a daily note (inbox or archive) does nothing but say that a daily
-     has no kind.
-   - `m` on a daily note offers only `A` (Archives), where it goes to
-     `archives/daily/`; the other keys are ignored.
-   9f. URL clip (done for the TUI; `internal/clip`, `intake.Clip`, tested; a
-   `lazynote clip URL` shell command is not built yet):
-   - `U` opens a form of two boxes in the style of Quick Add: "Clip: Title"
-     (optional) and "URL" (required), with the keyboard on the title. The URL
-     starts as the clipboard's text only when that is a web address and
-     nothing else: one line, `http` or `https`, no password, and a dotted host
-     name ending in at least two letters (`example.com`, `wiki.example.net`)
-     or an IPv4 address; text around it, `localhost`, a bare name like `wiki`
-     or a mangled host leaves the box empty (what you type yourself is checked
-     by the address rules below, which allow those). A long address shows its
-     start while the title is focused and its end while you edit it. `tab`,
-     `shift+tab` and `↑`/`↓` move between the boxes, `enter` saves and `esc`
-     cancels. A bad address says why and brings the form back with
-     everything typed. With a title the note is saved at once, with no
-     network call. With the title blank the page's own title is fetched in
-     the background (the status bar says "Fetching the page title…"; the app
-     stays usable). Both boxes blank does nothing.
-   - Both text boxes (here and Quick Add's title and tags) leave one cell
-     free for the cursor: a full box otherwise wraps to a second row each
-     time the cursor shows, so the whole form jumped as it blinked.
-   - Address rules: `http` or `https` only, a host, no user name or password,
-     no spaces or control characters, at most 2048 characters.
-   - The fetch is bounded: a plain GET with no cookies or credentials and no
-     proxy, a 5 second timeout, at most 3 redirects (each checked again), at
-     most 512 KB read (64 KB of headers), and only an HTML response; a redirect
-     from https to http is refused and no `Referer` is sent. A connection to
-     a loopback, private, link-local, multicast, unspecified or other
-     special-purpose address (carrier-grade NAT, documentation, benchmarking,
-     reserved, Teredo, 6to4, NAT64; an IPv6 address must be in 2000::/3) is
-     refused at connect time, so a name that resolves to one and a
-     redirect to one are refused too. Only the standard library is used; the
-     title is the first `<title>` element, entities decoded, control
-     characters and invisible format characters (such as right-to-left
-     overrides) removed, white space collapsed. A file name is cut to 200
-     bytes (on a character boundary) for every intake note, so a title of
-     four-byte characters still saves.
-   - The note is `<folder>/<title>.md` (cleaned and numbered like Quick Add),
-     where `<folder>` is the folder PARA is showing when the address is
-     submitted (`projects/alpha`, or `inbox` at the Inbox root), not always the
-     Inbox. A folder that is missing is created, and one outside the notebook
-     is refused. The note has `uid`, `title`, `kind: web`, `source` (the
-     address), `date` and empty `tags`; the body is empty, because the address
-     lives in the properties only. Undo moves it to the trash. If the note cannot be
-     saved, the prompt comes back with the address.
-   - `o` (from any panel, on the note under the PARA cursor) opens the
-     address in the `source` property in the default browser: `open` on macOS,
-     `xdg-open` on Linux, run directly with the address as one argument (never
-     through a shell). Only an address `clip.ParseURL` accepts is passed on, so
-     it can never be taken for an option or a local file. It works on any note
-     whose source is a web address, whatever its kind. A note without one, or
-     a folder, only gets a notice. The browser is started, not waited for;
-     `internal/browser`, tested for the choice of command.
-   - When the fetch fails or the page has no title, the note is still saved,
-     named after the address (`example.com - docs - intro`), and a warning
-     says why. Errors never show the address.
-   9g. Open daily notes (done; `intake.Daily`, tested): `b`/`t`/`T` as in
-   the Daily notes decision. A note that exists is never changed; an archived
-   one is found before a new one is made.
-   9i. Find (done; `Index.Rels` and `internal/findtext` tested). Two pickers
-   that work from any panel and reuse the fuzzy picker:
-   - `ctrl+f` "Find note": every note of the five PARA folders, one row per
-     file, shown by its path without `.md` (`projects/deep/Rocket Plan`) and
-     sorted by path ignoring case. What is typed is matched against the whole
-     path, so a folder name narrows the list as well as the note's name.
-     `enter` jumps PARA to the note (tab, folder, cursor) and focuses PARA.
-   - Every picker (these two, the reference picker, `K`, the notebook picker)
-     treats words separated by spaces as separate fuzzy terms that must all
-     match, so `deep rocket` finds `projects/deep/Rocket Plan`; the matches are
-     ranked by the terms' scores added up and every matched character is
-     marked. One word matches as before.
-     In every picker `pgup`/`pgdown` and `ctrl+u`/`ctrl+d` move the highlight
-     by the rows the list shows (3 to 10, by the terminal height), stopping
-     at the ends. (In the query field `ctrl+u` and `ctrl+d` no longer clear
-     text or delete a character.)
-   - `ctrl+/` or `F` "Find text": every non-blank line of every note (its
-     properties are not searched), the note's name and line number dim at
-     the right (`Rocket Plan:3`). Typing narrows the list with the same fuzzy
-     match as the other pickers, best first. `enter` opens the note, puts
-     Body's cursor on that line and focuses Body. Lines are as Body shows
-     them (control characters removed), cut to 160 characters, and at most
-     100000 are kept (the title then says so). The lines are read when the
-     picker opens, so a note changed since is read afresh next time.
-   - Terminals send `ctrl+/` as `ctrl+_`, which is what is bound; some send
-     nothing useful, so `F` does the same.
-   - `ctrl+f` was the full-page key; it is free since the page keys became
-     `ctrl+u`, `ctrl+d`, `pgup` and `pgdown`.
-   9h. Daily retention (done; `Store.PurgeDailies`, tested): once at startup,
-   before the lists load, files in `archives/daily/` named `YYYY-MM-DD.md`
-   whose date is `retention.daily` or more calendar days before today are
-   deleted permanently (not undoable). Only regular files directly in that
-   folder are touched: a symlink, a folder, another name or a future date is
-   left alone, and the folder must resolve inside the notebook root. The
-   count is reported in an info popup (the app has no transient status-bar
-   message); a failure shows a warning. Only the first notebook is purged for
-   now; the notebook picker (chunk 7) runs it on the first switch to each
-   other notebook in a session.
-10. Mouse support (done; config key `ui.mouse` tested). On by default; set
-    `ui:` / `mouse: false` in the config file to turn it off (cell-motion
-    reporting is not requested then).
-    - A left click focuses the panel under the pointer (not Title). In PARA it
-      also selects the row clicked, or the tab clicked on the top border
-      (what is drawn counts: only the active tab is spelled out, the others are
-      their first letter, as in `I - Projects - A - R - A`); in Related it
-      selects an entry (a group header does nothing); in Body it puts the
-      cursor on the source line clicked. A click only selects: it never
-      jumps, opens or acts, and there is no double click.
-    - The wheel focuses the panel and moves like `↑`/`↓` (Body cursor, PARA
-      and Related selection, Info scroll).
-    - While a popup, prompt, form, picker, menu or the help is open the grid
-      ignores the mouse. A click dismisses a notice; the wheel moves in the
-      help, a picker or a menu. Clicking inside pickers, menus, forms and
-      confirmations is not supported yet (the keyboard is the way), so a
-      stray click never discards typed text or answers a question.
-    - Remaining config keys: none; `retention.daily` came with chunk 2.
-7. Notebooks (done; `Config.Select` and `store.CountNotes` tested, the rest is
-   UI with a manual QA note), handled as lazytask handles its taskbooks: there
-   is no panel; `B` opens a popup picker and the open notebook's name is
-   shown in the status bar (cyan, bold, before the key hints; it is also
-   there while a popup is open on top of it). Panel 1 at the top left is
-   Stickies (chunk 12), not a Notebook panel.
-   - The picker is titled "Notebook" and lists the configured notebooks in
-     config order, the highlight on the open one. Each row has the name and,
-     dim at the right, `open` (for the open one), the number of notes in the
-     PARA folders (hidden folders and symlinks left out), and the path with
-     `~` for home. A notebook whose folder does not exist is dim and says
-     `unavailable`, and choosing it only warns. Choosing the open one does
-     nothing. Type to filter, as in the other pickers.
-   - Opening saves the position in the notebook being left, then restores the
-     saved tab, directory and cursor of the new one and moves focus to PARA.
-     The session's last notebook is updated, so the next start opens it.
-   - Everything tied to the old notebook starts over: the undo/redo history
-     (its actions name files in the old notebook), the link index (rebuilt),
-     what Body remembers per note, Info, Related, Title and PARA's yank/cut
-     buffer and selection.
-   - The folder is checked again when opening; if it vanished since startup
-     a warning says so and nothing changes.
-   - The first time a notebook is opened in a session, startup included, its
-     archived daily notes past `retention.daily` are purged and the count is
-     reported (see 9h).
-   - At startup the notebook used last is opened when it is still configured
-     and available, else the first available one. `lazynote add` and
-     `lazynote import` choose the same way, so they save into the notebook
-     the TUI would open.
-12. Stickies (done; `state.LoadStickies`/`SaveStickies`, `Index.ByUID` and the
-    nil-safe `Frontmatter.Get` tested; the panel is UI with a manual QA
-    note). Panel 1, top left, lists the notes you pinned, as lazytask's
-    Suggested panel lists suggestions: it is one row until it has focus, then
-    one row per sticky, up to five (the rest scroll), pushing PARA and
-    Related down while it is focused.
-    - `s` (from any panel) pins the note under the PARA cursor, or unpins it
-      when it is already pinned. Up to 50 per notebook; the order is the
-      order pinned. A folder or an empty list only gets a notice.
-    - A sticky follows the note's `uid`, so renames and moves keep it (the
-      link index finds the note by uid; a uid shared by a copy made outside
-      lazynote goes to the shortest path). Pinning a note that has no `uid`
-      writes one first, as any edit does, as an undoable edit. A note that
-      cannot be found (deleted) shows dim as `(missing note)`, and `enter`
-      on it says so; `d` removes it.
-    - Collapsed, the row only counts them (`5 stickies`, `1 sticky`), since
-      names strung together read as a mess; with none it says
-      `(press s on a note to pin it)`. Focused (`1`), each
-      sticky has a row with its folder dim at the right, the chosen one
-      highlighted, `i/N` at the right and `enter jump  d unpin` at the left
-      of the bottom border. `↑`/`↓` choose, `enter` jumps PARA to the note
-      (tab, folder, cursor) and focuses PARA, `d` unpins, `esc` and `←`
-      return to PARA. `s` still pins PARA's selected note, not the sticky.
-    - Saved per notebook in the state database (a new `sticky` table; the
-      schema version is 2 and a version 1 database is upgraded when opened)
-      with the position; they load at startup and when a notebook is
-      opened. If the database cannot be used they last for the session only.
-    - Mouse: a click focuses the panel; once it is expanded, a click on a row
-      also chooses it.
-13. Configurable kinds (done; `store.SetKinds`/`ValidateKindSpecs` and the
-    config parser are tested; the colors are UI with a manual QA note). The
-    `kinds` list in the config file adds kinds to the built-in seven and
-    restyles them:
-    ```yaml
-    kinds:
-      - name: fact              # a built-in name: overrides it
-        color: "#2ea043"
-      - name: recipe            # any other name: a new kind
-        color: "#ff8800"
-        meaning: Something to cook
-        badge: cook
-    ```
-    - An entry whose `name` is a built-in kind overrides what it sets (color,
-      meaning, badge); built-ins cannot be removed and keep their order. Any
-      other name adds a kind after the built-ins, in config order. Absent or
-      empty means the built-ins as they are.
-    - `name` is required: a lowercase letter then letters, digits and hyphens,
-      at most 20 characters, not `unset`, and not listed twice (ignoring
-      case). `color` is `#rrggbb` (hex, any case; a terminal without true
-      color gets the nearest one). `badge` is at most four printable
-      characters (default for an added kind: the first four letters of its
-      name; added kinds without a color are plain white). `meaning` is one line
-      of at most 60 characters. At most 20 entries may add a kind. Any mistake,
-      an unknown key (a typo such as `colour`) included, is a config error that
-      names the entry, and nothing starts.
-    - Everything that lists kinds follows: the `K` and "Extract as" pickers,
-      Quick Add's kind box, `lazynote add --kind` (and its error and `-h`
-      text), the badges in PARA, the Title pill and Info. `web` stays
-      special (clips, `o`) and stays out of the "Extract as" picker.
-    - A note whose `kind` is not configured (for example after you remove a
-      kind from the config) reads as `unset` and its property is never
-      rewritten, so adding the kind back brings it back.
-11. Release tooling, CI (copied from lazytask) and the README (done; shell and
-    workflow files, checked by hand since they cannot run here):
-    - `.github/workflows/build.yml`: build, vet and test on Linux and macOS
-      for every push and pull request, with the Go version from `go.mod`.
-    - `.github/workflows/release.yml`: on a `v*` tag, test, cross-compile
-      `lazynote` for linux and darwin on amd64 and arm64 (CGO off; the SQLite
-      driver is pure Go), tar each, write `checksums.txt` and publish a GitHub
-      Release. No Windows.
-    - `scripts/release.sh` and `make release [minor|major]`: bump `VERSION`,
-      commit only that file, tag `v<version>`, push the branch and the tag.
-      It refuses a dirty tree and asks before it does anything.
-    - `scripts/install.sh`: downloads the latest release for the OS and
-      architecture, checks the checksum and installs to `~/bin`. Run with
-      `bash` (it uses `pipefail`).
-    - `README.md`: install, setup, the screen, keys, capture (including the
-      shell commands), daily notes, and the note to exclude `.lazynote/` from
-      sync and version control. Not copied from lazytask: its `update`
-      command (self-update) is not built.
+Done and removed from this list to save context; the behavior they added is
+recorded in the Decisions and Intake sections, the code and its tests, and
+`README.md`. The numbers stay stable because other sections cite them:
+
+- 1 scaffold, 2 config and path safety (2a store read, 2b kinds), 3 PARA panel
+  (3c to 3i browsing, selection, undo, yank/cut/paste, trash/create, search,
+  refresh), 4 Body, 5 Info and Title (5b unique uid on copy, 5c metadata rows,
+  5d edit in `$EDITOR`), 6 session state, 7 notebooks, 8 Related and the link
+  index (8a to 8c), 9 move and kind (9b intake core, 9c shell capture,
+  9d extract, 9e daily rules, 9f URL clip, 9g open dailies, 9h retention,
+  9i find), 10 mouse, 11 release tooling and README, 12 stickies,
+  13 configurable kinds.
+
+Remaining:
+
+14. Transcript digester (agentic import). Replaces the dumb text import for
+    transcripts; the plain import stays as the fallback. Not started.
+    - Goal: `I` then `t` (and `lazynote import FILE --type transcript`)
+      hands the transcript to an LLM agent that returns a structured digest,
+      instead of only saving the raw text as a `rumor` note.
+    - Output, matching the hand-made summaries in the inbox: a summary note
+      with sections Facts, Rumors / Unconfirmed, Todos and Ideas, plus the
+      untouched transcript. Each item becomes a candidate note, so the human
+      never has to retype it.
+    - Flow: (1) save the raw transcript as today (`source: transcript`,
+      `kind: rumor`, text unmodified), so nothing is lost if the agent fails;
+      (2) run the agent in the background (status bar "Digesting
+      transcript..."; the app stays usable); (3) show a review list of
+      proposed notes (kind, title, body, tick to keep); (4) on accept, create
+      the kept notes in `inbox/` through `intake.Extract`-style creation,
+      each `related`-linked to the transcript, one undo entry for the batch;
+      (5) write the summary into the transcript note above the transcript
+      under a `# Summary` heading, as the manual process does. Nothing is
+      written without the review step.
+    - Kind mapping: Facts -> `fact`, Rumors -> `rumor`, Todos -> `proposal`
+      (until a `todo` kind exists in config), Ideas -> `idea`. Items the agent
+      is unsure about default to `rumor`. Kinds come from the configured list.
+    - Engine in a new `internal/digest`: a `Digester` interface
+      (`Digest(ctx, transcript) (Digest, error)`), a `Digest` value type
+      (summary, attendees, items with kind, title, body, owner and source
+      quote), validation of the agent's output, and a backend. Tests use a
+      fake `Digester`; no test calls a real model or the network.
+    - Backend (open decision 12): default is to run the Claude Code CLI in
+      print mode with a fixed prompt and a JSON schema, passed the transcript
+      on standard input. No new Go dependency, and no API key handled by
+      lazynote. Command, model and timeout come from a `digest:` config block.
+    - Safety: the transcript is untrusted data, so the prompt tells the agent
+      to treat it as content, not instructions. Output is parsed as JSON only,
+      checked against the schema, cut to size limits (items, title length,
+      body length), run through `internal/textsafe`, and never executed or
+      used as a path. Titles go through `store.CleanTitle`. The agent gets no
+      file or shell tools. The transcript is sent only to the configured
+      backend, and only after the first-use confirmation (decision 12).
+      Errors never show transcript text.
+    - Limits: files above the import limit (10 MB) are refused as today; a
+      transcript over the model limit is split into chunks on speaker-turn
+      boundaries and the partial digests are merged and de-duplicated.
+    - Failure: backend missing, timeout, bad JSON or an empty digest shows a
+      warning and leaves the raw note in place; the user can retry with a key
+      on the transcript note.
+    - Shell: `lazynote import FILE --type transcript --digest` prints the
+      proposed items as JSON on standard output and writes nothing but the
+      raw note, so a script can review them. `--no-digest` forces the old
+      behavior.
+    - Config: `digest.enabled` (default false until the backend is chosen),
+      `digest.command`, `digest.timeout`.
+    - Sub-chunks, one commit each: 14a engine types, validation and fake
+      backend, tested; 14b CLI backend and `digest:` config, tested; 14c
+      chunking and merge, tested; 14d TUI: background run, status bar and
+      review list; 14e summary write-back and `--digest` flag; 14f README and
+      manual QA note.
 
 Each chunk: tests for any engine code it adds, a manual QA note for any UI it
 adds, `go build ./...` and `go test ./...` passing, one commit.
