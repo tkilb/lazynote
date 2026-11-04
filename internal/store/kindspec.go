@@ -55,18 +55,23 @@ func ResetKinds() {
 }
 
 // SetKinds makes the kinds the built-in ones plus what specs add or override
-// (see KindSpec). Nothing changes when a spec is not valid.
+// (see KindSpec). The kinds in specs come first, in the order given, then the
+// built-in kinds not in specs, in their own order. Nothing changes when a
+// spec is not valid.
 func SetKinds(specs []KindSpec) error {
 	clean, err := ValidateKindSpecs(specs)
 	if err != nil {
 		return err
 	}
-	list, byName := builtinKinds(), make(map[Kind]KindSpec, len(clean))
+	list, byName := make([]Kind, 0, len(clean)+len(builtinKinds())), make(map[Kind]KindSpec, len(clean))
 	for _, s := range clean {
 		k := Kind(s.Name)
 		byName[k] = s
-		if !isBuiltin(k) {
-			list = append(list, k)
+		list = append(list, k)
+	}
+	for _, b := range builtinKinds() {
+		if _, listed := byName[b]; !listed {
+			list = append(list, b)
 		}
 	}
 	kindMu.Lock()

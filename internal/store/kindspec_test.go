@@ -15,13 +15,24 @@ func useKinds(t *testing.T, specs ...KindSpec) {
 	require.NoError(t, SetKinds(specs))
 }
 
-func TestSetKindsAddsKindsAfterTheBuiltInsInOrder(t *testing.T) {
+func TestSetKindsFollowsTheConfigOrderBuiltInsIncluded(t *testing.T) {
+	useKinds(t,
+		KindSpec{Name: "recipe"},
+		KindSpec{Name: "web"},
+		KindSpec{Name: "fact"},
+	)
+	assert.Equal(t,
+		[]Kind{"recipe", KindWeb, KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft},
+		Kinds(), "listed kinds come first in config order, then the built-ins not listed, in their own order")
+}
+
+func TestSetKindsPutsAddedKindsInConfigOrderBeforeUnlistedBuiltIns(t *testing.T) {
 	useKinds(t,
 		KindSpec{Name: "recipe", Color: "#ff8800", Meaning: "Something to cook", Badge: "cook"},
 		KindSpec{Name: "Quote"},
 	)
 	got := Kinds()
-	assert.Equal(t, []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb, "recipe", "quote"}, got)
+	assert.Equal(t, []Kind{"recipe", "quote", KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb}, got)
 
 	assert.Equal(t, Kind("recipe"), ParseKind("  RECIPE "), "matching ignores case and space")
 	assert.Equal(t, "Something to cook", Kind("recipe").Meaning())
@@ -33,7 +44,7 @@ func TestSetKindsAddsKindsAfterTheBuiltInsInOrder(t *testing.T) {
 	assert.Empty(t, color)
 }
 
-func TestSetKindsOverridesABuiltInWithoutMovingIt(t *testing.T) {
+func TestSetKindsOverridesABuiltIn(t *testing.T) {
 	useKinds(t, KindSpec{Name: "fact", Color: "#2ea043", Meaning: "Verified"})
 	assert.Equal(t, KindFact, Kinds()[0])
 	assert.Len(t, Kinds(), 7, "an override adds no kind")

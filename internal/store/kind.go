@@ -34,7 +34,8 @@ const (
 )
 
 // Kinds returns the assignable kinds (not KindUnset) in display order: the
-// built-in ones, then any the config added (see SetKinds).
+// ones the config lists, in its order, then the built-in ones it does not
+// list (see SetKinds).
 func Kinds() []Kind {
 	kindMu.RLock()
 	defer kindMu.RUnlock()
