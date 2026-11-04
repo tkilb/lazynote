@@ -60,8 +60,10 @@ Output, written directly (best effort, no review step):
 - `_actions.md` only when action items exist.
 - Frontmatter on every file: `kind: import`, `source` from the configured
   sources (`meeting`, `confluence`, `slack`, `web`, `document`, `adhoc` ...; the
-  agent judges it; a URL import records the URL), `date` (import day), `tags`
-  (agent suggested), `related` links to `_source.md` and `_actions.md`.
+  agent judges it; a URL import records the URL), `date` (import day) and
+  `tags` (agent suggested). No `related` links: linking is out of scope for an
+  import (decided by the user; the link index also resolves by file name only,
+  so every `_source.md` would collide).
 - If `import` is missing from the user's kinds, write `kind: unset` and warn.
 - Titles go through `store.CleanTitle`; agent text goes through
   `internal/textsafe`; agent output is never a path. The agent writes only inside
@@ -97,7 +99,7 @@ test calls a real model or the network). UI chunks ship a manual QA note.
    fake command.
 3. Source readers: file, clipboard, URL fetch, login-page detection. Tested.
 4. Folder writer: naming and fallback, `_source.md`, frontmatter, kind fallback,
-   `related` links, one undo entry. Tested.
+   rename to the agent's topic, one undo entry. Tested.
 5. Split and merge. Tested.
 6. Re-run: replace generated files, undo restores. Tested.
 7. TUI: the `I` dialog (completion, inbox search, preview), re-run on an

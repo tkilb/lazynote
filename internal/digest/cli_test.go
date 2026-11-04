@@ -3,6 +3,7 @@ package digest
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,9 +21,7 @@ const goodAnswer = `{"topic":"Pricing review","source":"meeting","notes":[{"titl
 func envelope(t *testing.T, fields obj) string {
 	t.Helper()
 	base := obj{"type": "result", "subtype": "success", "is_error": false}
-	for k, v := range fields {
-		base[k] = v
-	}
+	maps.Copy(base, fields)
 	b, err := json.Marshal(base)
 	require.NoError(t, err)
 	return string(b)
