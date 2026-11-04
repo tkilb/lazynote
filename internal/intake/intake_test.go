@@ -532,3 +532,50 @@ func TestClipRefusesAFolderOutsideTheNotebook(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(parent, "escape", "Nope.md"))
 	assert.NoFileExists(t, "/tmp/abs/Nope.md")
 }
+
+const dailyTemplate = "---\nuid: old-uid\ntitle: daily\nkind: \"\"\nsource: daily\ndate: 2026-10-26\ntags: [daily]\npeople: []\nrelated: []\n---\n\n# Daily Note — 2026-10-26 (Monday)\n\n## Goals\n\n- [ ] -\n"
+
+func TestDailyFromATemplateFillsInTheDay(t *testing.T) {
+	root, s := newStore(t)
+	tomorrow := now.AddDate(0, 0, 1) // 2026-10-31, a Saturday
+
+	res, err := DailyFrom(s, tomorrow, []byte(dailyTemplate))
+	require.NoError(t, err)
+	assert.Equal(t, "inbox/daily/2026-10-31.md", res.Rel)
+	assert.False(t, res.Existed)
+
+	data, err := os.ReadFile(filepath.Join(root, res.Rel))
+	require.NoError(t, err)
+	n := store.ParseNote("x.md", data)
+	assert.Equal(t, "2026-10-31", n.Frontmatter.Get("title").Value)
+	assert.Equal(t, "2026-10-31", n.Frontmatter.Get("date").Value)
+	assert.NotEqual(t, "old-uid", n.Frontmatter.Get("uid").Value)
+	assert.Equal(t, "daily", n.Frontmatter.Get("source").Value)
+	assert.Contains(t, n.Body, "# Daily Note — 2026-10-31 (Saturday)")
+	assert.Contains(t, n.Body, "## Goals")
+
+	require.NoError(t, res.Action.Undo())
+	assert.NoFileExists(t, filepath.Join(root, res.Rel))
+	require.NoError(t, res.Action.Redo())
+	assert.FileExists(t, filepath.Join(root, res.Rel))
+}
+
+func TestDailyFromATemplateKeepsAnExistingNote(t *testing.T) {
+	root, s := newStore(t)
+	first, err := Daily(s, now)
+	require.NoError(t, err)
+	before, _ := os.ReadFile(filepath.Join(root, first.Rel))
+
+	again, err := DailyFrom(s, now, []byte(dailyTemplate))
+	require.NoError(t, err)
+	assert.True(t, again.Existed)
+	after, _ := os.ReadFile(filepath.Join(root, first.Rel))
+	assert.Equal(t, string(before), string(after), "a template never changes a note that is there")
+}
+
+func TestDailyFromAnUnreadableTemplateCreatesNothing(t *testing.T) {
+	root, s := newStore(t)
+	_, err := DailyFrom(s, now, []byte("---\nkey: [oops\n---\nbody"))
+	assert.ErrorIs(t, err, store.ErrFrontmatterInvalid)
+	assert.NoFileExists(t, filepath.Join(root, "inbox/daily", now.Format("2006-01-02")+".md"))
+}

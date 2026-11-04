@@ -1,6 +1,7 @@
 // Package picker implements a fuzzy picker popup: a text field above a list
 // of items that narrows as you type. Matching uses github.com/sahilm/fuzzy
-// (ranked for names, in memory, no network). It has no lazytask counterpart:
+// for scattered matches (in memory, no network), ranked first by how the
+// words fit (see rank.go). It has no lazytask counterpart:
 // lazytask's pickers reuse its list panels inside popups.
 package picker
 
@@ -13,7 +14,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sahilm/fuzzy"
 
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
@@ -22,10 +22,14 @@ const (
 	minBoxWidth = 30
 	maxBoxWidth = 60
 	maxListRows = 10
-	minListRows = 3
-	boxMargin   = 8 // columns and rows kept free around the box
-	chromeRows  = 4 // border (2), field and gap
-	charLimit   = 100
+	// A large picker (the finders) is as wide as the terminal allows up to
+	// largeMaxBoxWidth, and shows up to largeMaxListRows rows.
+	largeMaxBoxWidth = 120
+	largeMaxListRows = 24
+	minListRows      = 3
+	boxMargin        = 8 // columns and rows kept free around the box
+	chromeRows       = 4 // border (2), field and gap
+	charLimit        = 100
 	// detailExtra widens the detail column beyond half the box.
 	detailExtra  = 4
 	noMatchLabel = "(no matches)"
@@ -39,9 +43,13 @@ var (
 )
 
 // Item is one choice. Label is matched against the query and shown; Detail
-// is shown dim at the right; Value is what the caller gets back.
+// is shown dim at the right; Value is what the caller gets back. Name, when
+// set, is the end of Label that matters most (the file name in a path): an
+// item with a word matching inside its Name ranks above one whose words match
+// only the rest of the Label.
 type Item struct {
 	Label, Detail, Value string
+	Name                 string
 	// Color, when set, draws the label in that color (except on the
 	// highlighted row, which keeps the selection colors).
 	Color lipgloss.Color
@@ -76,6 +84,8 @@ type Model struct {
 	// screenHeight is the terminal height, which sets how many rows a page
 	// is; zero (unknown) means a full list.
 	screenHeight int
+	// large makes the box wider and taller, for lists of long paths.
+	large bool
 }
 
 // New returns a picker over items, listed in the given order until the user
@@ -95,12 +105,22 @@ func (m Model) WithScreenHeight(h int) Model {
 	return m
 }
 
+// Large makes the picker's box wider and taller than usual.
+func (m Model) Large() Model {
+	m.large = true
+	return m
+}
+
 // pageRows is how many list rows fit for a terminal screenHeight rows tall.
-func pageRows(screenHeight int) int {
-	if screenHeight <= 0 {
-		return maxListRows
+func (m Model) pageRows(screenHeight int) int {
+	limit := maxListRows
+	if m.large {
+		limit = largeMaxListRows
 	}
-	return min(max(screenHeight-boxMargin-chromeRows, minListRows), maxListRows)
+	if screenHeight <= 0 {
+		return limit
+	}
+	return min(max(screenHeight-boxMargin-chromeRows, minListRows), limit)
 }
 
 // WithCursor starts the highlight on the i-th listed item (before the user
@@ -123,32 +143,38 @@ func (m Model) refilter() Model {
 		return m
 	}
 	// Each word is matched on its own, so "deep rocket" finds
-	// "projects/deep/Rocket Plan": an item has to match every word, ranked by
-	// the words' scores added up, and all the matched characters are marked.
+	// "projects/deep/Rocket Plan": an item has to match every word, ranked
+	// by how well the words matched (see rank), then by their scores added
+	// up, and all the matched characters are marked.
 	type candidate struct {
-		item  int
-		score int
-		at    map[int]bool
+		item    int
+		quality int
+		score   int
+		at      map[int]bool
 	}
 	cands := make([]candidate, len(m.items))
 	for i := range m.items {
 		cands[i] = candidate{item: i}
 	}
 	for _, word := range words {
-		labels := make([]string, len(cands))
+		itemNos := make([]int, len(cands))
 		for i, c := range cands {
-			labels[i] = m.items[c.item].Label
+			itemNos[i] = c.item
 		}
-		found := fuzzy.Find(word, labels)
-		next := make([]candidate, 0, len(found))
-		for _, f := range found {
-			c := cands[f.Index]
-			c.score += f.Score
-			at := make(map[int]bool, len(c.at)+len(f.MatchedIndexes))
+		ranked := m.rank(word, itemNos)
+		next := make([]candidate, 0, len(ranked))
+		for i, c := range cands {
+			wm, ok := ranked[i]
+			if !ok {
+				continue
+			}
+			c.quality += wm.quality
+			c.score += wm.score
+			at := make(map[int]bool, len(c.at)+len(wm.at))
 			for b := range c.at {
 				at[b] = true
 			}
-			for _, b := range f.MatchedIndexes {
+			for _, b := range wm.at {
 				at[b] = true
 			}
 			c.at = at
@@ -156,7 +182,12 @@ func (m Model) refilter() Model {
 		}
 		cands = next
 	}
-	sort.SliceStable(cands, func(i, j int) bool { return cands[i].score > cands[j].score })
+	sort.SliceStable(cands, func(i, j int) bool {
+		if cands[i].quality != cands[j].quality {
+			return cands[i].quality > cands[j].quality
+		}
+		return cands[i].score > cands[j].score
+	})
 	m.matches = make([]match, len(cands))
 	for i, c := range cands {
 		m.matches[i] = match{item: c.item, at: c.at}
@@ -193,10 +224,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 			m.cursor = min(m.cursor+1, max(len(m.matches)-1, 0))
 			return m, nil, Pending
 		case "pgup", "ctrl+u":
-			m.cursor = max(m.cursor-pageRows(m.screenHeight), 0)
+			m.cursor = max(m.cursor-m.pageRows(m.screenHeight), 0)
 			return m, nil, Pending
 		case "pgdown", "ctrl+d":
-			m.cursor = min(m.cursor+pageRows(m.screenHeight), max(len(m.matches)-1, 0))
+			m.cursor = min(m.cursor+m.pageRows(m.screenHeight), max(len(m.matches)-1, 0))
 			return m, nil, Pending
 		}
 	}
@@ -212,9 +243,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 // View renders the picker as a bordered box sized for a screenWidth x
 // screenHeight terminal; draw it with popup.Overlay.
 func (m Model) View(screenWidth, screenHeight int) string {
-	boxWidth := min(max(screenWidth-boxMargin, minBoxWidth), maxBoxWidth)
+	widest := maxBoxWidth
+	if m.large {
+		widest = largeMaxBoxWidth
+	}
+	boxWidth := min(max(screenWidth-boxMargin, minBoxWidth), widest)
 	inner := boxWidth - 2
-	rows := min(pageRows(screenHeight), max(len(m.matches), 1))
+	rows := min(m.pageRows(screenHeight), max(len(m.matches), 1))
 
 	m.field.Width = max(inner-lipgloss.Width(m.field.Prompt)-1, 1)
 	lines := []string{m.field.View()}
@@ -249,11 +284,17 @@ func (m Model) row(mt match, width int, cursor bool) string {
 		base = selStyle
 	}
 	hit := base.Foreground(matchColor).Underline(true)
+	// The folders of a path, before the item's Name, are drawn grey.
+	_, nameStart := it.name()
+	folders := base.Foreground(dimStyle.GetForeground())
 	var b strings.Builder
 	for i, r := range label {
-		if mt.at[i] {
+		switch {
+		case mt.at[i]:
 			b.WriteString(hit.Render(string(r)))
-		} else {
+		case i < nameStart:
+			b.WriteString(folders.Render(string(r)))
+		default:
 			b.WriteString(base.Render(string(r)))
 		}
 	}

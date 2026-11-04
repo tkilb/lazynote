@@ -303,6 +303,14 @@ func originLink(rel string) string {
 // When neither exists, an empty inbox/daily note with a uid, a title, a date
 // and no kind is created, and Result.Action undoes that.
 func Daily(s store.Store, t time.Time) (Result, error) {
+	return DailyFrom(s, t, nil)
+}
+
+// DailyFrom is Daily with a template: when it has to create the note, the
+// note is made from template, the text of a template file, with the day
+// filled in (see store.TemplatedNote). A nil template gives the empty note.
+// A note that exists is never changed.
+func DailyFrom(s store.Store, t time.Time, template []byte) (Result, error) {
 	name := t.Format(dayLayout) + noteExt
 	for _, dir := range []string{inboxDir, archivesDir} {
 		rel := filepath.ToSlash(filepath.Join(dir, dailyDir, name))
@@ -315,7 +323,13 @@ func Daily(s store.Store, t time.Time) (Result, error) {
 		}
 	}
 	rel := filepath.ToSlash(filepath.Join(inboxDir, dailyDir, name))
-	data, err := store.IntakeNote(name, store.KindUnset, SourceDaily, t.Format(dayLayout), "", nil)
+	var data []byte
+	var err error
+	if template != nil {
+		data, err = store.TemplatedNote(template, name, SourceDaily, t)
+	} else {
+		data, err = store.IntakeNote(name, store.KindUnset, SourceDaily, t.Format(dayLayout), "", nil)
+	}
 	if err != nil {
 		return Result{}, err
 	}

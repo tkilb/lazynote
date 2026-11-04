@@ -59,6 +59,15 @@ type Config struct {
 	// color, badge or meaning it changes. Empty means the built-ins as they
 	// are.
 	Kinds []store.KindSpec
+	// Templates are the files new notes are made from.
+	Templates Templates
+}
+
+// Templates names the template files. An empty path means no template.
+type Templates struct {
+	// Daily is the path of the template for a new daily note: absolute (a
+	// leading ~ is expanded), or relative to the notebook root.
+	Daily string
 }
 
 // Notebook is one configured notebook root.
@@ -111,6 +120,7 @@ type rawConfig struct {
 	Notebooks []string  `yaml:"notebooks"`
 	Sources   yaml.Node `yaml:"sources"`
 	Kinds     yaml.Node `yaml:"kinds"`
+	Templates yaml.Node `yaml:"templates"`
 	Retention struct {
 		Daily string `yaml:"daily"`
 	} `yaml:"retention"`
@@ -170,7 +180,12 @@ func Parse(data []byte, home string) (Config, error) {
 		return Config{}, err
 	}
 
-	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds}
+	templates, err := parseTemplates(&raw.Templates, home)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds, Templates: templates}
 	cfg.UI.MouseOff = raw.UI.Mouse != nil && !*raw.UI.Mouse
 	for _, p := range raw.Notebooks {
 		nb, err := newNotebook(p, home)
@@ -194,6 +209,31 @@ func newNotebook(p, home string) (Notebook, error) {
 		Name:      filepath.Base(clean),
 		Available: err == nil && info.IsDir(),
 	}, nil
+}
+
+// parseTemplates reads the templates section: a mapping of template names to
+// file paths. Only daily is known, and any other name is an error that names
+// it. An absent or empty section means no templates.
+func parseTemplates(n *yaml.Node, home string) (Templates, error) {
+	var t Templates
+	if n.Kind == 0 || (n.Kind == yaml.ScalarNode && n.Tag == "!!null") {
+		return t, nil
+	}
+	if n.Kind != yaml.MappingNode {
+		return t, errors.New("templates must be a mapping, for example: templates: {daily: ~/Notes/work/inbox/templates/daily.md}")
+	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		name, val := n.Content[i].Value, n.Content[i+1]
+		if name != "daily" {
+			return t, fmt.Errorf("templates entry %q is not known; the only template is daily", name)
+		}
+		path := strings.TrimSpace(val.Value)
+		if val.Kind != yaml.ScalarNode || path == "" {
+			return t, errors.New("templates daily must be the path of a file, for example: ~/Notes/work/inbox/templates/daily.md")
+		}
+		t.Daily = expandHome(path, home)
+	}
+	return t, nil
 }
 
 // expandHome replaces a leading "~" or "~/" with home.
