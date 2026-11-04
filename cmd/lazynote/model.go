@@ -207,6 +207,15 @@ type model struct {
 	// dailyTemplate is the path of the daily note template from the config,
 	// or empty (see config.Templates).
 	dailyTemplate string
+	// digest is the agentic import configuration; importing counts the
+	// imports running (at most one) and importLabel says what the status bar
+	// shows while it runs. status is a message that clears itself, and
+	// statusID tells a stale clearing timer from the current one.
+	digest      config.Digest
+	importing   int
+	importLabel string
+	status      string
+	statusID    int
 	// clipForm is the open web clip form.
 	clipForm *clipform.Model
 	// form is the open quick-capture form; formSave handles its texts.
@@ -394,6 +403,13 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case clipFetchedMsg:
 		return m.finishClip(msg)
+	case importDoneMsg:
+		return m.finishImport(msg)
+	case statusClearMsg:
+		if msg.id == m.statusID {
+			m.status = ""
+		}
+		return m, nil
 	case editDoneMsg:
 		return m.finishEdit(msg), tea.ClearScreen
 	case tea.ResumeMsg:
@@ -471,7 +487,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "A":
 		m, cmd = m.startQuickAdd()
 	case "I":
-		m, cmd = m.startImport()
+		m, cmd = m.importKey()
 	case "B":
 		m, cmd = m.openNotebookPicker()
 	case "s":

@@ -80,27 +80,6 @@ func (m model) openRootInput(title, initial string, accept func(model, string) (
 	return m, cmd
 }
 
-// startImport asks for a file path, then whether it is a transcript or a note.
-func (m model) startImport() (model, tea.Cmd) {
-	return m.openRootInput("Import file (path)", "", func(m model, text string) (model, tea.Cmd) {
-		path := strings.TrimSpace(text)
-		if path == "" {
-			return m, nil
-		}
-		return m.openMenu("Import as", []popup.MenuItem{
-			{Key: "t", Label: "Transcript (kept as written, kind rumor)"},
-			{Key: "n", Label: "Note (markdown, properties kept)"},
-		}, func(m model, key string) model {
-			if key == "t" {
-				res, err := intake.ImportTranscript(m.store, time.Now(), path)
-				return m.finishIntake(res, err)
-			}
-			res, err := intake.ImportNote(m.store, time.Now(), path)
-			return m.finishIntake(res, err)
-		}), nil
-	})
-}
-
 // savedPlace says where a new note went: "the Inbox" for the inbox folder
 // itself, else its folder, such as "projects/alpha".
 func savedPlace(rel string) string {

@@ -25,6 +25,7 @@ type startup struct {
 	dailyTemplate string
 	retentionDays int
 	mouse         bool
+	digest        config.Digest
 	// notebooks are all the configured notebooks and active the index of
 	// the one opened.
 	notebooks []config.Notebook
@@ -50,7 +51,7 @@ func openStore() (startup, error) {
 		return startup{
 			store: store.NewMarkdown(nb.Path), root: nb.Path,
 			sources: cfg.Sources, dailyTemplate: cfg.Templates.Daily, retentionDays: cfg.Retention.DailyDays,
-			mouse: cfg.UI.MouseEnabled(), notebooks: cfg.Notebooks, active: i,
+			mouse: cfg.UI.MouseEnabled(), notebooks: cfg.Notebooks, active: i, digest: cfg.Digest,
 		}, nil
 	}
 	return startup{}, errors.New("none of the configured notebooks is an existing directory")
@@ -95,6 +96,7 @@ func main() {
 	start := initialModel(boot.store)
 	start.sources = boot.sources
 	start.dailyTemplate = boot.dailyTemplate
+	start.digest = boot.digest
 	start.para = start.para.WithRetention(boot.retentionDays, time.Now)
 	start = start.withNotebooks(boot.notebooks, boot.active, boot.retentionDays)
 	if sessErr != nil {

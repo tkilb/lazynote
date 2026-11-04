@@ -2,10 +2,12 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/tkilb/lazynote/internal/ui/helppopup"
 	"github.com/tkilb/lazynote/internal/ui/para"
@@ -26,6 +28,42 @@ type input struct {
 	// accept, when set, handles the text on enter instead of the PARA
 	// panel: for prompts the root model owns.
 	accept func(model, string) (model, tea.Cmd)
+	// hint, when set, describes the text typed so far in a line under the
+	// box; complete, when set, is run by tab to complete the text and lists
+	// the matches. note is the line shown.
+	hint     func(string) string
+	complete func(string) (string, []string)
+	note     string
+}
+
+// refresh shows the hint for the text now in the field.
+func (i *input) refresh() {
+	if i.hint != nil {
+		i.note = i.hint(i.field.Value())
+	}
+}
+
+// maxShownMatches is how many completion matches the line under the box names.
+const maxShownMatches = 4
+
+// tab completes the text and says what matched.
+func (i *input) tab() {
+	if i.complete == nil {
+		return
+	}
+	text, matches := i.complete(i.field.Value())
+	i.field.SetValue(text)
+	i.field.CursorEnd()
+	switch {
+	case len(matches) > 1:
+		shown := matches[:min(len(matches), maxShownMatches)]
+		i.note = fmt.Sprintf("%d matches: %s", len(matches), strings.Join(shown, ", "))
+		if len(matches) > len(shown) {
+			i.note += ", …"
+		}
+	default:
+		i.refresh()
+	}
 }
 
 // inlinePrompt is the prefix of an inline prompt, as in lazygit.
@@ -121,9 +159,15 @@ func (m model) typeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		var eff para.Effect
 		m.para, eff = m.para.ApplyInput(op, text)
 		return m.apply(eff)
+	case "tab":
+		if m.input.complete != nil {
+			m.input.tab()
+			return m, nil
+		}
 	}
 	var cmd tea.Cmd
 	m.input.field, cmd = m.input.field.Update(msg)
+	m.input.refresh()
 	return m, cmd
 }
 
@@ -206,7 +250,11 @@ func (m model) overlayModals(view string) string {
 	case m.input != nil && m.input.inline:
 		// Drawn in the status row by statusLine instead.
 	case m.input != nil:
-		box := popup.InputBox(m.input.title, m.input.label, m.input.field.View(), m.width)
+		field := m.input.field.View()
+		if m.input.note != "" {
+			field += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(m.input.note)
+		}
+		box := popup.InputBox(m.input.title, m.input.label, field, m.width)
 		view = popup.Overlay(view, box, m.width, m.height)
 	case m.pending != nil && m.pending.Danger:
 		view = popup.Overlay(view, popup.DangerConfirmBox(m.pending.Prompt, m.width), m.width, m.height)
@@ -226,6 +274,12 @@ func (m model) statusLine() string {
 	}
 	if m.clipping > 0 {
 		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "…", Label: "fetching the page title"}})
+	}
+	if m.importing > 0 {
+		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "…", Label: m.importLabel}})
+	}
+	if m.status != "" {
+		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "✓", Label: m.status}})
 	}
 	return statusbar.RenderWithBook(m.notebookName(), m.bindings())
 }
