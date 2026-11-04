@@ -13,8 +13,8 @@ import (
 // switching is movement, so it is under Navigation, as in lazygit.
 var helpGlobalBindings = []statusbar.Binding{
 	{Key: "s", Label: "pin the selected note as a sticky (or unpin it)"},
-	{Key: "ctrl+f", Label: "find a note by name anywhere in the notebook"},
-	{Key: "ctrl+/ or F", Label: "find text in any note (opens it at the line)"},
+	{Key: "ctrl+f", Label: "find a note by name or path anywhere in the notebook (best file name matches first)"},
+	{Key: "ctrl+/ or F", Label: "search text in every note, grep style (opens it at the line)"},
 	{Key: "B", Label: "choose the notebook to open (your place in each is remembered)"},
 	{Key: "A", Label: "Quick Add a note in the folder PARA shows (tab, ctrl+s saves)"},
 	{Key: "I", Label: "import a file (transcript or note)"},

@@ -40,6 +40,8 @@ retention:
   daily: 30d        # optional, default 30d
 ui:
   mouse: true       # optional, default true
+templates:          # optional: files new notes are made from
+  daily: ~/Notes/work/inbox/templates/daily.md
 sources:            # optional: the sources Quick Add offers
   - adhoc
   - meeting
@@ -56,6 +58,7 @@ kinds:              # optional: restyle kinds or add your own (see Kinds)
 - **`notebooks`**: the first available entry opens on the first run, and after that the notebook you used last. A path that is not an existing folder is listed as unavailable and cannot be opened. `~` is expanded.
 - **`retention.daily`**: how long archived daily notes are kept, a whole number of days followed by `d`.
 - **`ui.mouse`**: set to `false` to turn the mouse off.
+- **`templates.daily`**: a markdown file to make each new daily note from (`b`, `t` and `T`), as a path with `~` or relative to the notebook. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily.
 - **`sources`**: up to 40 characters each, distinct ignoring case. Without it the list is adhoc, meeting, conversation, email, web, document.
 
 A notebook needs no particular layout. These folders are used and created when first needed:
@@ -123,8 +126,8 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | `?` | Help for the focused panel |
 | `0`-`4`, `Tab` | Focus a panel |
 | `B` | Choose the notebook to open |
-| `ctrl+f` | Find a note by path (fuzzy) |
-| `ctrl+/` or `F` | Find text in any note (fuzzy); opens it at the line |
+| `ctrl+f` | Find a note by path (fuzzy). Results are ranked: the whole file name, then names that start with what you typed, then names where it starts a word, then names that contain it, then scattered letters in the name, then matches only in a folder; shorter names first. The folders are drawn grey |
+| `ctrl+/` or `F` | Search text in every note, as grep -i does: type words, and every line holding all of them, exactly and ignoring case, is listed with its note, line and column and a preview of the note beside it. `↑` `↓` move, `pgup` `pgdown` page, `ctrl+d` `ctrl+u` scroll the preview, `enter` opens the note at the line, `esc` cancels |
 | `s` | Pin or unpin the selected note as a sticky |
 | `A` | Quick Add a note in the folder PARA shows |
 | `I` | Import a file (a transcript or a markdown note) |

@@ -24,7 +24,6 @@ const (
 	pickExtractKind                 // choose the kind of a note being extracted
 	pickNotebook                    // choose the notebook to open
 	pickFile                        // jump to a note found by name
-	pickText                        // jump to a line found by its text
 )
 
 // openReferencePicker lists the notes the shown note could reference: every
@@ -71,7 +70,7 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 		switch m.pickerOp {
 		case pickNotebook:
 			return m.chooseNotebook(item.Value), nil
-		case pickFile, pickText:
+		case pickFile:
 			return m.chooseFoundNote(item.Value), nil
 		case pickKind:
 			return m.setKind(m.pickerFor, store.ParseKind(item.Value)), nil

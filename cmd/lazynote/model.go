@@ -17,6 +17,7 @@ import (
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/clipform"
 	"github.com/tkilb/lazynote/internal/ui/content"
+	"github.com/tkilb/lazynote/internal/ui/grep"
 	"github.com/tkilb/lazynote/internal/ui/helppopup"
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/noteform"
@@ -184,7 +185,9 @@ type model struct {
 	input *input
 	// picker is the open fuzzy picker for adding a reference to the note at
 	// pickerFor.
-	picker    *picker.Model
+	picker *picker.Model
+	// grep is the open text search.
+	grep      *grep.Model
 	pickerFor string
 	pickerOp  pickerOp
 	// pickerKind is the kind the note had when the kind picker opened.
@@ -201,6 +204,9 @@ type model struct {
 	writeClipboard func(string) error
 	// sources are the sources Quick Add offers, from the config.
 	sources []string
+	// dailyTemplate is the path of the daily note template from the config,
+	// or empty (see config.Templates).
+	dailyTemplate string
 	// clipForm is the open web clip form.
 	clipForm *clipform.Model
 	// form is the open quick-capture form; formSave handles its texts.
@@ -404,6 +410,11 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.picker = &p
 			return m, cmd
 		}
+		if m.grep != nil {
+			g, cmd, _ := m.grep.Update(msg)
+			m.grep = &g
+			return m, cmd
+		}
 		if m.form != nil {
 			f, cmd := m.form.Blink(msg)
 			m.form = &f
@@ -442,6 +453,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.answerQuestion(key)
 		case m.picker != nil:
 			return m.pickerKey(msg)
+		case m.grep != nil:
+			return m.grepKey(msg)
 		case m.pending != nil:
 			return m.answer(key)
 		case m.input != nil:

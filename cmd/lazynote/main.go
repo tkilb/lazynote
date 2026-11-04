@@ -22,6 +22,7 @@ type startup struct {
 	store         store.Store
 	root          string
 	sources       []string
+	dailyTemplate string
 	retentionDays int
 	mouse         bool
 	// notebooks are all the configured notebooks and active the index of
@@ -48,7 +49,7 @@ func openStore() (startup, error) {
 		nb := cfg.Notebooks[i]
 		return startup{
 			store: store.NewMarkdown(nb.Path), root: nb.Path,
-			sources: cfg.Sources, retentionDays: cfg.Retention.DailyDays,
+			sources: cfg.Sources, dailyTemplate: cfg.Templates.Daily, retentionDays: cfg.Retention.DailyDays,
 			mouse: cfg.UI.MouseEnabled(), notebooks: cfg.Notebooks, active: i,
 		}, nil
 	}
@@ -93,6 +94,7 @@ func main() {
 	purged, purgeErr := boot.store.PurgeDailies(boot.retentionDays, time.Now())
 	start := initialModel(boot.store)
 	start.sources = boot.sources
+	start.dailyTemplate = boot.dailyTemplate
 	start.para = start.para.WithRetention(boot.retentionDays, time.Now)
 	start = start.withNotebooks(boot.notebooks, boot.active, boot.retentionDays)
 	if sessErr != nil {

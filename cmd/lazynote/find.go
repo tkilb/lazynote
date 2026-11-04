@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -10,13 +9,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/tkilb/lazynote/internal/findtext"
+	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/lazynote/internal/textsafe"
+	"github.com/tkilb/lazynote/internal/ui/grep"
 	"github.com/tkilb/lazynote/internal/ui/picker"
 	"github.com/tkilb/lazynote/internal/ui/popup"
 )
 
 const (
 	findFileTitle = "Find note"
-	findTextTitle = "Find text"
 	// valueSep splits a note's path from a line number in a picker value;
 	// a path cannot hold a NUL byte.
 	valueSep = "\x00"
@@ -29,7 +30,9 @@ func noteName(rel string) string {
 
 // openFileFinder lists every note in the notebook by its path without .md
 // (such as "projects/deep/Rocket Plan"), sorted by path, so what is typed
-// matches the folders as well as the name. It jumps PARA to the one chosen.
+// matches the folders as well as the name, though a word that matches the
+// file name ranks above one that only matches a folder. It jumps PARA to the
+// one chosen.
 func (m model) openFileFinder() (model, tea.Cmd) {
 	rels := slices.Clone(m.links.Rels())
 	if len(rels) == 0 {
@@ -40,35 +43,51 @@ func (m model) openFileFinder() (model, tea.Cmd) {
 	})
 	items := make([]picker.Item, len(rels))
 	for i, rel := range rels {
-		items[i] = picker.Item{Label: strings.TrimSuffix(filepath.ToSlash(rel), filepath.Ext(rel)), Value: rel}
+		items[i] = picker.Item{Label: strings.TrimSuffix(filepath.ToSlash(rel), filepath.Ext(rel)), Name: noteName(rel), Value: rel}
 	}
 	p, cmd := picker.New(findFileTitle, items)
+	p = p.Large()
 	m.picker, m.pickerOp = &p, pickFile
 	return m, cmd
 }
 
-// openTextFinder lists every non-blank line of every note, the note's name
-// and line number dim at the right, and opens the note at the line chosen.
-// The text is typed to narrow the list, as in the other pickers.
+// openTextFinder opens the text search: type words to list the lines, in
+// every note, that contain all of them (exact text, ignoring case), with a
+// preview of the note beside the list. It opens the note at the line chosen.
 func (m model) openTextFinder() (model, tea.Cmd) {
 	res := findtext.Lines(m.store, m.links.Rels())
 	if len(res.Lines) == 0 {
 		return m.notify(popup.Info, "There is no text to search."), nil
 	}
-	items := make([]picker.Item, len(res.Lines))
-	for i, l := range res.Lines {
-		items[i] = picker.Item{
-			Label:  l.Text,
-			Detail: fmt.Sprintf("%s:%d", noteName(l.Rel), l.Index+1),
-			Value:  l.Rel + valueSep + strconv.Itoa(l.Index),
+	g, cmd := grep.New(res.Lines, res.Truncated, previewLoader(m.store))
+	m.grep = &g
+	return m, cmd
+}
+
+// previewLoader returns the function that reads a note's lines, as Content
+// shows them, for the text search's preview.
+func previewLoader(s store.Store) grep.Loader {
+	return func(rel string) []string {
+		n, err := s.ReadNote(rel)
+		if err != nil {
+			return nil
 		}
+		return strings.Split(textsafe.Sanitize(strings.Trim(n.Body, "\r\n")), "\n")
 	}
-	title := findTextTitle
-	if res.Truncated {
-		title = fmt.Sprintf("%s (first %d lines)", findTextTitle, findtext.MaxLines)
+}
+
+// grepKey feeds a message to the open text search and applies its outcome.
+func (m model) grepKey(msg tea.Msg) (model, tea.Cmd) {
+	g, cmd, out := m.grep.WithScreen(m.width, m.height).Update(msg)
+	m.grep = &g
+	switch out {
+	case grep.Cancelled:
+		m.grep = nil
+	case grep.Chosen:
+		hit, _ := g.Chosen()
+		m.grep = nil
+		return m.chooseFoundNote(hit.Rel + valueSep + strconv.Itoa(hit.Index)), nil
 	}
-	p, cmd := picker.New(title, items)
-	m.picker, m.pickerOp = &p, pickText
 	return m, cmd
 }
 

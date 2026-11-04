@@ -50,8 +50,8 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `0`-`4`             | Focus Content / Stickies / PARA / Related / Info |
 | `s`                 | Pin or unpin the selected note as a sticky    |
 | `B`                 | Choose the notebook to open (picker)          |
-| `ctrl+f`            | Find a note by name anywhere (picker)         |
-| `ctrl+/` or `F`     | Find text in any note (picker)                |
+| `ctrl+f`            | Find a note by name anywhere (picker), ranked as in "Picker ranking" |
+| `ctrl+/` or `F`     | Text search (grep style, see "Text search")   |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
 | `+`                 | Zoom the focused panel to the whole screen, or back (as lazytask) |
 | `?`                 | Keybindings popup (see "Help popup")          |
@@ -320,6 +320,8 @@ Conflict notes:
     daily: 30d
   ui:
     mouse: true
+  templates:
+    daily: ~/Notes/work/inbox/templates/daily.md
   sources:
     - adhoc
     - meeting
@@ -512,6 +514,36 @@ Conflict notes:
   `←` returns to PARA. The right column, top to bottom, is the Title panel
   (3 rows), Content, and Info, which is fixed at 3 content rows (5 with the
   border) and scrolls by line; Content gets the rest.
+- Text search (`ctrl+/` or `F`), modeled on the Snacks grep picker in
+  Neovim: a large two-pane popup. The left pane has the query and a list of
+  hits; the right pane previews the note of the highlighted hit. Matching is
+  grep style (`internal/search`): every word typed must appear on the line, as
+  exact text, ignoring case (no fuzzy matching), and nothing is listed until
+  something is typed. Notes whose name contains every word come first, then
+  the rest in note order; at most 500 hits are listed, and the count (such as
+  `3/18`) is of all matches. Each hit shows its folders dim and italic
+  (shortened from the left, a whole folder at a time), the note name bold,
+  `:line:col`, and the line's text with every match picked out in green (the
+  text is cut at the left so the first match shows). The preview shows the note
+  as Content numbers its lines, the hit line marked, shaded and with the
+  matches highlighted, and the lines around it; `ctrl+d`/`ctrl+u` scroll it
+  and `pgup`/`pgdown` page the list. `enter` opens the note at the line and
+  focuses Content, as before; `esc` cancels. The lines are read once when it
+  opens (up to `findtext.MaxLines`) and searched in memory on every key.
+- Picker ranking: in every picker, each typed word is ranked by how it
+  matches an item, best first: it is the whole name; the name starts with it;
+  it starts a word of the name (after a space or other separator, or at a
+  lower to upper case change such as `MeetingCTO`); it is a contiguous run
+  inside the name; its letters are scattered across the name; it is a
+  contiguous run only in the folders of a path; its letters are scattered
+  across the path. An item must match every word, items are sorted by the
+  words' ranks added up, and within a rank a shorter name comes first, then
+  the fuzzy library's score. Only `ctrl+f` marks the file name of a path (the
+  `Name` of its items), so the other pickers rank on the whole label. The folders of a path (before the `Name`) are drawn grey. The two finders
+  (`ctrl+f` and text find) use a large box: as wide as the terminal allows up
+  to 120 columns and up to 24 rows (the other pickers stay at 60 columns and
+  10 rows). Matching
+  ignores case, and contiguous matches highlight exactly the run.
 - Zoom (`+`, global, as in lazytask): the focused panel takes the whole grid
   (everything above the status bar) and the others, and the Title panel, are
   not drawn; `+` again goes back. A zoomed Content shows the note's frontmatter as
@@ -637,7 +669,17 @@ Also confirmed:
   and takes focus. Nothing is typed into the note: edit it with `e`. When the
   day has no note in `inbox/daily` or `archives/daily`, an empty one is
   created in `inbox/daily` (uid, title, date, source `daily`, no kind); undo
-  removes it.
+  removes it. When the config has `templates.daily` (a path, with `~` or
+  relative to the notebook root; `config.Templates`), the note is made from
+  that file instead: its properties and body are kept, with a fresh `uid`, the
+  file name as `title`, the day as `date`, and `source: daily` when it has
+  none. The body is filled in for the day (`store.TemplatedNote`): if it holds
+  `{{date}}` (2026-11-04) or `{{weekday}}` (Wednesday), only those are
+  replaced; otherwise the template is taken as an example of one day, the day
+  in its `date` property, and that date, and the weekday written right after
+  it (such as `(Monday)`), are replaced wherever they appear. A template that
+  cannot be read or parsed gives a warning and an empty note. The only
+  template is `daily`; any other name under `templates` is a config error.
 - Sorting the inbox: there is no separate triage mode. Work through the
   Inbox tab with the ordinary PARA keys: `K` to set a kind, `m` then a
   key to file a note, the add-relation key in Related, and Content line
