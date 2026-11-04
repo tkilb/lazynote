@@ -61,6 +61,8 @@ type Config struct {
 	Kinds []store.KindSpec
 	// Templates are the files new notes are made from.
 	Templates Templates
+	// Digest configures the agentic import.
+	Digest Digest
 }
 
 // Templates names the template files. An empty path means no template.
@@ -121,6 +123,7 @@ type rawConfig struct {
 	Sources   yaml.Node `yaml:"sources"`
 	Kinds     yaml.Node `yaml:"kinds"`
 	Templates yaml.Node `yaml:"templates"`
+	Digest    yaml.Node `yaml:"digest"`
 	Retention struct {
 		Daily string `yaml:"daily"`
 	} `yaml:"retention"`
@@ -185,7 +188,12 @@ func Parse(data []byte, home string) (Config, error) {
 		return Config{}, err
 	}
 
-	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds, Templates: templates}
+	digest, err := parseDigest(&raw.Digest, home)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds, Templates: templates, Digest: digest}
 	cfg.UI.MouseOff = raw.UI.Mouse != nil && !*raw.UI.Mouse
 	for _, p := range raw.Notebooks {
 		nb, err := newNotebook(p, home)

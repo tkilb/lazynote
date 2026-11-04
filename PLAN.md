@@ -33,6 +33,13 @@ Backend: Claude Code CLI in print mode, no tools, Sonnet by default (not Haiku).
 - Verified flags: `-p`, `--model`, `--output-format`, `--json-schema`, `--tools`,
   `--system-prompt`, `--no-session-persistence`. Re-check `claude --help`
   before using any other flag; never invent one.
+- Verified by one real call (2026-11-04): with `--output-format json` and
+  `--json-schema` stdout is one JSON envelope with `type`, `subtype`,
+  `is_error`, `result` (the answer as text) and `structured_output` (the answer
+  as an object). Read `structured_output`, fall back to `result`. The call took
+  about 2 seconds and cost about $0.02 for a two-line input, mostly fixed
+  overhead. Not yet verified: whether the user's global `CLAUDE.md` and
+  settings reach the run (`--bare` is not an option: it needs an API key).
 - Command, model and timeout live in a `digest:` config block.
   `digest.enabled: true` is the user's consent; there is no confirmation prompt.
 - The source is sent on standard input. It is untrusted data.

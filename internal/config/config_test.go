@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,6 +84,13 @@ func TestParse(t *testing.T) {
 			require.NoError(t, err)
 			if tt.want.Sources == nil {
 				tt.want.Sources = DefaultSources
+			}
+			if tt.want.Digest == (Digest{}) {
+				dir := filepath.Join(home, ".config", "lazynote")
+				tt.want.Digest = Digest{
+					Command: "claude", Model: "sonnet", Timeout: 5 * time.Minute,
+					Prompt: filepath.Join(dir, "import-prompt.md"), MergePrompt: filepath.Join(dir, "import-merge-prompt.md"),
+				}
 			}
 			assert.Equal(t, tt.want, got)
 		})
