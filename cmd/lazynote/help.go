@@ -25,6 +25,7 @@ var helpGlobalBindings = []statusbar.Binding{
 	{Key: "ctrl+r", Label: "redo"},
 	{Key: "ctrl+l", Label: "refresh from disk"},
 	{Key: "ctrl+z", Label: "suspend"},
+	{Key: "+", Label: "zoom/unzoom the focused panel"},
 	{Key: "?", Label: "help"},
 	{Key: "q", Label: "quit"},
 }
@@ -75,10 +76,12 @@ var helpRelatedBindings = []statusbar.Binding{
 	{Key: "esc/←", Label: "back to PARA"},
 }
 
-var helpBodyBindings = []statusbar.Binding{
+var helpContentBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "move the cursor line (your place is remembered)"},
-	{Key: "ctrl+d/u, pgdn/pgup", Label: "page down/up"},
+	{Key: "ctrl+d/u", Label: "half page down/up"},
+	{Key: "pgdn/pgup", Label: "page down/up"},
 	{Key: "g/G", Label: "first/last line"},
+	{Key: "{ }", Label: "previous/next paragraph (blank line)"},
 	{Key: "space", Label: "pick the line and move down"},
 	{Key: "v/V", Label: "select/unselect a range as you move"},
 	{Key: "ctrl+a", Label: "select all"},
@@ -118,8 +121,8 @@ func (m model) helpLocalBindings() []statusbar.Binding {
 		return helpParaBindings
 	case panelRelated:
 		return helpRelatedBindings
-	case panelBody:
-		return helpBodyBindings
+	case panelContent:
+		return helpContentBindings
 	case panelInfo:
 		return helpInfoBindings
 	}

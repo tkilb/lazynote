@@ -24,6 +24,9 @@ func (m model) hitAt(x, y int) (hit, bool) {
 	if x < 0 || y < 0 {
 		return hit{}, false
 	}
+	if m.zoomed {
+		return hit{m.focus, x, y}, x < m.width && y < m.height-1
+	}
 	if x < g.leftWidth {
 		switch {
 		case y < g.stickiesHeight:
@@ -39,10 +42,10 @@ func (m model) hitAt(x, y int) (hit, bool) {
 	switch {
 	case y < g.titleHeight:
 		return hit{}, false
-	case y < g.titleHeight+g.bodyHeight:
-		return hit{panelBody, x, y - g.titleHeight}, true
-	case y < g.titleHeight+g.bodyHeight+g.infoHeight:
-		return hit{panelInfo, x, y - g.titleHeight - g.bodyHeight}, true
+	case y < g.titleHeight+g.contentHeight:
+		return hit{panelContent, x, y - g.titleHeight}, true
+	case y < g.titleHeight+g.contentHeight+g.infoHeight:
+		return hit{panelInfo, x, y - g.titleHeight - g.contentHeight}, true
 	}
 	return hit{}, false
 }
@@ -127,9 +130,9 @@ func (m model) click(h hit) model {
 		if i, ok := m.related.RowAt(row, g.relatedHeight); ok {
 			m.related = m.related.SelectRow(i)
 		}
-	case panelBody:
-		if i, ok := m.body.RowAt(row); ok {
-			m.body = m.body.SelectRow(i)
+	case panelContent:
+		if i, ok := m.content.RowAt(row); ok {
+			m.content = m.content.SelectRow(i)
 		}
 	}
 	m.focus = h.panel

@@ -1,5 +1,5 @@
 // Package info implements the Info panel: three standard rows (Kind, Source
-// and Date; Tags; Aliases) that sit in the same place for every note,
+// and Date; Tags; People) that sit in the same place for every note,
 // followed by every other frontmatter property in file order, with nested
 // values drawn generically. The uid and related properties are never shown.
 // (The title has its own panel.) For a folder it shows the name and item

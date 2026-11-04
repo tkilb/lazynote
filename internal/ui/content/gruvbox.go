@@ -1,4 +1,4 @@
-package body
+package content
 
 import (
 	"github.com/charmbracelet/glamour/ansi"

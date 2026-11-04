@@ -8,7 +8,7 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 ```
 ┌[1] Stickies─────────────────────────────────┐┌Title───────────────────────────────┐
 └──────────────────────────────────────────────┘└────────────────────────────────────┘
-┌[2] PARA──────────────────────────────────────┐┌[0] Body────────────────────────────┐
+┌[2] PARA──────────────────────────────────────┐┌[0] Content─────────────────────────┐
 │ Inbox  Projects  Areas  Resources  Archives  ││                                    │
 │                                              ││                                    │
 │                                              ││                                    │
@@ -25,10 +25,10 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 | `2` | PARA     | Tabs: Inbox (first; contains the `daily/` directory) / Projects / Areas / Resources / Archives. Each tab is a Yazi-style directory browser rooted at the tab's folder. Cycle tabs with `[` / `]`. |
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
 | —   | Title    | Title of the selected note on one line, led by its kind badge; with a folder selected it is labelled Directory and shows the folder name. Display only: no number key, not in the focus cycle. |
-| `0` | Body     | Read-only view of the selected note, rendered as Markdown (frontmatter hidden); selecting lines switches to plain text with wrapped lines.                                                                                                               |
-| `4` | Info     | Three standard rows (Kind, Source, Date; Tags; Aliases), then every other frontmatter property of the selected note (custom keys), scrolling. `uid` and `related` are hidden. Sits below Body. |
+| `0` | Content  | Read-only view of the selected note, rendered as Markdown (frontmatter hidden); selecting lines switches to plain text with wrapped lines.                                                                                                               |
+| `4` | Info     | Three standard rows (Kind, Source, Date; Tags; People), then every other frontmatter property of the selected note (custom keys), scrolling. `uid` and `related` are hidden. Sits below Content. |
 
-Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Stickies, PARA, Related, Body, Info and
+Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Stickies, PARA, Related, Content, Info and
 back; the Title panel is never focusable. Mouse support follows lazytask.
 
 ## Keybindings (consolidated; keys marked \* are new proposals)
@@ -47,12 +47,13 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | ------------------- | --------------------------------------------- |
 | `q` / `ctrl+c`      | Quit                                          |
 | `ctrl+z`            | Suspend                                       |
-| `0`-`4`             | Focus Body / Stickies / PARA / Related / Info |
+| `0`-`4`             | Focus Content / Stickies / PARA / Related / Info |
 | `s`                 | Pin or unpin the selected note as a sticky    |
 | `B`                 | Choose the notebook to open (picker)          |
 | `ctrl+f`            | Find a note by name anywhere (picker)         |
 | `ctrl+/` or `F`     | Find text in any note (picker)                |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
+| `+`                 | Zoom the focused panel to the whole screen, or back (as lazytask) |
 | `?`                 | Keybindings popup (see "Help popup")          |
 | `A`                 | Quick Add: form for a new note in the PARA folder |
 | `I`                 | Import transcript or note (path prompt)       |
@@ -68,10 +69,10 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 
 | Key                 | Action                                                                                    |
 | ------------------- | ----------------------------------------------------------------------------------------- |
-| `↑` `↓`         | Move selection; Related, Info and Body follow                                             |
+| `↑` `↓`         | Move selection; Related, Info and Content follow                                             |
 | `←`                 | Go to the parent directory (no-op at the tab root)                                        |
-| `→`                 | Enter the selected directory, or open a note (focus Body, 0)                              |
-| `enter`             | Enter the selected directory, or open a note (focus Body, 0)                              |
+| `→`                 | Enter the selected directory, or open a note (focus Content, 0)                              |
+| `enter`             | Enter the selected directory, or open a note (focus Content, 0)                              |
 | `gg` / `G`          | Jump to first / last entry                                                                |
 | `ctrl+u` / `ctrl+d` | Page up / down (`pgup` / `pgdown` do the same; `ctrl+b` and `ctrl+f` are free)            |
 | `space`             | Toggle selection on the hovered item and move down                                        |
@@ -106,21 +107,22 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 
 **Info (4)**: `↑` `↓` scroll.
 
-**Body (0)**
+**Content (0)**
 
 | Key         | Action                                                                                       |
 | ----------- | -------------------------------------------------------------------------------------------- |
 | `↑` `↓`     | Move the cursor line (the view follows) |
-| `ctrl+d/u`  | Page down / up (`pgdown` / `pgup` do the same) |
+| `ctrl+d/u`  | Half a page down / up, as in vim (`pgdown` / `pgup` move a whole page) |
 | `g` / `G`   | First / last line |
+| `{` / `}`   | Previous / next paragraph: the blank line before or after it, as in vim; works in the rendered and the plain view |
 | `space`     | Pick the cursor line (cherry-pick) and move down |
 | `v` / `V`   | Select / unselect a range as the cursor moves (the same key again closes it) |
 | `ctrl+a`    | Select all |
 | `m`         | Switch between the rendered Markdown view and plain text (stays for the session). Selection keys (`space`, `v`, `V`, `ctrl+a`, `y`) leave the rendered view for that note |
 | `y`         | Yank: copy the selection, or the cursor line, to the system clipboard |
 | `enter`     | Extract the selection into a new note (kind picked in the picker) |
-| `r`         | Rename the note shown, exactly as `r` does in PARA (focus stays in Body, and the cursor line is kept) |
-| `e`         | Edit the note shown in `$EDITOR`, exactly as `e` does in PARA (focus stays in Body) |
+| `r`         | Rename the note shown, exactly as `r` does in PARA (focus stays in Content, and the cursor line is kept) |
+| `e`         | Edit the note shown in `$EDITOR`, exactly as `e` does in PARA (focus stays in Content) |
 | `esc`       | Close an open range; then clear the selection; then return focus to PARA (2) |
 | `←`         | Return focus to PARA (2) (closing a range or clearing the selection first, like `esc`) |
 
@@ -248,7 +250,7 @@ Conflict notes:
 - Yazi's `D` is permanent delete in PARA, which does not clash since daily
   opening a daily note moved to `b`, `t` and `T`.
 - In PARA, `enter` and `→` drill a directory or open a note (focus
-  Body); `←` goes to the parent directory, and in Body `←` or `esc`
+  Content); `←` goes to the parent directory, and in Content `←` or `esc`
   returns focus to PARA. In Related, `enter` jumps to the note.
 - Global `A` (Quick Add) is not the same as PARA's `a` (new note in the
   current folder, by name only); `A` is also a destination key inside the
@@ -378,7 +380,7 @@ Conflict notes:
   editor). It refreshes from disk after `$EDITOR` returns, when the terminal
   regains focus (Bubble Tea focus reporting, `tea.WithReportFocus`; not every
   terminal sends it), and on `ctrl+l`. There is no live file watcher. A
-  refresh reloads the current directory listing, the selected note (Body and
+  refresh reloads the current directory listing, the selected note (Content and
   Info) and the link index for files whose modification time changed. The
   cursor stays on the same file name; if that file is gone, it stays at the
   same row. If the directory you are in has vanished, the panel falls back
@@ -399,21 +401,37 @@ Conflict notes:
   the `_1` duplicate) has its `title` rewritten, other properties and the
   body untouched (a note with no frontmatter gets a block holding the
   title; one whose frontmatter cannot be parsed is left exactly as it is).
-  Rename (chunk 8c) updates it too, in the same undo entry. lazynote never
-  rewrites a note on read just to fix its title, so a note changed outside
-  the app (for example renamed in Obsidian) can disagree until lazynote next
-  writes it; Info then shows the differing `title` property, and hides it
-  when it equals the file name. Editing in `$EDITOR` is the exception that
+  Rename (chunk 8c) updates it too, in the same undo entry. A note
+  changed outside the app (for example renamed in Obsidian) gets its title
+  fixed the next time it is viewed (see "Property standard"). Editing in `$EDITOR` is the exception that
   goes the other way: when the editor returns and the `title` property was
   changed, the file is renamed to match it (see "Title follows the editor").
 - Uid: every note carries a stable `uid` property, a random UUIDv4
   generated with the standard library (`crypto/rand`, no new dependency). It
   never changes, including across rename and move, and the backlink index
   keys on it. Info does not display it. A note without a `uid` gets one the
-  first time lazynote writes it for any reason (create, import, rename, kind change, relation edit);
-  lazynote never rewrites an untouched note just to add one.
-- Info shows the kind and all properties except `uid`, so no
-  schema is enforced. The title has its own panel above Body.
+  first time lazynote writes it for any reason, or views it (see "Property
+  standard").
+- Property standard (replaces the old rule that lazynote never rewrites a
+  note on read): every note lazynote creates or writes, and every note it
+  views (selected in PARA, which includes opening and editing it), has the
+  standard properties in the standard order: `uid`, `title`, `kind`,
+  `source`, `date`, `tags`, `people`, then any other properties in the
+  order they were in, then `related` last. That is the order Info shows
+  them in, with `uid` first and `related` last. A missing standard property
+  is added: a new `uid`; empty text (`""`) for `kind`, `source` and `date`;
+  and empty lists for `tags`, `people` and `related`. `title` is set to the
+  file name. Existing values, unknown properties (such as `id`) and the
+  body are kept, and nothing is invented (a note's date is not guessed). A
+  note that already follows the standard is not written; one whose
+  properties block cannot be parsed is left exactly as it is; a note with
+  no block gets one. The rewrite is silent, is not an undo entry, and
+  changes the file's modification time. Imported notes follow it too, so
+  the unset kind of a new note is now an empty `kind` property, not an
+  absent one. `kind: ""` reads as unset.
+- Info shows the standard rows (Kind, Source, Date; Tags; People) and then
+  the other properties; `uid` and `related` are not shown there.
+  The title has its own panel above Content.
 - Relations: the `related` frontmatter property, a list of `[[wikilinks]]`
   (for example `related: ["[[Project Alpha]]", "[[Meeting 2026-10-01]]"]`).
   Obsidian reads it natively. Inline body links and shared tags are out of
@@ -425,7 +443,7 @@ Conflict notes:
   `Index.ReferencedBy`) and the docs. Entries that do
   not resolve to a file are shown dimmed as unresolved; they are never
   created from Related, and `enter` on one does nothing except report it as
-  unresolved in the status bar. Body always shows the current PARA
+  unresolved in the status bar. Content always shows the current PARA
   selection. Selecting a row in
   Related and pressing `enter` jumps PARA to that note, switching tab and
   entering the note's directory when needed.
@@ -447,7 +465,7 @@ Conflict notes:
   bottom border keeps the search text (`search: text`) and the position.
   (Tried to make drilling
   obvious; it is one commit, easy to revert.) With a directory selected, Info shows its name and item
-  counts, Body (titled Contents then) lists its contents (in PARA's order: a cyan name and slash for a folder, a kind badge in its PARA color before each note), and Related is empty. `a` creates the note in the
+  counts, Content lists the folder's contents (in PARA's order: a cyan name and slash for a folder, a kind badge in its PARA color before each note), and Related is empty. `a` creates the note in the
   current directory, quick capture still goes to the `inbox/` root, and `d` on
   a directory confirms and warns when it is not empty. `/` searches the
   current directory, as lazytask's `/` does: the list is never filtered. `/`
@@ -473,9 +491,9 @@ Conflict notes:
 - Info shows, for the note under the cursor, three standard rows that sit in
   the same place for every note, drawn even when a field is empty: row 1 holds
   `Kind` (highlighted in the badge color, `unset` when missing or
-  unrecognized), `Source` and `Date` as three equal columns; row 2 is `Tags`;
-  row 3 is `Aliases`. Each is one line and a long value is cut with an
-  ellipsis. `Date` is shown as `YYYY-MM-DD` with any time of day dropped
+  unrecognized), `Source` and `Date` as three equal columns; row 2 is `Tags`; row 3
+  is `People`; both span the whole width, since the lists can be long. `uid` and `related` stay hidden (Related has its panel).
+  Each is one line and a long value is cut with an ellipsis. `Date` is shown as `YYYY-MM-DD` with any time of day dropped
   (`store.DateOnly`); a value that is not a date is shown as written. Below
   them come all other properties in file order, flowing into columns (as
   many as fit, 24 columns wide at least, up to three): a row whose label and
@@ -484,7 +502,7 @@ Conflict notes:
   lines, wrapped. A scalar shows its text; a list of scalars is one
   comma-separated line (`tags  work, ideas`); other lists show one `- ` item
   per line; a mapping shows indented `key: value` lines. Depth and length are
-  bounded (400 lines, 8 levels), and all text is sanitized like Body. Hidden:
+  bounded (400 lines, 8 levels), and all text is sanitized like Content. Hidden:
   `uid`, `related` (the Related panel shows it), `title` when it equals the
   file name, and `kind` when its value is recognized (an unrecognized value
   stays visible as a property). Invalid frontmatter shows a red `Properties`
@@ -492,34 +510,48 @@ Conflict notes:
   number of entries it lists; a note that cannot be read shows the error.
   `↑` `↓` scroll, with a position footer when it overflows, and `esc` or
   `←` returns to PARA. The right column, top to bottom, is the Title panel
-  (3 rows), Body, and Info, which is fixed at 3 content rows (5 with the
-  border) and scrolls by line; Body gets the rest.
-- Body draws a note as rendered Markdown with `charmbracelet/glamour` v1.0.0
-  (glamour's dark style recolored with the gruvbox-material hard palette from the author's Neovim, in `internal/ui/body/gruvbox.go`: headings red to purple by level, inline code aqua, links blue, code blocks in chroma's gruvbox theme; no margins, wrapped to the panel; approved as a new
+  (3 rows), Content, and Info, which is fixed at 3 content rows (5 with the
+  border) and scrolls by line; Content gets the rest.
+- Zoom (`+`, global, as in lazytask): the focused panel takes the whole grid
+  (everything above the status bar) and the others, and the Title panel, are
+  not drawn; `+` again goes back. A zoomed Content shows the note's frontmatter as
+  written (the `---` lines included) above the text, in both the rendered and
+  the plain view, because Title and Info are out of sight then. The lines are
+  part of the plain view's source lines, so they can be picked, but your place
+  in the text is kept when they appear or go. A note without a properties
+  block shows none. Focusing another panel (`0`-`4`, `Tab`,
+  `esc`) moves the zoom to it, clicks and the wheel act on the zoomed panel,
+  and popups still open over it. The zoom is not saved between sessions.
+  `+` must not be given another meaning. Unlike lazytask, a short terminal
+  does not force it.
+- Content draws a note as rendered Markdown with `charmbracelet/glamour` v1.0.0
+  (glamour's dark style recolored with the gruvbox-material hard palette from the author's Neovim, in `internal/ui/content/gruvbox.go`: headings red to purple by level, inline code aqua, links blue, code blocks in chroma's gruvbox theme; no margins, wrapped to the panel; approved as a new
   dependency, which also moved `lipgloss` to the v1.1.1 pre-release glamour
   requires). Rendering reflows and rewrites lines, so a rendered row maps to
-  no source line: the rendered view is for reading only, with no cursor or
-  selection. `↑` `↓`, `ctrl+d/u`, `pgdn/pgup` and `g`/`G` scroll it, and the
-  footer shows how far down you are. Any key that picks lines (`space`, `v`,
+  no source line: the rendered view is for reading only, with no selection. It has a highlighted cursor row that keeps your place in a long note: `↑` `↓`,
+  `ctrl+d/u` (half a page), `pgdn/pgup` (a page), `g`/`G` and `{` `}` move it, the view follows, and
+  the footer shows how far down you are. The place is remembered per note,
+  shared with the plain view's cursor, and found again by matching the row's
+  text to the source line (nearest to its position in the note, else by
+  position), so it survives leaving the note, a resize and a change of view. Any key that picks lines (`space`, `v`,
   `V`, `ctrl+a`, `y`, and a click or a find-text jump to a line) leaves it for
-  that note, putting the cursor on the source line at about the same place
-  (by position in the text), and the key then does its work in the plain
+  that note, putting the cursor on the source line the cursor row came from, and the key then does its work in the plain
   view, except `y`, which only leaves so you see the line it would copy. The
   next note you open is rendered again. `m` switches to plain text for
   every note until pressed again; pressing it in the plain view returns to
   the rendered one and clears the selection. The plain view colors whole lines to match
-  (`internal/ui/body/linecolor.go`): headings by level, code lines aqua,
+  (`internal/ui/content/linecolor.go`): headings by level, code lines aqua,
   fences and quotes grey, rules dim; no inline spans. A folder listing and a
   note that cannot be rendered stay plain.
-- Body shows the note under the PARA cursor as plain text and follows it as
+- Content shows the note under the PARA cursor as plain text and follows it as
   the cursor moves; with a directory selected it lists the folder's entries (empty when the folder is), and a note that
   cannot be read shows the error (for example "note is too large"). The
   frontmatter is hidden, blank lines around the text are dropped, lines wrap
   at word boundaries (a word longer than the panel is split), tabs become
   four spaces, and a position footer (`first line/total`) shows once the
-  note is longer than the panel. Body has a cursor line, highlighted while the
+  note is longer than the panel. Content has a cursor line, highlighted while the
   panel has focus, that moves with `↑` `↓` by source line (a wrapped line is
-  one line) and with `ctrl+d`/`ctrl+u` or `pgdown`/`pgup` by a page and keeps your place: the view follows it, the
+  one line) and with `ctrl+d`/`ctrl+u` by half a page, `pgdown`/`pgup` by a page, and keeps your place: the view follows it, the
   footer shows `cursor line/total lines`, and the cursor of each note is
   remembered for the session, so coming back to a note puts you where you
   were. A note is read again only when the selection or its modification
@@ -608,7 +640,7 @@ Also confirmed:
   removes it.
 - Sorting the inbox: there is no separate triage mode. Work through the
   Inbox tab with the ordinary PARA keys: `K` to set a kind, `m` then a
-  key to file a note, the add-relation key in Related, and Body line
+  key to file a note, the add-relation key in Related, and Content line
   selection (`v`, `enter`) to extract. If a queue or mode is needed later, it
   will be added then.
 - Daily notes in `inbox/daily/` are digested, not filed: extract the useful
@@ -654,15 +686,13 @@ Numbers are kept stable; resolved items were removed.
 
 ## Future enhancements
 
-- Zoom the focused panel to full screen, as lazygit does, on `+`. `+` is
-  reserved for this and must not be given another meaning.
 
 ## Package layout
 
 - `cmd/lazynote/` - root model, update, mouse, modal box, search.
 - `internal/ui/{panel,popup,helppopup,statusbar}` - shared widgets
   (port from lazytask).
-- `internal/ui/{para,related,info,body,stickies}` - one package per panel.
+- `internal/ui/{para,related,info,content,stickies}` - one package per panel.
 - `internal/store/` - notes backend interface plus markdown implementation.
 - `internal/state/` - SQLite session state.
 - `internal/{editor,config,undo,version}` - as in lazytask.
@@ -675,7 +705,7 @@ recorded in the Decisions and Intake sections, the code and its tests, and
 
 - 1 scaffold, 2 config and path safety (2a store read, 2b kinds), 3 PARA panel
   (3c to 3i browsing, selection, undo, yank/cut/paste, trash/create, search,
-  refresh), 4 Body, 5 Info and Title (5b unique uid on copy, 5c metadata rows,
+  refresh), 4 Content, 5 Info and Title (5b unique uid on copy, 5c metadata rows,
   5d edit in `$EDITOR`), 6 session state, 7 notebooks, 8 Related and the link
   index (8a to 8c), 9 move and kind (9b intake core, 9c shell capture,
   9d extract, 9e daily rules, 9f URL clip, 9g open dailies, 9h retention,

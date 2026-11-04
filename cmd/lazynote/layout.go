@@ -6,7 +6,7 @@ const (
 	// titleHeight is the outer height of the Title panel: one content row
 	// plus the border.
 	titleHeight = 3
-	// minSideHeight is the smallest outer height given to Related and Body.
+	// minSideHeight is the smallest outer height given to Related and Content.
 	minSideHeight = 5
 	// infoHeight is the outer height of the Info panel: the three standard
 	// rows plus the border. Other properties scroll.
@@ -19,14 +19,34 @@ const (
 type grid struct {
 	leftWidth, rightWidth                     int
 	stickiesHeight, paraHeight, relatedHeight int
-	titleHeight, bodyHeight, infoHeight       int
+	titleHeight, contentHeight, infoHeight    int
+}
+
+// zoomed gives the focused panel the whole width x height, as lazytask does
+// for "+". The other panels keep the sizes of the normal layout in g, which
+// are not drawn.
+func (g grid) zoomed(focus panelID, width, height int) grid {
+	g.leftWidth, g.rightWidth = width, width
+	switch focus {
+	case panelStickies:
+		g.stickiesHeight = height
+	case panelPARA:
+		g.paraHeight = height
+	case panelRelated:
+		g.relatedHeight = height
+	case panelContent:
+		g.contentHeight = height
+	case panelInfo:
+		g.infoHeight = height
+	}
+	return g
 }
 
 // computeGrid splits width x height into the two-column layout: Stickies (of
 // outer height stickiesHeight, which grows while it has focus), PARA and
-// Related on the left; Title, Body and Info, top to bottom, on the
+// Related on the left; Title, Content and Info, top to bottom, on the
 // right. Related takes about a quarter of the height and Info a fixed five rows, PARA
-// and Body take the rest.
+// and Content take the rest.
 func computeGrid(width, height, stickiesHeight int) grid {
 	g := grid{
 		leftWidth:      width * leftWidthPercent / 100,
@@ -39,6 +59,6 @@ func computeGrid(width, height, stickiesHeight int) grid {
 	g.paraHeight = max(height-g.stickiesHeight-g.relatedHeight, minSideHeight)
 	g.titleHeight = titleHeight
 	g.infoHeight = infoHeight
-	g.bodyHeight = max(height-g.titleHeight-g.infoHeight, minSideHeight)
+	g.contentHeight = max(height-g.titleHeight-g.infoHeight, minSideHeight)
 	return g
 }

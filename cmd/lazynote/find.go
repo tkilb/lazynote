@@ -73,7 +73,7 @@ func (m model) openTextFinder() (model, tea.Cmd) {
 }
 
 // chooseFoundNote opens the note chosen in a finder. A text hit also puts
-// Body's cursor on the line and focuses Body; a note hit focuses PARA.
+// Content's cursor on the line and focuses Content; a note hit focuses PARA.
 func (m model) chooseFoundNote(value string) model {
 	rel, lineText, hasLine := strings.Cut(value, valueSep)
 	line := -1
@@ -89,7 +89,7 @@ func (m model) chooseFoundNote(value string) model {
 	m.para = para
 	m = m.syncSelection()
 	if line >= 0 {
-		m.body, m.focus = m.body.SelectRow(line), panelBody
+		m.content, m.focus = m.content.SelectRow(line), panelContent
 	} else {
 		m.focus = panelPARA
 	}

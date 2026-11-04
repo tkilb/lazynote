@@ -1,12 +1,13 @@
-// Package body implements the Body panel: a read-only plain-text view of the
+// Package content implements the Content panel: a read-only plain-text view of the
 // selected note, with its frontmatter hidden and long lines wrapped to the
 // panel width. A cursor line keeps your place, and whole lines can be
 // selected, as in PARA (space picks a line, v and V select or unselect a
 // range), for extracting them into a new note. A wrapped line is one line.
-package body
+package content
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -62,7 +63,7 @@ type visualState struct {
 	base   map[int]bool
 }
 
-// Model is the Body panel state. Methods return updated copies.
+// Model is the Content panel state. Methods return updated copies.
 type Model struct {
 	// rel identifies the note shown, so switching notes resets the scroll
 	// while reloading the same note keeps it.
@@ -83,8 +84,18 @@ type Model struct {
 	// for the note shown, and is reset when another note is loaded.
 	rendered []string
 	roffset  int
-	plain    bool
-	kicked   bool
+	// rcursor is the cursor row of the rendered view, which keeps your place
+	// in a long note. It is not a selection.
+	rcursor int
+	// front holds the note's frontmatter lines, fences included, while they
+	// are shown above the text (zoomed Content); the source lines are then front
+	// followed by the text. frontRows are the same lines as rendered rows, with
+	// a blank row after, and frontSrc the source line of each of those rows.
+	front     []string
+	frontRows []string
+	frontSrc  []int
+	plain     bool
+	kicked    bool
 	// kinds is the color kind of each source line in the plain view.
 	kinds             []lineKind
 	srcLines          []string
@@ -118,9 +129,9 @@ func (m Model) Resize(width, height int) Model {
 	rewrap := width != m.width
 	m.width, m.height = width, max(height, 1)
 	if rewrap {
-		m = m.wrap()
+		m = m.fromRendered().wrap()
 	}
-	m.roffset = min(m.roffset, m.maxRenderedOffset())
+	m = m.showRendered()
 	return m.showCursor()
 }
 
@@ -129,22 +140,32 @@ func (m Model) Resize(width, height int) Model {
 // the text is unchanged); another note starts where you left it last time, or
 // at the top.
 func (m Model) Load(rel, text string) Model {
-	return m.load(rel, text, nil)
+	return m.load(rel, nil, text, nil)
+}
+
+// LoadNote is Load with the note's frontmatter lines (fences included) to
+// show above the text, or none.
+func (m Model) LoadNote(rel string, front []string, text string) Model {
+	return m.load(rel, front, text, nil)
 }
 
 // load is Load for text that may be a folder listing (items not nil).
-func (m Model) load(rel, text string, items []ListItem) Model {
+func (m Model) load(rel string, front []string, text string, items []ListItem) Model {
 	text = textsafe.Sanitize(strings.Trim(text, "\r\n"))
-	unchanged := rel == m.rel && text == m.text && m.err == nil && items == nil && m.listing == nil && m.rendered != nil
+	front = cleanFront(front)
+	unchanged := rel == m.rel && text == m.text && slices.Equal(front, m.front) && m.err == nil && items == nil && m.listing == nil && m.rendered != nil
+	if rel == m.rel && text != m.text {
+		m = m.fromRendered() // keep the place in the note while its text changes
+	}
 	if rel != m.rel {
 		m = m.remember()
-		m.cursor, m.offset = m.places[rel], 0
+		m.cursor, m.offset = m.places[rel]+len(front), 0
 		m.roffset, m.kicked = 0, false
 		m.picked, m.visual = nil, visualState{}
 	} else if text != m.text {
 		m.picked, m.visual = nil, visualState{}
 	}
-	m.rel, m.err, m.text, m.listing = rel, nil, text, items
+	m.rel, m.err, m.text, m.listing, m.front = rel, nil, text, items, front
 	if !unchanged {
 		m = m.wrap()
 	}
@@ -165,7 +186,7 @@ func (m Model) LoadListing(rel string, items []ListItem) Model {
 		clean[i] = it
 		lines[i] = it.Badge + " " + it.Name
 	}
-	return m.load(rel, strings.Join(lines, "\n"), clean)
+	return m.load(rel, nil, strings.Join(lines, "\n"), clean)
 }
 
 // Fail shows err in place of the note at rel.
@@ -199,8 +220,9 @@ func (m Model) Renamed(oldRel, newRel string) Model {
 
 // remember keeps the cursor of the note shown for later.
 func (m Model) remember() Model {
+	m = m.fromRendered()
 	if m.rel != "" && m.err == nil {
-		m.places[m.rel] = m.cursor
+		m.places[m.rel] = max(m.cursor-len(m.front), 0) // counted from the text, not the frontmatter
 	}
 	return m
 }
@@ -210,22 +232,52 @@ func (m Model) reset() Model {
 	return Model{width: m.width, height: m.height, places: m.places, plain: m.plain}
 }
 
+// SetFront shows the given frontmatter lines (fences included) above the text,
+// or none, for the note already shown, keeping your place in the text. Any
+// selection is cleared, because line numbers move.
+func (m Model) SetFront(front []string) Model {
+	front = cleanFront(front)
+	if slices.Equal(front, m.front) {
+		return m
+	}
+	m = m.fromRendered()
+	m.cursor = max(m.cursor-len(m.front), 0) + len(front)
+	m.picked, m.visual = nil, visualState{}
+	m.front = front
+	if m.rel == "" || m.err != nil || m.listing != nil {
+		return m
+	}
+	m = m.wrap()
+	m.cursor = min(m.cursor, max(len(m.srcLines)-1, 0))
+	return m.showCursor()
+}
+
 // Rel returns the note shown, or "" when the panel is empty.
 func (m Model) Rel() string { return m.rel }
 
 // wrap lays text out for the current width.
 func (m Model) wrap() Model {
 	m.lines, m.srcLines, m.srcOf, m.firstRow, m.lastRow, m.rendered, m.kinds = nil, nil, nil, nil, nil, nil, nil
-	if m.text == "" || m.width <= 0 {
+	m.frontRows, m.frontSrc = nil, nil
+	if (m.text == "" && len(m.front) == 0) || m.width <= 0 {
 		return m
 	}
-	m.srcLines = strings.Split(m.text, "\n")
+	var body []string
+	if m.text != "" {
+		body = strings.Split(m.text, "\n")
+	}
+	m.srcLines = append(append([]string(nil), m.front...), body...)
 	if m.listing == nil {
-		m.kinds = classify(m.srcLines)
+		m.kinds = append(frontKinds(m.front), classify(body)...)
 	}
 	if !m.plain && m.listing == nil {
-		m.rendered = renderMarkdown(m.text, m.width)
-		m.roffset = min(m.roffset, m.maxRenderedOffset())
+		m.frontRows, m.frontSrc = renderFront(m.front, m.width)
+		m.rendered = append(append([]string(nil), m.frontRows...), renderMarkdown(m.text, m.width)...)
+		if len(m.rendered) == 0 {
+			m.rendered = nil
+		}
+		m.rcursor = m.rowForSrc(m.cursor)
+		m = m.showRendered()
 	}
 	for i, line := range m.srcLines {
 		m.firstRow = append(m.firstRow, len(m.lines))
@@ -269,6 +321,9 @@ func (m Model) moveTo(i int) Model {
 	m.cursor = min(max(i, 0), len(m.srcLines)-1)
 	return m.showCursor()
 }
+
+// halfPage is how many rows ctrl+u and ctrl+d move: half the panel, as in vim.
+func (m Model) halfPage() int { return max(m.height/2, 1) }
 
 // moveRows moves the cursor to the line shown delta rows away from its first
 // row, for page movement.
@@ -418,9 +473,13 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 		return m.moveTo(m.cursor - 1)
 	case "down":
 		return m.moveTo(m.cursor + 1)
-	case "ctrl+u", "pgup":
+	case "ctrl+u":
+		return m.moveRows(-m.halfPage())
+	case "ctrl+d":
+		return m.moveRows(m.halfPage())
+	case "pgup":
 		return m.moveRows(-m.height)
-	case "ctrl+d", "pgdown":
+	case "pgdown":
 		return m.moveRows(m.height)
 	case "g", "home":
 		return m.moveTo(0)
@@ -447,11 +506,9 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 		}
 		m = m.ClearSelection()
 		m.plain, m.kicked = false, false
-		m = m.wrap()
-		if len(m.srcLines) > 0 {
-			m.roffset = min(m.cursor*len(m.rendered)/len(m.srcLines), m.maxRenderedOffset())
-		}
-		return m
+		return m.wrap()
+	case "{", "}":
+		return m.moveTo(paragraph(m.cursor, len(m.srcLines), braceDir(msg.String()), m.blankLine))
 	case "v":
 		return m.toggleVisual(visualSelect)
 	case "V":
@@ -468,8 +525,8 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 }
 
 // View renders the panel into outerWidth x outerHeight, border included,
-// under the given title ("Body", or "Contents" for a folder).
-func (m Model) View(outerWidth, outerHeight int, focused bool, title string) string {
+// titled "Content" whether it shows a note or a folder.
+func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 	width, height := panel.InnerSize(outerWidth, outerHeight)
 
 	var footer panel.Footer
@@ -481,9 +538,13 @@ func (m Model) View(outerWidth, outerHeight int, focused bool, title string) str
 		content = dimStyle.Render("(empty note)")
 	case m.Rendered():
 		end := min(m.roffset+height, len(m.rendered))
-		content = strings.Join(m.rendered[min(m.roffset, end):end], "\n")
+		rows := make([]string, 0, end-min(m.roffset, end))
+		for i := min(m.roffset, end); i < end; i++ {
+			rows = append(rows, m.renderedRow(i, width, focused))
+		}
+		content = strings.Join(rows, "\n")
 		if len(m.rendered) > height {
-			footer.Right = fmt.Sprintf("%d%%", min((end*100)/len(m.rendered), 100))
+			footer.Right = fmt.Sprintf("%d%%", min(((m.rcursor+1)*100)/len(m.rendered), 100))
 		}
 	default:
 		end := min(m.offset+height, len(m.lines))
@@ -497,7 +558,7 @@ func (m Model) View(outerWidth, outerHeight int, focused bool, title string) str
 		}
 		footer.Left = m.status()
 	}
-	return panel.Frame("0 "+title, content, width, height, focused, footer)
+	return panel.Frame("0 Content", content, width, height, focused, footer)
 }
 
 // status is the bottom-left text: the range mode and the selection size.
@@ -587,56 +648,4 @@ func (m Model) SelectRow(i int) Model {
 		m.kicked = true
 	}
 	return m.moveTo(i)
-}
-
-// Rendered reports whether the note is drawn as Markdown (the reading view),
-// which has no cursor and no selection.
-func (m Model) Rendered() bool {
-	return !m.plain && !m.kicked && m.listing == nil && m.err == nil && m.rendered != nil
-}
-
-// LeaveRendered switches to the plain view for the note shown, with the
-// cursor on the source line at about the same place as the top of the
-// rendered view. It is what a selection key does, and does nothing in the
-// plain view.
-func (m Model) LeaveRendered() Model {
-	if !m.Rendered() {
-		return m
-	}
-	m.kicked = true
-	if n := len(m.rendered); n > 0 && len(m.srcLines) > 0 {
-		m.cursor = min(m.roffset*len(m.srcLines)/n, len(m.srcLines)-1)
-	}
-	return m.showCursor()
-}
-
-// maxRenderedOffset is the largest first row of the rendered view.
-func (m Model) maxRenderedOffset() int {
-	return max(len(m.rendered)-m.height, 0)
-}
-
-// updateRendered handles a key in the rendered view: the arrows, pages and g
-// and G scroll, m goes to the plain view, and a key that picks lines leaves
-// the rendered view and then does its work in the plain one.
-func (m Model) updateRendered(msg tea.KeyMsg) Model {
-	switch key := msg.String(); key {
-	case "up":
-		m.roffset = max(m.roffset-1, 0)
-	case "down":
-		m.roffset = min(m.roffset+1, m.maxRenderedOffset())
-	case "ctrl+u", "pgup":
-		m.roffset = max(m.roffset-m.height, 0)
-	case "ctrl+d", "pgdown":
-		m.roffset = min(m.roffset+m.height, m.maxRenderedOffset())
-	case "g", "home":
-		m.roffset = 0
-	case "G", "end":
-		m.roffset = m.maxRenderedOffset()
-	case "m":
-		m = m.LeaveRendered()
-		m.plain = true
-	case " ", "v", "V", "ctrl+a":
-		return m.LeaveRendered().Update(msg)
-	}
-	return m
 }

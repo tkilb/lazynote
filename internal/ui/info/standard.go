@@ -11,34 +11,34 @@ import (
 )
 
 const (
-	sourceKey  = "source"
-	dateKey    = "date"
-	tagsKey    = "tags"
-	aliasesKey = "aliases"
+	sourceKey = "source"
+	dateKey   = "date"
+	tagsKey   = "tags"
+	peopleKey = "people"
 	// relatedKey is hidden: the Related panel shows it.
 	relatedKey = "related"
 
 	// stdColumns is how many cells the first standard row holds.
 	stdColumns = 3
+	// labelColumn aligns the values of the single-cell standard rows.
+	labelColumn = len("People")
 	// inlineBudget bounds the lines read from one standard value.
 	inlineBudget = 8
-	// labelColumn aligns the values of the single-cell standard rows.
-	labelColumn = len("Aliases")
 )
 
 // standard is the fixed head of a note's Info: the rows that sit in the same
 // place for every note, whatever it holds.
 type standard struct {
-	kind                        store.Kind
-	kindColor                   lipgloss.Color
-	source, date, tags, aliases string
+	kind                       store.Kind
+	kindColor                  lipgloss.Color
+	source, date, tags, people string
 }
 
 // isStandardKey reports whether key is drawn in the standard rows (or
 // hidden) rather than among the other properties.
 func isStandardKey(key string) bool {
 	switch key {
-	case uidKey, relatedKey, sourceKey, dateKey, tagsKey, aliasesKey:
+	case uidKey, relatedKey, sourceKey, dateKey, tagsKey, peopleKey:
 		return true
 	}
 	return false
@@ -53,7 +53,7 @@ func newStandard(kind store.Kind, color lipgloss.Color, fm *store.Frontmatter) s
 	s.source = inline(fm.Get(sourceKey))
 	s.date = dateText(fm.Get(dateKey))
 	s.tags = inline(fm.Get(tagsKey))
-	s.aliases = inline(fm.Get(aliasesKey))
+	s.people = inline(fm.Get(peopleKey))
 	return s
 }
 
@@ -77,20 +77,16 @@ func dateText(n *yaml.Node) string {
 }
 
 // lines draws the three standard rows for width columns: Kind, Source and
-// Date side by side, then Tags, then Aliases. Each is exactly one line;
-// a long value is cut with an ellipsis.
+// Date side by side; then Tags; then People, each across the whole width. Each is exactly one line; a long value is
+// cut with an ellipsis.
 func (s standard) lines(width int) []line {
 	cell := max((width-columnGap*(stdColumns-1))/stdColumns, 1)
 	gap := strings.Repeat(" ", columnGap)
-	first := strings.Join([]string{
-		s.kindCell(cell),
-		pair("Source", s.source, 0, cell),
-		pair("Date", s.date, 0, cell),
-	}, gap)
+	join := func(cells ...string) line { return line{text: strings.Join(cells, gap)} }
 	return []line{
-		{text: first},
+		join(s.kindCell(cell), pair("Source", s.source, 0, cell), pair("Date", s.date, 0, cell)),
 		{text: pair("Tags", s.tags, labelColumn, width)},
-		{text: pair("Aliases", s.aliases, labelColumn, width)},
+		{text: pair("People", s.people, labelColumn, width)},
 	}
 }
 

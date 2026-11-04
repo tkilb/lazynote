@@ -14,7 +14,7 @@ import (
 	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/state"
 	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/body"
+	"github.com/tkilb/lazynote/internal/ui/content"
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/para"
 	"github.com/tkilb/lazynote/internal/ui/picker"
@@ -104,7 +104,7 @@ func shortPath(p string) string {
 // switchNotebook opens the notebook at index i of the config. The position in
 // the one being left is saved first, and the one being opened is restored to
 // where it was. Everything tied to the old notebook starts over: the undo
-// history (its actions name files in the old one), the link index, what Body
+// history (its actions name files in the old one), the link index, what Content
 // remembers and the yank buffer. The first time a notebook is opened in a
 // session, its archived daily notes past the retention period are removed.
 func (m model) switchNotebook(i int) model {
@@ -126,7 +126,7 @@ func (m model) switchNotebook(i int) model {
 	}
 	m.history, m.links, m.shown = &undo.Stack{}, nil, shownNote{}
 	m.stickyUIDs, m.stickies = nil, stickies.New()
-	m.body, m.info, m.related, m.title = body.New(), info.New(), related.New(), title.New()
+	m.content, m.info, m.related, m.title = content.New(), info.New(), related.New(), title.New()
 	m.para = para.New(m.store).WithRetention(m.retentionDays, time.Now)
 	m.session.notebook = nb.Path
 	m = m.loadStickies().restorePosition().resizePanels()

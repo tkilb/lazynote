@@ -1,4 +1,4 @@
-package body
+package content
 
 import (
 	"regexp"
@@ -26,6 +26,7 @@ const (
 	kindFence // the ``` or ~~~ line that opens or closes a code block
 	kindQuote
 	kindRule
+	kindFront // a line of the frontmatter, shown when Content is zoomed
 )
 
 var (
@@ -46,6 +47,7 @@ var lineStyles = map[lineKind]lipgloss.Style{
 	kindFence: lipgloss.NewStyle().Foreground(lipgloss.Color(gbGrey1)),
 	kindQuote: lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color(gbGrey1)),
 	kindRule:  lipgloss.NewStyle().Foreground(lipgloss.Color(gbGrey0)),
+	kindFront: lipgloss.NewStyle().Foreground(lipgloss.Color(gbYellow)),
 }
 
 func headingLine(color string) lipgloss.Style {

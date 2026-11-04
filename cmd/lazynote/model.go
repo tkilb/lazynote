@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/atotto/clipboard"
@@ -14,8 +15,8 @@ import (
 	"github.com/tkilb/lazynote/internal/config"
 	"github.com/tkilb/lazynote/internal/links"
 	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/body"
 	"github.com/tkilb/lazynote/internal/ui/clipform"
+	"github.com/tkilb/lazynote/internal/ui/content"
 	"github.com/tkilb/lazynote/internal/ui/helppopup"
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/noteform"
@@ -31,11 +32,11 @@ import (
 )
 
 // panelID identifies a panel. Its value is the number key that focuses it,
-// so Body is 0 and Stickies is 1, matching the titles in the grid.
+// so Content is 0 and Stickies is 1, matching the titles in the grid.
 type panelID int
 
 const (
-	panelBody panelID = iota
+	panelContent panelID = iota
 	panelStickies
 	panelPARA
 	panelRelated
@@ -43,7 +44,7 @@ const (
 )
 
 var panelNames = map[panelID]string{
-	panelBody:     "Body",
+	panelContent:  "Content",
 	panelStickies: "Stickies",
 	panelPARA:     "PARA",
 	panelRelated:  "Related",
@@ -52,7 +53,7 @@ var panelNames = map[panelID]string{
 
 // focusCycle is the Tab/Shift+Tab order: the left column top to bottom,
 // then the right column top to bottom. The Title panel is not in it.
-var focusCycle = []panelID{panelStickies, panelPARA, panelRelated, panelBody, panelInfo}
+var focusCycle = []panelID{panelStickies, panelPARA, panelRelated, panelContent, panelInfo}
 
 // isPanel reports whether n is the number of a focusable panel.
 func isPanel(n int) bool {
@@ -87,6 +88,7 @@ var globalBindings = []statusbar.Binding{
 	{Key: "B", Label: "notebook"},
 	{Key: "ctrl+f", Label: "find note"},
 	{Key: "tab", Label: "next panel"},
+	{Key: "+", Label: "zoom"},
 	{Key: "u", Label: "undo"},
 	{Key: "?", Label: "help"},
 	{Key: "ctrl+l", Label: "refresh"},
@@ -131,9 +133,10 @@ var infoBindings = []statusbar.Binding{
 	{Key: "esc/←", Label: "back to PARA"},
 }
 
-var bodyBindings = []statusbar.Binding{
+var contentBindings = []statusbar.Binding{
 	{Key: "↑/↓", Label: "move"},
-	{Key: "ctrl+d/u", Label: "page"},
+	{Key: "ctrl+d/u", Label: "half page"},
+	{Key: "{ }", Label: "paragraph"},
 	{Key: "space", Label: "pick line"},
 	{Key: "v", Label: "select lines"},
 	{Key: "m", Label: "rendered/plain"},
@@ -148,7 +151,7 @@ type model struct {
 	store   store.Store
 	focus   panelID
 	para    para.Model
-	body    body.Model
+	content content.Model
 	info    info.Model
 	related related.Model
 	// stickies is the panel of pinned notes and stickyUIDs the uids of the
@@ -164,8 +167,11 @@ type model struct {
 	retentionDays  int
 	title          title.Model
 	// links indexes the related properties; nil until it could be built.
-	links         *links.Index
-	shown         shownNote
+	links *links.Index
+	shown shownNote
+	// shownFront is the shown note's frontmatter lines, fences included, or
+	// none when it has no properties block. Content shows them while zoomed.
+	shownFront    []string
 	width, height int
 	// history is shared by pointer: it holds the session's undo/redo stack.
 	history *undo.Stack
@@ -212,13 +218,15 @@ type model struct {
 	helpScroll  int
 	// helpSearch is the "/" search inside the help popup.
 	helpSearch helppopup.Search
+	// zoomed is set while only the focused panel is drawn, at full size.
+	zoomed bool
 	// helpPendingG is set after one g in the popup, waiting for the second.
 	helpPendingG bool
 	// saveErr is a failure to save on quit, reported after the screen closes.
 	saveErr error
 }
 
-// shownNote identifies what the Body and Info panels last loaded. A changed
+// shownNote identifies what the Content and Info panels last loaded. A changed
 // modification time means the file changed on disk, and a changed item
 // count means a folder listed differently (for example after toggling
 // hidden files).
@@ -231,18 +239,18 @@ type shownNote struct {
 func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
-		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{}, purged: map[string]bool{}, stickies: stickies.New(),
+		content: content.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{}, purged: map[string]bool{}, stickies: stickies.New(),
 		helpSearch: helppopup.NoSearch, sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
 	}
 }
 
-// syncSelection makes Body and Info show what is under the PARA cursor,
+// syncSelection makes Content and Info show what is under the PARA cursor,
 // reading the note once, and only when the selection or the file changed.
-// A folder shows its name and item count in Info and its contents in Body.
+// A folder shows its name and item count in Info and its contents in Content.
 func (m model) syncSelection() model {
 	entry, ok := m.para.Selected()
 	if !ok {
-		m.body, m.info, m.shown = m.body.Clear(), m.info.Clear(), shownNote{}
+		m.content, m.info, m.shown, m.shownFront = m.content.Clear(), m.info.Clear(), shownNote{}, nil
 		m.related = m.related.Clear()
 		m.title = m.title.Set("")
 		return m
@@ -251,45 +259,73 @@ func (m model) syncSelection() model {
 	if now == m.shown {
 		return m
 	}
-	m.shown = now
+	m.shown, m.shownFront = now, nil
 
 	if entry.IsDir {
 		m.title = m.title.SetDir(entry.Name)
-		m.body = m.showDirBody(entry)
+		m.content = m.showDirContent(entry)
 		m.related = m.related.Clear()
 		m.info = m.info.ShowDir(entry.Rel, entry.Name, entry.ItemCount)
 		return m
 	}
 	m.related = m.related.Show(entry.Rel, m.links.References(entry.Rel), m.links.ReferencedBy(entry.Rel))
+	m = m.conformNote(entry)
 	note, err := m.store.ReadNote(entry.Rel)
 	if err != nil {
 		m.title = m.title.Set(entry.Name)
-		m.body = m.body.Fail(entry.Rel, err)
+		m.content = m.content.Fail(entry.Rel, err)
 		m.info = m.info.ShowError(entry.Rel, err)
 		return m
 	}
 	m.title = m.title.SetNote(note.Kind, note.Title)
-	m.body = m.body.Load(entry.Rel, note.Body)
+	m.shownFront = frontLines(note)
+	m.content = m.content.LoadNote(entry.Rel, m.wantFront(), note.Body)
 	m.info = m.info.ShowNote(entry.Rel, note)
 	return m
 }
 
-// bodyTitle is "Contents" while a folder is selected, else "Body".
-func (m model) bodyTitle() string {
-	if entry, ok := m.para.Selected(); ok && entry.IsDir {
-		return "Contents"
+// conformNote makes the note being viewed standard on disk (see
+// store.Markdown.Conform): viewing a note is what brings it in line, so every
+// note you look at or open ends up in the standard order with the standard
+// properties. A note that is standard already is not written, and one whose
+// properties cannot be read is left alone.
+func (m model) conformNote(entry store.Entry) model {
+	if _, err := m.store.Conform(entry.Rel); err != nil {
+		return m.notify(popup.Warning, "Could not make "+strings.TrimSuffix(entry.Name, ".md")+" follow the property standard: "+err.Error()+".")
 	}
-	return "Body"
+	return m
 }
 
-// showDirBody fills Body with the contents of the folder entry, or clears it
+// frontLines is the note's properties block as written, fences included, or
+// nil when it has none.
+func frontLines(n store.Note) []string {
+	if !n.HasFrontmatter {
+		return nil
+	}
+	lines := []string{"---"}
+	if n.RawFrontmatter != "" {
+		lines = append(lines, strings.Split(n.RawFrontmatter, "\n")...)
+	}
+	return append(lines, "---")
+}
+
+// wantFront is the frontmatter Content should show: the shown note's while Content
+// is zoomed, since Title and Info are out of sight then, else none.
+func (m model) wantFront() []string {
+	if m.zoomed && m.focus == panelContent {
+		return m.shownFront
+	}
+	return nil
+}
+
+// showDirContent fills Content with the contents of the folder entry, or clears it
 // when the folder is empty or cannot be read.
-func (m model) showDirBody(entry store.Entry) body.Model {
+func (m model) showDirContent(entry store.Entry) content.Model {
 	entries, err := m.store.List(entry.Rel, m.para.ListOptions())
 	if err != nil || len(entries) == 0 {
-		return m.body.Clear()
+		return m.content.Clear()
 	}
-	return m.body.LoadListing(entry.Rel, m.dirItems(entries))
+	return m.content.LoadListing(entry.Rel, m.dirItems(entries))
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -300,23 +336,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if after.width > 0 {
 		after = after.resizePanels() // focus may have made Stickies grow or shrink
 	}
-	return after.syncSelection(), cmd
+	after = after.syncSelection()
+	after.content = after.content.SetFront(after.wantFront())
+	return after, cmd
 }
 
 // grid is the panel layout for the current size and focus: Stickies is one
-// row until it has focus, then up to stickies.MaxRows.
+// row until it has focus, then up to stickies.MaxRows. While zoomed, the
+// focused panel takes the whole grid.
 func (m model) grid() grid {
 	rows := stickies.Rows(m.focus == panelStickies, m.stickies.Len())
-	return computeGrid(m.width, m.height-1, rows+panelBorderRows)
+	g := computeGrid(m.width, m.height-1, rows+panelBorderRows)
+	if m.zoomed {
+		return g.zoomed(m.focus, m.width, m.height-1)
+	}
+	return g
 }
 
-// resizePanels gives PARA, Body and Info the size the grid leaves them.
+// resizePanels gives PARA, Content and Info the size the grid leaves them.
 func (m model) resizePanels() model {
 	g := m.grid()
 	_, rows := panel.InnerSize(g.leftWidth, g.paraHeight)
 	m.para = m.para.Resize(rows)
-	bw, bh := panel.InnerSize(g.rightWidth, g.bodyHeight)
-	m.body = m.body.Resize(bw, bh)
+	bw, bh := panel.InnerSize(g.rightWidth, g.contentHeight)
+	m.content = m.content.Resize(bw, bh)
 	iw, ih := panel.InnerSize(g.rightWidth, g.infoHeight)
 	m.info = m.info.Resize(iw, ih)
 	return m
@@ -446,6 +489,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m = m.runHistory("Undid", "Undo", m.history.Undo)
 	case "ctrl+r":
 		m = m.runHistory("Redid", "Redo", m.history.Redo)
+	case "+":
+		m.zoomed = !m.zoomed
 	case "tab":
 		m.focus = m.focus.next()
 	case "shift+tab":
@@ -454,11 +499,11 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = panelID(key[0] - '0')
 	case "esc", "left":
 		switch m.focus {
-		case panelBody:
+		case panelContent:
 			// Closing a range or clearing the selection comes before leaving
 			// the panel.
-			if m.body.Active() {
-				m.body = m.body.Escape()
+			if m.content.Active() {
+				m.content = m.content.Escape()
 			} else {
 				m.focus = panelPARA
 			}
@@ -478,7 +523,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m, cmd = m.relatedKey(msg)
 			break
 		}
-		if m.focus == panelBody && m.body.HasSelection() && key == "enter" {
+		if m.focus == panelContent && m.content.HasSelection() && key == "enter" {
 			m, cmd = m.startExtract()
 			break
 		}
@@ -486,17 +531,17 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			break
 		}
 		if _, ok := m.para.SelectedNote(); ok {
-			m.focus = panelBody
+			m.focus = panelContent
 		} else {
 			m, cmd = m.paraKey(msg)
 		}
 	default:
-		if key == "y" && m.focus == panelBody {
-			m = m.yankBody()
+		if key == "y" && m.focus == panelContent {
+			m = m.yankContent()
 			break
 		}
-		if (key == "r" || key == "e") && m.focus == panelBody {
-			// Body shows the note under the PARA cursor, so renaming or
+		if (key == "r" || key == "e") && m.focus == panelContent {
+			// Content shows the note under the PARA cursor, so renaming or
 			// editing it is PARA's rename or edit.
 			m, cmd = m.paraKey(msg)
 			break
@@ -508,8 +553,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m, cmd = m.paraKey(msg)
 		case panelRelated:
 			m, cmd = m.relatedKey(msg)
-		case panelBody:
-			m.body = m.body.Update(msg)
+		case panelContent:
+			m.content = m.content.Update(msg)
 		case panelInfo:
 			m.info = m.info.Update(msg)
 		}
@@ -533,8 +578,8 @@ func (m model) bindings() []statusbar.Binding {
 		local = paraBindings
 	case panelRelated:
 		local = relatedBindings
-	case panelBody:
-		local = bodyBindings
+	case panelContent:
+		local = contentBindings
 	case panelInfo:
 		local = infoBindings
 	}
@@ -552,12 +597,18 @@ func (m model) View() string {
 			return m.para.View(w, h, m.focus == id)
 		case panelRelated:
 			return m.related.View(w, h, m.focus == id)
-		case panelBody:
-			return m.body.View(w, h, m.focus == id, m.bodyTitle())
+		case panelContent:
+			return m.content.View(w, h, m.focus == id)
 		case panelInfo:
 			return m.info.View(w, h, m.focus == id)
 		}
 		return m.stickies.View(w, h, m.focus == id)
+	}
+
+	if m.zoomed {
+		zoomed := render(m.focus, g.leftWidth, m.height-1)
+		view := lipgloss.JoinVertical(lipgloss.Left, zoomed, ansi.Truncate(m.statusLine(), m.width, "…"))
+		return m.overlayModals(view)
 	}
 
 	left := lipgloss.JoinVertical(lipgloss.Left,
@@ -567,7 +618,7 @@ func (m model) View() string {
 	)
 	right := lipgloss.JoinVertical(lipgloss.Left,
 		m.title.View(g.rightWidth, g.titleHeight),
-		render(panelBody, g.rightWidth, g.bodyHeight),
+		render(panelContent, g.rightWidth, g.contentHeight),
 		render(panelInfo, g.rightWidth, g.infoHeight),
 	)
 	grid := lipgloss.JoinHorizontal(lipgloss.Top, left, right)

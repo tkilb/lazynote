@@ -1,5 +1,5 @@
 // Package findtext prepares the lines of the notes for a search inside note
-// text. A line keeps the number it has in the Body panel, so a hit can open
+// text. A line keeps the number it has in the Content panel, so a hit can open
 // the note at the right place. Nothing is written and nothing leaves memory.
 package findtext
 
@@ -25,7 +25,7 @@ const MaxLines = maxLines
 type Line struct {
 	// Rel is the note's path relative to the notebook root.
 	Rel string
-	// Index is the line's position in the note as the Body panel shows it
+	// Index is the line's position in the note as the Content panel shows it
 	// (properties hidden, surrounding newlines trimmed), counting blank lines.
 	Index int
 	// Text is the line without its surrounding white space, cut to a
@@ -42,7 +42,7 @@ type Result struct {
 
 // Lines reads the notes at rels from s and returns their non-blank lines in
 // order, up to maxLines. A note that cannot be read is skipped. Control
-// characters are removed, as the Body panel does, so the text is safe to draw.
+// characters are removed, as the Content panel does, so the text is safe to draw.
 func Lines(s store.Store, rels []string) Result {
 	var res Result
 	for _, rel := range rels {

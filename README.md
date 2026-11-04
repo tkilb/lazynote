@@ -90,8 +90,8 @@ lazynote never edits files other than your notes, so it does not add that line f
 | `1` | **Stickies** | Notes you pinned with `s`. One row (`5 stickies`) until focused, then one row each, up to five. |
 | `2` | **PARA** | Five tabs (Inbox, Projects, Areas, Resources, Archives), each a folder browser. Only the selected tab is spelled out. Inside a folder, the first row is its path. |
 | `3` | **Related** | What the selected note references and what references it, from its `related` property. |
-| `0` | **Body** | The selected note's text, with a cursor line. |
-| `4` | **Info** | The note's kind, source, date, tags, aliases and any other properties. |
+| `0` | **Content** | The selected note's text, with a cursor line. |
+| `4` | **Info** | The note's kind, source, date, tags, people and any other properties. |
 | | Title | The note's title, led by its kind badge. Not focusable. |
 
 Move between panels with `0`-`4` or `Tab`/`Shift+Tab`. The open notebook's name is shown in the status bar. Press `?` for the full key list of the focused panel. In that list, `/` searches the keys and descriptions (`n` and `N` step through matches).
@@ -119,6 +119,7 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | Key | Action |
 | --- | --- |
 | `q` / `ctrl+c` | Quit |
+| `+` | Zoom the focused panel to full screen, or back |
 | `?` | Help for the focused panel |
 | `0`-`4`, `Tab` | Focus a panel |
 | `B` | Choose the notebook to open |
@@ -159,18 +160,20 @@ In every picker, type to narrow the list (words separated by spaces must all mat
 | `/` then `n` / `N` | Search names, then step through the matches |
 | `.` | Show hidden files |
 
-**Body**: `↑` `↓` move the cursor line, `space` picks lines, `v`/`V` select a range, `ctrl+a` selects all, `m` switches between the rendered Markdown view and plain text (the rendered view is read-only: `space`, `v`, `V`, `ctrl+a` and `y` leave it for plain text so lines can be picked), `y` copies the selection (or the line) to the system clipboard, `e` edits the note in `$EDITOR`, `r` renames it, and `enter` extracts the selection into a new Inbox note, after you choose its kind. **Related**: `enter` jumps to the note, `l` adds a reference, `d` removes one. **Stickies** (focused): `enter` jumps, `d` unpins.
+**Content**: `↑` `↓` move the cursor line, `space` picks lines, `v`/`V` select a range, `ctrl+d` and `ctrl+u` move half a page (`pgdown` and `pgup` a whole page), `{` and `}` jump between paragraphs, `ctrl+a` selects all, `m` switches between the rendered Markdown view and plain text (the rendered view has a cursor row that keeps your place, and is read-only: `space`, `v`, `V`, `ctrl+a` and `y` leave it for plain text so lines can be picked), `y` copies the selection (or the line) to the system clipboard, `e` edits the note in `$EDITOR`, `r` renames it, and `enter` extracts the selection into a new Inbox note, after you choose its kind. **Related**: `enter` jumps to the note, `l` adds a reference, `d` removes one. **Stickies** (focused): `enter` jumps, `d` unpins.
 
-The mouse works too: click a panel to focus it, click a row, tab or Body line to select it, and use the wheel to move. While a popup is open, only the wheel (in lists) and a click to dismiss a notice do anything, so a stray click never discards what you typed. Mouse reporting changes native text selection in most terminals: hold `Shift` (or `Option` on macOS) while dragging to select text.
+The mouse works too: click a panel to focus it, click a row, tab or Content line to select it, and use the wheel to move. While a popup is open, only the wheel (in lists) and a click to dismiss a notice do anything, so a stray click never discards what you typed. Mouse reporting changes native text selection in most terminals: hold `Shift` (or `Option` on macOS) while dragging to select text.
 
 ## Capturing notes
 
-New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source`, `date` and `tags`.
+New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source`, `date`, `tags`, `people` and `related`.
+
+**Property standard.** Every note follows one order: `uid`, `title`, `kind`, `source`, `date`, `tags`, `people`, then any other properties as they were, then `related` last. lazynote applies it to every note it creates and to every note you view or open. Viewing a note adds any missing standard property (empty, never guessed), sets the title to the file name, puts the properties in order, and writes the file only when something changed. Your other properties and the text are kept, and a note whose properties cannot be parsed is left as it is.
 
 - **`A` Quick Add** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`lazynote add` still saves to the Inbox).
 - **`I` Import** reads a file: a transcript becomes a note holding the text unchanged (kind `rumor`), and a markdown note is copied in with its properties kept.
 - **`U` Clip** opens a form with a Title (optional) and a URL. The URL is filled in from your clipboard only when it holds a web address and nothing else. It saves a `web` note in the folder PARA is showing, named after the title you typed or, when you leave it blank, the page's own title (fetched for you), with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
-- **Extract**: in Body, select lines and press `enter` to turn them into a new note that links back to the original.
+- **Extract**: in Content, select lines and press `enter` to turn them into a new note that links back to the original.
 
 The same capture works from a shell, without opening the interface. Both commands print the new note's path:
 

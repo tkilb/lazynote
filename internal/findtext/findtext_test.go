@@ -19,9 +19,9 @@ func put(t *testing.T, root, rel, content string) {
 	require.NoError(t, os.WriteFile(p, []byte(content), 0o644))
 }
 
-func TestLinesMatchWhatBodyShows(t *testing.T) {
+func TestLinesMatchWhatContentShows(t *testing.T) {
 	root := t.TempDir()
-	// Body trims leading and trailing newlines, so line 0 is "first".
+	// Content trims leading and trailing newlines, so line 0 is "first".
 	put(t, root, "inbox/a.md", "---\nuid: u\ntitle: a\n---\n\n\nfirst\n\n  second  \nthird\n\n")
 	res := Lines(store.NewMarkdown(root), []string{"inbox/a.md"})
 

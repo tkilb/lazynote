@@ -22,13 +22,13 @@ type extractState struct {
 	origin, text string
 }
 
-// startExtract begins extracting the lines selected in Body: first the kind
+// startExtract begins extracting the lines selected in Content: first the kind
 // is chosen in a picker, then the title is asked for.
 func (m model) startExtract() (model, tea.Cmd) {
 	if _, ok := m.para.SelectedNote(); !ok {
-		return m, nil // Body shows a folder listing, not a note
+		return m, nil // Content shows a folder listing, not a note
 	}
-	text := m.body.SelectedText()
+	text := m.content.SelectedText()
 	if strings.TrimSpace(text) == "" {
 		return m.notify(popup.Info, "Only blank lines are selected. Pick some text first."), nil
 	}
@@ -43,7 +43,7 @@ func (m model) startExtract() (model, tea.Cmd) {
 	}
 	p, cmd := picker.New(extractKindTitle, items)
 	m.picker, m.pickerOp = &p, pickExtractKind
-	m.extract = &extractState{origin: m.body.Rel(), text: text}
+	m.extract = &extractState{origin: m.content.Rel(), text: text}
 	return m, cmd
 }
 
@@ -60,7 +60,7 @@ func (m model) askExtractTitle(kind store.Kind) (model, tea.Cmd) {
 			return m.finishIntake(res, err), nil
 		}
 		m.extract = nil
-		m.body = m.body.ClearSelection()
+		m.content = m.content.ClearSelection()
 		return m.finishIntake(res, nil), nil
 	})
 }
