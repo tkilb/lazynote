@@ -4,6 +4,7 @@
 package findtext
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/tkilb/lazynote/internal/store"
@@ -38,6 +39,22 @@ type Result struct {
 	Lines []Line
 	// Truncated is set when the limit was reached and notes were left out.
 	Truncated bool
+}
+
+// InDir returns the paths in rels that are inside dir, at any depth. dir is a
+// slash path relative to the notebook root; an empty or "." dir keeps all.
+func InDir(rels []string, dir string) []string {
+	dir = strings.Trim(filepath.ToSlash(filepath.Clean(dir)), "/")
+	if dir == "" || dir == "." {
+		return rels
+	}
+	var out []string
+	for _, rel := range rels {
+		if strings.HasPrefix(filepath.ToSlash(rel), dir+"/") {
+			out = append(out, rel)
+		}
+	}
+	return out
 }
 
 // Lines reads the notes at rels from s and returns their non-blank lines in

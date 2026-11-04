@@ -65,3 +65,20 @@ func TestLinesSkipUnreadableNotes(t *testing.T) {
 	require.Len(t, res.Lines, 1)
 	assert.Equal(t, "fine", res.Lines[0].Text)
 }
+
+func TestInDirKeepsNotesInsideTheFolder(t *testing.T) {
+	rels := []string{"projects/a.md", "projects/deep/b.md", "projects2/c.md", "areas/d.md"}
+	tests := []struct {
+		dir  string
+		want []string
+	}{
+		{"projects", []string{"projects/a.md", "projects/deep/b.md"}},
+		{"projects/deep", []string{"projects/deep/b.md"}},
+		{"areas/", []string{"areas/d.md"}},
+		{"", rels},
+		{".", rels},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, InDir(rels, tt.dir), tt.dir)
+	}
+}

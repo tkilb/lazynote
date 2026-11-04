@@ -128,7 +128,7 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | `0`-`4`, `Tab` | Focus a panel |
 | `B` | Choose the notebook to open |
 | `ctrl+f` | Find a note by path (fuzzy). Results are ranked: the whole file name, then names that start with what you typed, then names where it starts a word, then names that contain it, then scattered letters in the name, then matches only in a folder; shorter names first. The folders are drawn grey |
-| `ctrl+/` or `F` | Search text in every note, as grep -i does: type words, and every line holding all of them, exactly and ignoring case, is listed with its note, line and column and a preview of the note beside it. `↑` `↓` move, `pgup` `pgdown` page, `ctrl+d` `ctrl+u` scroll the preview, `enter` opens the note at the line, `esc` cancels |
+| `ctrl+/` or `F` | Search text in every note in the folder PARA shows and its subfolders, as grep -i does: type words, and every line holding all of them, exactly and ignoring case, is listed with its note, line and column and a preview of the note beside it. `↑` `↓` move, `pgup` `pgdown` page, `ctrl+d` `ctrl+u` scroll the preview, `enter` opens the note at the line, `esc` cancels |
 | `s` | Pin or unpin the selected note as a sticky |
 | `A` | Quick Add a note in the folder PARA shows |
 | `I` | Import the clipboard, a web page or a file with the agent; on an `import_` folder, run that import again |

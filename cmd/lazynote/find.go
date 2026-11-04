@@ -52,12 +52,13 @@ func (m model) openFileFinder() (model, tea.Cmd) {
 }
 
 // openTextFinder opens the text search: type words to list the lines, in
-// every note, that contain all of them (exact text, ignoring case), with a
-// preview of the note beside the list. It opens the note at the line chosen.
+// the notes in the folder PARA shows (and its subfolders), that contain all of
+// them (exact text, ignoring case), with a preview of the note beside the list.
+// It opens the note at the line chosen.
 func (m model) openTextFinder() (model, tea.Cmd) {
-	res := findtext.Lines(m.store, m.links.Rels())
+	res := findtext.Lines(m.store, findtext.InDir(m.links.Rels(), m.para.Dir()))
 	if len(res.Lines) == 0 {
-		return m.notify(popup.Info, "There is no text to search."), nil
+		return m.notify(popup.Info, "There is no text to search in this folder."), nil
 	}
 	g, cmd := grep.New(res.Lines, res.Truncated, previewLoader(m.store))
 	m.grep = &g
