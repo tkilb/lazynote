@@ -40,8 +40,6 @@ retention:
   daily: 30d        # optional, default 30d
 ui:
   mouse: true       # optional, default true
-templates:          # optional: files new notes are made from
-  daily: ~/Notes/work/inbox/templates/daily.md
 digest:             # optional: the agentic import (see Importing with an agent)
   enabled: true     # off by default
 sources:            # optional: the sources Quick Add offers
@@ -60,7 +58,7 @@ kinds:              # optional: restyle kinds or add your own (see Kinds)
 - **`notebooks`**: the first available entry opens on the first run, and after that the notebook you used last. A path that is not an existing folder is listed as unavailable and cannot be opened. `~` is expanded.
 - **`retention.daily`**: how long archived daily notes are kept, a whole number of days followed by `d`.
 - **`ui.mouse`**: set to `false` to turn the mouse off.
-- **`templates.daily`**: a markdown file to make each new daily note from (`b`, `t` and `T`), as a path with `~` or relative to the notebook. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily.
+- **`~/.config/lazynote/templates/daily.md`**: a markdown file to make each new daily note from (`b`, `t` and `T`). It is found by its place, not named in `config.yaml`. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily.
 - **`digest`**: the agentic import, off until `enabled: true`. The other keys are `command` (default `claude`), `model` (default `sonnet`), `timeout` (default `5m`, at most `1h`), `prompt` and `merge_prompt` (the two prompt files, by default `import-prompt.md` and `import-merge-prompt.md` in the config folder). See Importing with an agent.
 - **`sources`**: up to 40 characters each, distinct ignoring case. Without it the list is adhoc, meeting, conversation, email, web, document.
 

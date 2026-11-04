@@ -383,42 +383,22 @@ func TestParseKindsRejectsMistakes(t *testing.T) {
 	}
 }
 
-func TestParseTemplates(t *testing.T) {
+func TestDailyTemplateIsFoundInTheConfigFolder(t *testing.T) {
 	home := t.TempDir()
 	nb := "notebooks:\n  - " + home + "\n"
-	tests := []struct {
-		name, yaml, want string
-	}{
-		{"none", nb, ""},
-		{"a path with ~", nb + "templates:\n  daily: ~/Notes/work/inbox/templates/daily.md\n", filepath.Join(home, "Notes/work/inbox/templates/daily.md")},
-		{"an absolute path", nb + "templates:\n  daily: /somewhere/daily.md\n", "/somewhere/daily.md"},
-		{"a path inside the notebook is kept relative", nb + "templates:\n  daily: inbox/templates/daily.md\n", "inbox/templates/daily.md"},
-		{"surrounding space is trimmed", nb + "templates:\n  daily: '  ~/d.md  '\n", filepath.Join(home, "d.md")},
-		{"an empty section", nb + "templates:\n", ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := Parse([]byte(tt.yaml), home)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, cfg.Templates.Daily)
-		})
-	}
-}
+	want := filepath.Join(home, ".config", "lazynote", "templates", "daily.md")
 
-func TestParseTemplatesRejectsBadEntries(t *testing.T) {
-	home := t.TempDir()
-	nb := "notebooks:\n  - " + home + "\n"
-	tests := []struct{ name, yaml, wantErr string }{
-		{"an unknown template", nb + "templates:\n  weekly: ~/w.md\n", "weekly"},
-		{"not a mapping", nb + "templates: [a]\n", "templates must"},
-		{"an empty path", nb + "templates:\n  daily: ''\n", "daily"},
-		{"not text", nb + "templates:\n  daily: [a, b]\n", "daily"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := Parse([]byte(tt.yaml), home)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
-		})
-	}
+	cfg, err := Parse([]byte(nb), home)
+	require.NoError(t, err)
+	assert.Empty(t, cfg.Templates.Daily, "no file means no template")
+
+	require.NoError(t, os.MkdirAll(filepath.Dir(want), 0o755))
+	require.NoError(t, os.WriteFile(want, []byte("x"), 0o644))
+	cfg, err = Parse([]byte(nb), home)
+	require.NoError(t, err)
+	assert.Equal(t, want, cfg.Templates.Daily)
+
+	cfg, err = Parse([]byte(nb+"templates:\n  daily: /elsewhere.md\n"), home)
+	require.NoError(t, err)
+	assert.Equal(t, want, cfg.Templates.Daily, "a templates key in the yaml is ignored")
 }
