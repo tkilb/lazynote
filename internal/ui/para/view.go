@@ -24,9 +24,11 @@ var (
 	dimStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	dirColor   = lipgloss.Color("6")
-	dirStyle   = lipgloss.NewStyle().Bold(true).Foreground(dirColor)
+	// dirStyle is a folder row in the list, plain; the folder you are in is
+	// bold in the path row (currentStyle).
+	dirStyle = lipgloss.NewStyle().Foreground(dirColor)
 	// overdueColor is the name color of a daily note past its retention that
-	// has not been archived.
+	// has not been archived. It is also the count color of an empty folder.
 	overdueColor = lipgloss.Color("208")
 	selStyle     = lipgloss.NewStyle().Bold(true).Background(panel.SelectedRowBackground)
 	// The left-edge bar of a marked row is colored as in Yazi.
@@ -108,8 +110,8 @@ func (m Model) listRows() int { return max(m.innerRows-m.headerRows(), 1) }
 // The path is drawn in the color of the folder rows: the folder you are in is
 // bold, the ones above it plain, and the slashes dim.
 var (
-	currentStyle = dirStyle
-	parentStyle  = lipgloss.NewStyle().Foreground(dirColor)
+	currentStyle = lipgloss.NewStyle().Bold(true).Foreground(dirColor)
+	parentStyle  = dirStyle
 )
 
 // breadcrumb shows the folders below the tab root, such as "alpha/notes/" (the
@@ -203,6 +205,13 @@ func renderRow(r row, width int, cursor bool, mk mark, query string) string {
 		badge, badgeColor = kindstyle.Badge(r.kind)
 	}
 
+	countStyle := dimStyle
+	countSel := selStyle
+	if r.entry.IsDir && r.entry.ItemCount == 0 {
+		countStyle = lipgloss.NewStyle().Foreground(overdueColor)
+		countSel = selStyle.Foreground(overdueColor)
+	}
+
 	nameWidth := max(width-badgeWidth-1-len(right)-1, 1)
 	name = ansi.Truncate(name, nameWidth, "…")
 	gap := strings.Repeat(" ", max(width-badgeWidth-1-ansi.StringWidth(name)-len(right), 0))
@@ -213,7 +222,7 @@ func renderRow(r row, width int, cursor bool, mk mark, query string) string {
 			nameSel = selStyle.Foreground(overdueColor)
 		}
 		return selStyle.Foreground(markerColors[mk]).Render(bar) +
-			selStyle.Render(badge+" ") + highlight(name, query, nameSel, true) + selStyle.Render(gap+right)
+			selStyle.Render(badge+" ") + highlight(name, query, nameSel, true) + selStyle.Render(gap) + countSel.Render(right)
 	}
 	nameStyle := lipgloss.NewStyle()
 	switch {
@@ -223,7 +232,7 @@ func renderRow(r row, width int, cursor bool, mk mark, query string) string {
 		nameStyle = lipgloss.NewStyle().Foreground(overdueColor)
 	}
 	return markerStyle.Render(bar) + lipgloss.NewStyle().Foreground(badgeColor).Render(badge) + " " +
-		highlight(name, query, nameStyle, false) + gap + dimStyle.Render(right)
+		highlight(name, query, nameStyle, false) + gap + countStyle.Render(right)
 }
 
 // Search highlight backgrounds, as in lazytask: teal on the cursor row so

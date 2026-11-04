@@ -190,7 +190,7 @@ func (m model) runHistory(done, failed string, run func() (string, error)) model
 func (m model) overlayModals(view string) string {
 	switch {
 	case m.showingHelp:
-		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll), m.width, m.height)
+		view = popup.Overlay(view, helppopup.Box(m.helpSections(), m.width, m.height, m.helpScroll, m.helpSearch), m.width, m.height)
 	case m.form != nil:
 		view = popup.Overlay(view, m.form.View(), m.width, m.height)
 	case m.clipForm != nil:

@@ -16,6 +16,7 @@ import (
 	"github.com/tkilb/lazynote/internal/store"
 	"github.com/tkilb/lazynote/internal/ui/body"
 	"github.com/tkilb/lazynote/internal/ui/clipform"
+	"github.com/tkilb/lazynote/internal/ui/helppopup"
 	"github.com/tkilb/lazynote/internal/ui/info"
 	"github.com/tkilb/lazynote/internal/ui/noteform"
 	"github.com/tkilb/lazynote/internal/ui/panel"
@@ -135,6 +136,7 @@ var bodyBindings = []statusbar.Binding{
 	{Key: "ctrl+d/u", Label: "page"},
 	{Key: "space", Label: "pick line"},
 	{Key: "v", Label: "select lines"},
+	{Key: "m", Label: "rendered/plain"},
 	{Key: "y", Label: "yank"},
 	{Key: "r", Label: "rename"},
 	{Key: "e", Label: "edit"},
@@ -208,6 +210,10 @@ type model struct {
 	// showingHelp is set while the help popup is open, scrolled by helpScroll.
 	showingHelp bool
 	helpScroll  int
+	// helpSearch is the "/" search inside the help popup.
+	helpSearch helppopup.Search
+	// helpPendingG is set after one g in the popup, waiting for the second.
+	helpPendingG bool
 	// saveErr is a failure to save on quit, reported after the screen closes.
 	saveErr error
 }
@@ -226,13 +232,13 @@ func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
 		body: body.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{}, purged: map[string]bool{}, stickies: stickies.New(),
-		sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
+		helpSearch: helppopup.NoSearch, sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
 	}
 }
 
 // syncSelection makes Body and Info show what is under the PARA cursor,
 // reading the note once, and only when the selection or the file changed.
-// A folder shows its name and item count in Info and nothing in Body.
+// A folder shows its name and item count in Info and its contents in Body.
 func (m model) syncSelection() model {
 	entry, ok := m.para.Selected()
 	if !ok {
@@ -248,8 +254,8 @@ func (m model) syncSelection() model {
 	m.shown = now
 
 	if entry.IsDir {
-		m.title = m.title.Set("")
-		m.body = m.body.Clear()
+		m.title = m.title.SetDir(entry.Name)
+		m.body = m.showDirBody(entry)
 		m.related = m.related.Clear()
 		m.info = m.info.ShowDir(entry.Rel, entry.Name, entry.ItemCount)
 		return m
@@ -266,6 +272,24 @@ func (m model) syncSelection() model {
 	m.body = m.body.Load(entry.Rel, note.Body)
 	m.info = m.info.ShowNote(entry.Rel, note)
 	return m
+}
+
+// bodyTitle is "Contents" while a folder is selected, else "Body".
+func (m model) bodyTitle() string {
+	if entry, ok := m.para.Selected(); ok && entry.IsDir {
+		return "Contents"
+	}
+	return "Body"
+}
+
+// showDirBody fills Body with the contents of the folder entry, or clears it
+// when the folder is empty or cannot be read.
+func (m model) showDirBody(entry store.Entry) body.Model {
+	entries, err := m.store.List(entry.Rel, m.para.ListOptions())
+	if err != nil || len(entries) == 0 {
+		return m.body.Clear()
+	}
+	return m.body.LoadListing(entry.Rel, m.dirItems(entries))
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -529,7 +553,7 @@ func (m model) View() string {
 		case panelRelated:
 			return m.related.View(w, h, m.focus == id)
 		case panelBody:
-			return m.body.View(w, h, m.focus == id)
+			return m.body.View(w, h, m.focus == id, m.bodyTitle())
 		case panelInfo:
 			return m.info.View(w, h, m.focus == id)
 		}

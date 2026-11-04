@@ -349,6 +349,12 @@ func (m Model) Selected() (store.Entry, bool) {
 	return t.rows[t.cursor].entry, true
 }
 
+// ListOptions is how the panel lists a folder, so another panel can list the
+// same entries.
+func (m Model) ListOptions() store.ListOptions {
+	return store.ListOptions{ShowHidden: m.showHidden}
+}
+
 // SelectedNote returns the entry under the cursor when it is a note.
 func (m Model) SelectedNote() (store.Entry, bool) {
 	t := m.tabs[m.active]

@@ -17,6 +17,18 @@ import (
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
 
+// dirColor is the color of a folder name, as in PARA.
+var dirColor = lipgloss.Color("6")
+
+// ListItem is one entry of a folder listing: a badge (blank for a folder) in
+// the kind's color, then the name.
+type ListItem struct {
+	Badge string
+	Color lipgloss.Color
+	Name  string
+	Dir   bool
+}
+
 const (
 	// defaultHeight is the page size until the first Resize.
 	defaultHeight = 10
@@ -61,6 +73,20 @@ type Model struct {
 	// srcLines are the lines of text as written. lines are those wrapped to
 	// the width, srcOf maps each wrapped row to its source line, and
 	// firstRow and lastRow give the rows each source line covers.
+	// listing is set while the panel shows a folder's entries; item i styles
+	// source line i.
+	listing []ListItem
+	// rendered is the note drawn as Markdown, one string per row, and
+	// roffset the first row shown. It is read-only: the cursor and selection
+	// belong to the plain view. plain is the reader's choice of the plain
+	// view (the m key); kicked says a selection key left the rendered view
+	// for the note shown, and is reset when another note is loaded.
+	rendered []string
+	roffset  int
+	plain    bool
+	kicked   bool
+	// kinds is the color kind of each source line in the plain view.
+	kinds             []lineKind
 	srcLines          []string
 	lines             []string
 	srcOf             []int
@@ -94,6 +120,7 @@ func (m Model) Resize(width, height int) Model {
 	if rewrap {
 		m = m.wrap()
 	}
+	m.roffset = min(m.roffset, m.maxRenderedOffset())
 	return m.showCursor()
 }
 
@@ -102,18 +129,43 @@ func (m Model) Resize(width, height int) Model {
 // the text is unchanged); another note starts where you left it last time, or
 // at the top.
 func (m Model) Load(rel, text string) Model {
+	return m.load(rel, text, nil)
+}
+
+// load is Load for text that may be a folder listing (items not nil).
+func (m Model) load(rel, text string, items []ListItem) Model {
 	text = textsafe.Sanitize(strings.Trim(text, "\r\n"))
+	unchanged := rel == m.rel && text == m.text && m.err == nil && items == nil && m.listing == nil && m.rendered != nil
 	if rel != m.rel {
 		m = m.remember()
 		m.cursor, m.offset = m.places[rel], 0
+		m.roffset, m.kicked = 0, false
 		m.picked, m.visual = nil, visualState{}
 	} else if text != m.text {
 		m.picked, m.visual = nil, visualState{}
 	}
-	m.rel, m.err, m.text = rel, nil, text
-	m = m.wrap()
+	m.rel, m.err, m.text, m.listing = rel, nil, text, items
+	if !unchanged {
+		m = m.wrap()
+	}
 	m.cursor = min(m.cursor, max(len(m.srcLines)-1, 0))
 	return m.showCursor()
+}
+
+// LoadListing shows the entries of the folder at rel, one per line: the
+// badge in its color, then the name, which is cyan for a folder.
+func (m Model) LoadListing(rel string, items []ListItem) Model {
+	lines := make([]string, len(items))
+	clean := make([]ListItem, len(items))
+	for i, it := range items {
+		it.Name = textsafe.SingleLine(it.Name)
+		if it.Dir {
+			it.Name += "/"
+		}
+		clean[i] = it
+		lines[i] = it.Badge + " " + it.Name
+	}
+	return m.load(rel, strings.Join(lines, "\n"), clean)
 }
 
 // Fail shows err in place of the note at rel.
@@ -155,7 +207,7 @@ func (m Model) remember() Model {
 
 // reset drops everything shown, keeping the size and the remembered places.
 func (m Model) reset() Model {
-	return Model{width: m.width, height: m.height, places: m.places}
+	return Model{width: m.width, height: m.height, places: m.places, plain: m.plain}
 }
 
 // Rel returns the note shown, or "" when the panel is empty.
@@ -163,11 +215,18 @@ func (m Model) Rel() string { return m.rel }
 
 // wrap lays text out for the current width.
 func (m Model) wrap() Model {
-	m.lines, m.srcLines, m.srcOf, m.firstRow, m.lastRow = nil, nil, nil, nil, nil
+	m.lines, m.srcLines, m.srcOf, m.firstRow, m.lastRow, m.rendered, m.kinds = nil, nil, nil, nil, nil, nil, nil
 	if m.text == "" || m.width <= 0 {
 		return m
 	}
 	m.srcLines = strings.Split(m.text, "\n")
+	if m.listing == nil {
+		m.kinds = classify(m.srcLines)
+	}
+	if !m.plain && m.listing == nil {
+		m.rendered = renderMarkdown(m.text, m.width)
+		m.roffset = min(m.roffset, m.maxRenderedOffset())
+	}
 	for i, line := range m.srcLines {
 		m.firstRow = append(m.firstRow, len(m.lines))
 		for _, row := range strings.Split(ansi.Wrap(line, m.width, ""), "\n") {
@@ -351,6 +410,9 @@ func (m Model) toggleVisual(mode visualMode) Model {
 // Update handles a key press while the panel has focus.
 func (m Model) Update(msg tea.KeyMsg) Model {
 	m.yanked = 0
+	if m.Rendered() {
+		return m.updateRendered(msg)
+	}
 	switch msg.String() {
 	case "up":
 		return m.moveTo(m.cursor - 1)
@@ -379,6 +441,17 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 		}
 		m.picked = picked
 		return m.moveTo(m.cursor + 1)
+	case "m": // back to the reading view; a selection cannot go with it
+		if m.listing != nil {
+			return m
+		}
+		m = m.ClearSelection()
+		m.plain, m.kicked = false, false
+		m = m.wrap()
+		if len(m.srcLines) > 0 {
+			m.roffset = min(m.cursor*len(m.rendered)/len(m.srcLines), m.maxRenderedOffset())
+		}
+		return m
 	case "v":
 		return m.toggleVisual(visualSelect)
 	case "V":
@@ -394,8 +467,9 @@ func (m Model) Update(msg tea.KeyMsg) Model {
 	return m
 }
 
-// View renders the panel into outerWidth x outerHeight, border included.
-func (m Model) View(outerWidth, outerHeight int, focused bool) string {
+// View renders the panel into outerWidth x outerHeight, border included,
+// under the given title ("Body", or "Contents" for a folder).
+func (m Model) View(outerWidth, outerHeight int, focused bool, title string) string {
 	width, height := panel.InnerSize(outerWidth, outerHeight)
 
 	var footer panel.Footer
@@ -405,6 +479,12 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		content = errorStyle.Render(ansi.Truncate(m.err.Error(), width, "…"))
 	case m.rel != "" && len(m.lines) == 0:
 		content = dimStyle.Render("(empty note)")
+	case m.Rendered():
+		end := min(m.roffset+height, len(m.rendered))
+		content = strings.Join(m.rendered[min(m.roffset, end):end], "\n")
+		if len(m.rendered) > height {
+			footer.Right = fmt.Sprintf("%d%%", min((end*100)/len(m.rendered), 100))
+		}
 	default:
 		end := min(m.offset+height, len(m.lines))
 		rows := make([]string, 0, end-min(m.offset, end))
@@ -417,7 +497,7 @@ func (m Model) View(outerWidth, outerHeight int, focused bool) string {
 		}
 		footer.Left = m.status()
 	}
-	return panel.Frame("0 Body", content, width, height, focused, footer)
+	return panel.Frame("0 "+title, content, width, height, focused, footer)
 }
 
 // status is the bottom-left text: the range mode and the selection size.
@@ -448,7 +528,7 @@ func (m Model) row(i, width int, focused bool) string {
 	src := m.srcOf[i]
 	cursor, selected := focused && src == m.cursor, m.isSelected(src)
 	if !cursor && !selected {
-		return m.lines[i]
+		return m.styled(i)
 	}
 	text := m.lines[i] + strings.Repeat(" ", max(width-ansi.StringWidth(m.lines[i]), 0))
 	switch {
@@ -460,9 +540,38 @@ func (m Model) row(i, width int, focused bool) string {
 	return pickStyle.Render(text)
 }
 
+// styled draws wrapped row i in its colors: a folder listing by entry, a note
+// in the plain view by the kind of its line (see linecolor.go).
+func (m Model) styled(i int) string {
+	line, src := m.lines[i], m.srcOf[i]
+	if m.listing == nil {
+		if src < len(m.kinds) {
+			return colorRow(line, m.kinds[src])
+		}
+		return line
+	}
+	if src >= len(m.listing) {
+		return line
+	}
+	it := m.listing[src]
+	name := lipgloss.NewStyle()
+	if it.Dir {
+		name = name.Foreground(dirColor)
+	}
+	if i != m.firstRow[src] {
+		return name.Render(line) // a wrapped continuation has no badge
+	}
+	w := ansi.StringWidth(it.Badge)
+	return lipgloss.NewStyle().Foreground(it.Color).Render(ansi.Truncate(line, w, "")) +
+		name.Render(ansi.TruncateLeft(line, w, ""))
+}
+
 // RowAt returns the source line drawn at content row y (0 is the first row
 // under the top border). It reports false past the last row.
 func (m Model) RowAt(y int) (int, bool) {
+	if m.Rendered() {
+		return 0, false // a rendered row has no source line to pick
+	}
 	row := m.offset + y
 	if y < 0 || y >= m.height || row >= len(m.srcOf) {
 		return 0, false
@@ -474,5 +583,60 @@ func (m Model) RowAt(y int) (int, bool) {
 // does.
 func (m Model) SelectRow(i int) Model {
 	m.yanked = 0
+	if m.Rendered() {
+		m.kicked = true
+	}
 	return m.moveTo(i)
+}
+
+// Rendered reports whether the note is drawn as Markdown (the reading view),
+// which has no cursor and no selection.
+func (m Model) Rendered() bool {
+	return !m.plain && !m.kicked && m.listing == nil && m.err == nil && m.rendered != nil
+}
+
+// LeaveRendered switches to the plain view for the note shown, with the
+// cursor on the source line at about the same place as the top of the
+// rendered view. It is what a selection key does, and does nothing in the
+// plain view.
+func (m Model) LeaveRendered() Model {
+	if !m.Rendered() {
+		return m
+	}
+	m.kicked = true
+	if n := len(m.rendered); n > 0 && len(m.srcLines) > 0 {
+		m.cursor = min(m.roffset*len(m.srcLines)/n, len(m.srcLines)-1)
+	}
+	return m.showCursor()
+}
+
+// maxRenderedOffset is the largest first row of the rendered view.
+func (m Model) maxRenderedOffset() int {
+	return max(len(m.rendered)-m.height, 0)
+}
+
+// updateRendered handles a key in the rendered view: the arrows, pages and g
+// and G scroll, m goes to the plain view, and a key that picks lines leaves
+// the rendered view and then does its work in the plain one.
+func (m Model) updateRendered(msg tea.KeyMsg) Model {
+	switch key := msg.String(); key {
+	case "up":
+		m.roffset = max(m.roffset-1, 0)
+	case "down":
+		m.roffset = min(m.roffset+1, m.maxRenderedOffset())
+	case "ctrl+u", "pgup":
+		m.roffset = max(m.roffset-m.height, 0)
+	case "ctrl+d", "pgdown":
+		m.roffset = min(m.roffset+m.height, m.maxRenderedOffset())
+	case "g", "home":
+		m.roffset = 0
+	case "G", "end":
+		m.roffset = m.maxRenderedOffset()
+	case "m":
+		m = m.LeaveRendered()
+		m.plain = true
+	case " ", "v", "V", "ctrl+a":
+		return m.LeaveRendered().Update(msg)
+	}
+	return m
 }

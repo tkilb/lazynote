@@ -94,7 +94,7 @@ lazynote never edits files other than your notes, so it does not add that line f
 | `4` | **Info** | The note's kind, source, date, tags, aliases and any other properties. |
 | | Title | The note's title, led by its kind badge. Not focusable. |
 
-Move between panels with `0`-`4` or `Tab`/`Shift+Tab`. The open notebook's name is shown in the status bar. Press `?` for the full key list of the focused panel.
+Move between panels with `0`-`4` or `Tab`/`Shift+Tab`. The open notebook's name is shown in the status bar. Press `?` for the full key list of the focused panel. In that list, `/` searches the keys and descriptions (`n` and `N` step through matches).
 
 ### Kinds
 
@@ -110,7 +110,7 @@ Every note has one kind, stored in its `kind` property and shown as a badge:
 | `draft` | Incomplete, still being revised |
 | `web` | A web page saved by its address (the `source`) |
 
-Add your own kinds, or change how these look, with the `kinds` list in the config file. Each entry needs a `name`; `color` is a hex value such as `#ff8800`, `meaning` is a short description shown in the pickers, and `badge` is up to four characters for the PARA list (an added kind defaults to the first four letters of its name). An entry named like a built-in kind (`fact`, `web` and so on) changes that kind; any other name adds one after the built-in ones. Built-in kinds cannot be removed. A note whose kind is not in the list reads as unset and is left alone, so nothing is lost if you remove one.
+Add your own kinds, or change how these look, with the `kinds` list in the config file. Each entry needs a `name`; `color` is a hex value such as `#ff8800`, `meaning` is a short description shown in the pickers, and `badge` is up to four characters for the PARA list (an added kind defaults to the first four letters of its name). An entry named like a built-in kind (`fact`, `web` and so on) changes that kind; any other name adds one. The pickers list the kinds in the order of your `kinds` list, followed by any built-in kinds you did not list, in their usual order. Built-in kinds cannot be removed. A note whose kind is not in the list reads as unset and is left alone, so nothing is lost if you remove one.
 
 ## Keys
 
@@ -125,7 +125,7 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | `ctrl+f` | Find a note by path (fuzzy) |
 | `ctrl+/` or `F` | Find text in any note (fuzzy); opens it at the line |
 | `s` | Pin or unpin the selected note as a sticky |
-| `A` | Quick Add a note to the Inbox |
+| `A` | Quick Add a note in the folder PARA shows |
 | `I` | Import a file (a transcript or a markdown note) |
 | `U` | Clip a web page |
 | `o` | Open the web address in the selected note's `source` in the browser |
@@ -159,7 +159,7 @@ In every picker, type to narrow the list (words separated by spaces must all mat
 | `/` then `n` / `N` | Search names, then step through the matches |
 | `.` | Show hidden files |
 
-**Body**: `↑` `↓` move the cursor line, `space` picks lines, `v`/`V` select a range, `ctrl+a` selects all, `y` copies the selection (or the line) to the system clipboard, `e` edits the note in `$EDITOR`, `r` renames it, and `enter` extracts the selection into a new Inbox note, after you choose its kind. **Related**: `enter` jumps to the note, `l` adds a reference, `d` removes one. **Stickies** (focused): `enter` jumps, `d` unpins.
+**Body**: `↑` `↓` move the cursor line, `space` picks lines, `v`/`V` select a range, `ctrl+a` selects all, `m` switches between the rendered Markdown view and plain text (the rendered view is read-only: `space`, `v`, `V`, `ctrl+a` and `y` leave it for plain text so lines can be picked), `y` copies the selection (or the line) to the system clipboard, `e` edits the note in `$EDITOR`, `r` renames it, and `enter` extracts the selection into a new Inbox note, after you choose its kind. **Related**: `enter` jumps to the note, `l` adds a reference, `d` removes one. **Stickies** (focused): `enter` jumps, `d` unpins.
 
 The mouse works too: click a panel to focus it, click a row, tab or Body line to select it, and use the wheel to move. While a popup is open, only the wheel (in lists) and a click to dismiss a notice do anything, so a stray click never discards what you typed. Mouse reporting changes native text selection in most terminals: hold `Shift` (or `Option` on macOS) while dragging to select text.
 
@@ -167,7 +167,7 @@ The mouse works too: click a panel to focus it, click a row, tab or Body line to
 
 New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source`, `date` and `tags`.
 
-- **`A` Quick Add** opens a form for the title, body, kind, source and tags.
+- **`A` Quick Add** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`lazynote add` still saves to the Inbox).
 - **`I` Import** reads a file: a transcript becomes a note holding the text unchanged (kind `rumor`), and a markdown note is copied in with its properties kept.
 - **`U` Clip** opens a form with a Title (optional) and a URL. The URL is filled in from your clipboard only when it holds a web address and nothing else. It saves a `web` note in the folder PARA is showing, named after the title you typed or, when you leave it blank, the page's own title (fetched for you), with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
 - **Extract**: in Body, select lines and press `enter` to turn them into a new note that links back to the original.

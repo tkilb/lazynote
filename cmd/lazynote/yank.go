@@ -7,9 +7,16 @@ import (
 )
 
 // yankBody copies the selected Body lines, or the cursor line, to the system
-// clipboard and clears the selection. A failure is shown as an error and the
+// clipboard and clears the selection. In the Markdown reading view it only
+// leaves that view. A failure is shown as an error and the
 // selection is kept.
 func (m model) yankBody() model {
+	if m.body.Rendered() {
+		// Yanking is picking lines, which the reading view cannot do: leave it
+		// so the line to be copied shows, and let y be pressed again.
+		m.body = m.body.LeaveRendered()
+		return m
+	}
 	text, n := m.body.YankText()
 	if n == 0 {
 		return m

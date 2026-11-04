@@ -24,8 +24,8 @@ A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`
 | `1` | Stickies | Notes you pinned with `s`, for quick jumps. One row of names until focused, then one row each (up to five). See chunk 12.                                                                          |
 | `2` | PARA     | Tabs: Inbox (first; contains the `daily/` directory) / Projects / Areas / Resources / Archives. Each tab is a Yazi-style directory browser rooted at the tab's folder. Cycle tabs with `[` / `]`. |
 | `3` | Related  | Notes related to the note selected in PARA; updates as the PARA cursor moves.                                                                                                                     |
-| —   | Title    | Title of the selected note on one line, led by its kind badge. Display only: no number key, not in the focus cycle. |
-| `0` | Body     | Read-only plain-text view of the selected note (frontmatter hidden, lines wrapped).                                                                                                               |
+| —   | Title    | Title of the selected note on one line, led by its kind badge; with a folder selected it is labelled Directory and shows the folder name. Display only: no number key, not in the focus cycle. |
+| `0` | Body     | Read-only view of the selected note, rendered as Markdown (frontmatter hidden); selecting lines switches to plain text with wrapped lines.                                                                                                               |
 | `4` | Info     | Three standard rows (Kind, Source, Date; Tags; Aliases), then every other frontmatter property of the selected note (custom keys), scrolling. `uid` and `related` are hidden. Sits below Body. |
 
 Focus: `0`-`4`, `Tab`, `Shift+Tab`. Tab goes Stickies, PARA, Related, Body, Info and
@@ -54,7 +54,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `ctrl+/` or `F`     | Find text in any note (picker)                |
 | `Tab` / `Shift+Tab` | Cycle panel focus                             |
 | `?`                 | Keybindings popup (see "Help popup")          |
-| `A`                 | Quick Add: form for a new inbox note          |
+| `A`                 | Quick Add: form for a new note in the PARA folder |
 | `I`                 | Import transcript or note (path prompt)       |
 | `U`                 | URL clip (a web note)                         |
 | `o`                 | Open the web address in the note's source     |
@@ -116,6 +116,7 @@ uppercase is the bulk or heavier variant, destructive actions confirm with
 | `space`     | Pick the cursor line (cherry-pick) and move down |
 | `v` / `V`   | Select / unselect a range as the cursor moves (the same key again closes it) |
 | `ctrl+a`    | Select all |
+| `m`         | Switch between the rendered Markdown view and plain text (stays for the session). Selection keys (`space`, `v`, `V`, `ctrl+a`, `y`) leave the rendered view for that note |
 | `y`         | Yank: copy the selection, or the cursor line, to the system clipboard |
 | `enter`     | Extract the selection into a new note (kind picked in the picker) |
 | `r`         | Rename the note shown, exactly as `r` does in PARA (focus stays in Body, and the cursor line is kept) |
@@ -214,7 +215,14 @@ sections as in lazygit: **Local** (every key of the focused panel, a fuller
 list than the status bar hints), **Global** (keys that work in any panel:
 undo, redo, refresh, suspend, help, quit) and **Navigation** (`0`-`4`, `Tab`,
 `Shift+Tab`). A panel with no keys of its own has no Local section. The up and down arrows
-scroll, `esc` or `?` closes, other keys are ignored. It lists
+scroll, `gg` and `G` go to the top and bottom as in vim, `?` closes, other keys are ignored. `/` opens a search prompt in the
+bottom border, as PARA's does: `enter` jumps to the first line at or after the
+top of the view whose key or description contains the text (ignoring case,
+wrapping around), `n` and `N` step to the next and previous match, matches are
+highlighted (teal on the current one, yellow on the rest), and the border
+shows `search: text`. An empty or unmatched query is a silent no-op. `esc`
+clears the search first and closes the popup when none is active (in the
+prompt it cancels and clears). It lists
 only keys that are implemented, so each chunk that adds a key adds it to the
 lists in `cmd/lazynote/help.go` (and the status bar hints in `model.go`).
 
@@ -439,7 +447,7 @@ Conflict notes:
   bottom border keeps the search text (`search: text`) and the position.
   (Tried to make drilling
   obvious; it is one commit, easy to revert.) With a directory selected, Info shows its name and item
-  counts, and Body and Related are empty. `a` creates the note in the
+  counts, Body (titled Contents then) lists its contents (in PARA's order: a cyan name and slash for a folder, a kind badge in its PARA color before each note), and Related is empty. `a` creates the note in the
   current directory, quick capture still goes to the `inbox/` root, and `d` on
   a directory confirms and warns when it is not empty. `/` searches the
   current directory, as lazytask's `/` does: the list is never filtered. `/`
@@ -486,8 +494,25 @@ Conflict notes:
   `←` returns to PARA. The right column, top to bottom, is the Title panel
   (3 rows), Body, and Info, which is fixed at 3 content rows (5 with the
   border) and scrolls by line; Body gets the rest.
+- Body draws a note as rendered Markdown with `charmbracelet/glamour` v1.0.0
+  (glamour's dark style recolored with the gruvbox-material hard palette from the author's Neovim, in `internal/ui/body/gruvbox.go`: headings red to purple by level, inline code aqua, links blue, code blocks in chroma's gruvbox theme; no margins, wrapped to the panel; approved as a new
+  dependency, which also moved `lipgloss` to the v1.1.1 pre-release glamour
+  requires). Rendering reflows and rewrites lines, so a rendered row maps to
+  no source line: the rendered view is for reading only, with no cursor or
+  selection. `↑` `↓`, `ctrl+d/u`, `pgdn/pgup` and `g`/`G` scroll it, and the
+  footer shows how far down you are. Any key that picks lines (`space`, `v`,
+  `V`, `ctrl+a`, `y`, and a click or a find-text jump to a line) leaves it for
+  that note, putting the cursor on the source line at about the same place
+  (by position in the text), and the key then does its work in the plain
+  view, except `y`, which only leaves so you see the line it would copy. The
+  next note you open is rendered again. `m` switches to plain text for
+  every note until pressed again; pressing it in the plain view returns to
+  the rendered one and clears the selection. The plain view colors whole lines to match
+  (`internal/ui/body/linecolor.go`): headings by level, code lines aqua,
+  fences and quotes grey, rules dim; no inline spans. A folder listing and a
+  note that cannot be rendered stay plain.
 - Body shows the note under the PARA cursor as plain text and follows it as
-  the cursor moves; with a directory selected it is empty, and a note that
+  the cursor moves; with a directory selected it lists the folder's entries (empty when the folder is), and a note that
   cannot be read shows the error (for example "note is too large"). The
   frontmatter is hidden, blank lines around the text are dropped, lines wrap
   at word boundaries (a word longer than the panel is split), tabs become
@@ -544,7 +569,8 @@ listed first like any directory, next to the intake notes.
 Confirmed:
 
 - Quick Add (`A`): one form with Title, multi-line Body, Kind and Tags boxes
-  (see the 9b notes) creating an inbox note. The file name is the title, cleaned (unsafe characters
+  (see the 9b notes) creating a note in the folder PARA is showing when the
+  form is submitted (`inbox` at the Inbox root; a missing folder is created). The file name is the title, cleaned (unsafe characters
   removed), plus `.md`, with no timestamp (the day is the `date` property);
   a numeric suffix resolves a collision. The body field is the note body;
   the title is the file name, as for every note. The same naming applies to
@@ -630,11 +656,6 @@ Numbers are kept stable; resolved items were removed.
 
 - Zoom the focused panel to full screen, as lazygit does, on `+`. `+` is
   reserved for this and must not be given another meaning.
-- Markdown rendering in Body with `charmbracelet/glamour` (headings, lists,
-  code blocks, emphasis). Needs a new dependency, so verify it is current and
-  maintained and get approval first. Keep the plain-text view available as a
-  toggle, and make sure line selection for extraction (`v`) still maps to
-  source lines when the rendered view is on.
 
 ## Package layout
 

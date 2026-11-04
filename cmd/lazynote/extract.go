@@ -25,6 +25,9 @@ type extractState struct {
 // startExtract begins extracting the lines selected in Body: first the kind
 // is chosen in a picker, then the title is asked for.
 func (m model) startExtract() (model, tea.Cmd) {
+	if _, ok := m.para.SelectedNote(); !ok {
+		return m, nil // Body shows a folder listing, not a note
+	}
 	text := m.body.SelectedText()
 	if strings.TrimSpace(text) == "" {
 		return m.notify(popup.Info, "Only blank lines are selected. Pick some text first."), nil

@@ -124,7 +124,7 @@ func keyWidth(sections []Section) int {
 // where section headers occupy the description column rather than the
 // key column — then one right-aligned-key/label line per binding), the
 // unit MaxScroll and Box's viewport windowing both operate on.
-func bodyLines(sections []Section) []string {
+func bodyLines(sections []Section, search Search) []string {
 	width := keyWidth(sections)
 	headerIndent := strings.Repeat(" ", width+2)
 	var lines []string
@@ -134,8 +134,9 @@ func bodyLines(sections []Section) []string {
 		}
 		lines = append(lines, headerIndent+headerStyle.Render(sectionHeader(sec.Title)))
 		for _, bind := range sec.Bindings {
-			key := keyStyle.Render(padLeft(bind.Key, width))
-			lines = append(lines, key+"  "+bind.Label)
+			current := len(lines) == search.Current
+			key := highlight(padLeft(bind.Key, width), search.Query, keyStyle, current)
+			lines = append(lines, key+"  "+highlight(bind.Label, search.Query, lipgloss.NewStyle(), current))
 		}
 	}
 	return lines
@@ -147,7 +148,7 @@ func bodyLines(sections []Section) []string {
 // scrolls exactly to the last line. Callers (key handling) should clamp
 // their scroll position to [0, MaxScroll(sections, screenHeight)].
 func MaxScroll(sections []Section, screenHeight int) int {
-	total := len(bodyLines(sections))
+	total := len(bodyLines(sections, NoSearch))
 	visible := VisibleRows(screenHeight)
 	if total <= visible {
 		return 0
@@ -164,7 +165,7 @@ func MaxScroll(sections []Section, screenHeight int) int {
 // internally to [0, MaxScroll(sections, screenHeight)], so out-of-range
 // values are safe to pass. Combine with popup.Overlay to composite it
 // centered over an existing view.
-func Box(sections []Section, screenWidth, screenHeight, scrollOffset int) string {
+func Box(sections []Section, screenWidth, screenHeight, scrollOffset int, search Search) string {
 	boxWidth := maxWidth
 	if screenWidth > 0 && screenWidth-4 < boxWidth {
 		boxWidth = screenWidth - 4
@@ -177,7 +178,7 @@ func Box(sections []Section, screenWidth, screenHeight, scrollOffset int) string
 	// 2 columns wider than what's passed to Frame.
 	contentWidth := boxWidth - 2
 
-	lines := bodyLines(sections)
+	lines := bodyLines(sections, search)
 	visibleRows := VisibleRows(screenHeight)
 	maxScroll := MaxScroll(sections, screenHeight)
 	if scrollOffset < 0 {
@@ -192,17 +193,35 @@ func Box(sections []Section, screenWidth, screenHeight, scrollOffset int) string
 	}
 	visible := lines[scrollOffset:end]
 
-	hint := "esc/? close"
+	hint := "/ search  esc/? close"
+	switch {
+	case search.Typing:
+		hint = "enter find  esc cancel"
+	case search.Active():
+		hint = "n/N next/prev  / search  esc clear"
+	}
 	if maxScroll > 0 {
 		hint = fmt.Sprintf("%d-%d/%d  \u2191/\u2193 scroll  ", scrollOffset+1, end, len(lines)) + hint
 	}
-	footer := panel.Footer{Right: hint, Tint: true}
+	footer := panel.Footer{Left: searchText(search), Right: hint, Tint: true}
 
 	body := strings.Join(visible, "\n")
 	// focused=true: the help popup is the actively focused panel while
 	// open (it owns input), so its border uses the app's standard
 	// focused-panel green, same convention as every other panel here.
 	return panel.Frame("Keybindings", body, contentWidth, len(visible), true, footer)
+}
+
+// searchText is the bottom-left text: the prompt while typing, else the
+// active query.
+func searchText(s Search) string {
+	switch {
+	case s.Typing:
+		return "/" + s.Input + "\u258f"
+	case s.Active():
+		return "search: " + s.Query
+	}
+	return ""
 }
 
 // padLeft pads s with leading spaces to at least width display columns

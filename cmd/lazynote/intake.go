@@ -15,7 +15,8 @@ import (
 	"github.com/tkilb/lazynote/internal/ui/popup"
 )
 
-// startQuickAdd opens the Quick Add form.
+// startQuickAdd opens the Quick Add form. The note is saved in the folder PARA
+// is showing when the form is submitted.
 func (m model) startQuickAdd() (model, tea.Cmd) {
 	form, cmd := noteform.New("Quick Add", m.sources, m.width, m.height)
 	m.form = &form
@@ -27,7 +28,7 @@ func (m model) startQuickAdd() (model, tea.Cmd) {
 		if err != nil {
 			return m.reopenForm(v, noteform.FieldTags, err)
 		}
-		res, err := intake.Capture(m.store, time.Now(), v.Kind, v.Source, v.Title, v.Body, tags)
+		res, err := intake.CaptureIn(m.store, time.Now(), m.para.Dir(), v.Kind, v.Source, v.Title, v.Body, tags)
 		if errors.Is(err, intake.ErrEmpty) {
 			return m.reopenForm(v, noteform.FieldTitle, err)
 		}

@@ -16,10 +16,17 @@ import (
 	"github.com/tkilb/lazynote/internal/ui/panel"
 )
 
-// panelTitle is the label in the top border.
-const panelTitle = "Title"
+// The label in the top border: "Title" for a note, "Directory" for a folder.
+const (
+	panelTitle = "Title"
+	dirTitle   = "Directory"
+)
 
-var textStyle = lipgloss.NewStyle().Bold(true)
+var (
+	textStyle = lipgloss.NewStyle().Bold(true)
+	// dirStyle is the folder name, in the cyan of folders in PARA.
+	dirStyle = textStyle.Foreground(lipgloss.Color("6"))
+)
 
 // Model is the Title panel state. Methods return updated copies.
 type Model struct {
@@ -27,6 +34,8 @@ type Model struct {
 	// badge is the kind badge shown before the text, empty for none.
 	badge string
 	color lipgloss.Color
+	// dir is set while the panel shows a folder's name.
+	dir bool
 }
 
 // New returns an empty panel.
@@ -36,6 +45,13 @@ func New() Model { return Model{} }
 // no badge (for a folder, an unreadable note, or nothing selected).
 func (m Model) Set(text string) Model {
 	return Model{text: strings.TrimSpace(textsafe.SingleLine(text))}
+}
+
+// SetDir shows the name of the selected folder, labelled Directory.
+func (m Model) SetDir(name string) Model {
+	m = m.Set(name)
+	m.dir = true
+	return m
 }
 
 // SetNote shows a note's title led by the badge for its kind.
@@ -57,6 +73,18 @@ func (m Model) View(outerWidth, outerHeight int) string {
 		lead = pill + " "
 		textWidth -= ansi.StringWidth(lead)
 	}
-	body := lead + textStyle.Render(ansi.Truncate(m.text, max(textWidth, 1), "…"))
-	return panel.Frame(panelTitle, body, width, height, false)
+	if m.dir {
+		lead = " " // a one cell margin before the folder name
+		textWidth--
+	}
+	style := textStyle
+	if m.dir {
+		style = dirStyle
+	}
+	body := lead + style.Render(ansi.Truncate(m.text, max(textWidth, 1), "…"))
+	label := panelTitle
+	if m.dir {
+		label = dirTitle
+	}
+	return panel.Frame(label, body, width, height, false)
 }
