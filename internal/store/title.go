@@ -15,8 +15,12 @@ const (
 // safely, so the note is left exactly as it is.
 var ErrFrontmatterInvalid = errors.New("frontmatter is not valid")
 
-// assembleNote joins a properties block and a body into note bytes.
+// assembleNote joins a properties block and a body into note bytes, with the
+// properties made standard (see Frontmatter.Standardize).
 func assembleNote(fm *Frontmatter, body []byte, bom bool) ([]byte, error) {
+	if err := fm.Standardize(); err != nil {
+		return nil, err
+	}
 	block, err := fm.Marshal()
 	if err != nil {
 		return nil, err

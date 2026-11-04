@@ -79,7 +79,7 @@ func TestIntakeNoteTagsAndUnsetKind(t *testing.T) {
 	require.NoError(t, err)
 	n := ParseNote("n.md", data)
 	require.NoError(t, n.FrontmatterErr)
-	assert.Nil(t, n.Frontmatter.Get("kind"), "an unset kind writes no kind property")
+	assert.Empty(t, n.Frontmatter.Get("kind").Value, "an unset kind writes an empty kind property")
 	assert.Equal(t, KindUnset, n.Kind)
 	tags := n.Frontmatter.Get("tags")
 	require.NotNil(t, tags)
@@ -105,6 +105,6 @@ func TestExtractedNote(t *testing.T) {
 
 	plain, err := ExtractedNote("P.md", KindIdea, "daily 2026-10-29", "2026-10-30", "x\n", nil)
 	require.NoError(t, err)
-	assert.Nil(t, ParseNote("P.md", plain).Frontmatter.Get("related"), "no links means no related property")
+	assert.Empty(t, ParseNote("P.md", plain).Frontmatter.Get("related").Content, "no links means an empty related property")
 	assert.Equal(t, "daily 2026-10-29", ParseNote("P.md", plain).Frontmatter.Get("source").Value)
 }

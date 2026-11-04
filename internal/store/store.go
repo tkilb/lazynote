@@ -83,6 +83,9 @@ type Store interface {
 	// restores the exact previous bytes, and refuses (ErrChanged) when the
 	// note was changed meanwhile.
 	Edit(rel string, edit func(*Frontmatter)) (undo.Action, error)
+	// Conform makes the note at rel standard on disk (see
+	// Markdown.Conform), reporting whether it wrote anything.
+	Conform(rel string) (bool, error)
 	// Copy copies a file or a directory tree, giving every note in the copy
 	// a fresh uid and a title equal to its file name.
 	Copy(src, dst string) (undo.Action, CopyResult, error)

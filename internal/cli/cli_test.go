@@ -76,7 +76,7 @@ func TestAddTitleOnly(t *testing.T) {
 	assert.Equal(t, "inbox/Call mum.md\n", out, "prints the new note's path")
 
 	n := h.note("inbox/Call mum.md")
-	assert.Nil(t, n.Frontmatter.Get("kind"), "no --kind, no kind property")
+	assert.Empty(t, n.Frontmatter.Get("kind").Value, "no --kind, an empty kind property")
 	assert.Equal(t, "adhoc", n.Frontmatter.Get("source").Value, "the first configured source is the default")
 	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
 	assert.Empty(t, n.Frontmatter.Get("tags").Content)
@@ -162,7 +162,7 @@ func TestKindIsCaseInsensitiveAndUnsetIsAllowed(t *testing.T) {
 	assert.Equal(t, store.KindFact, h.note("inbox/A.md").Kind)
 	_, code, _, _ = h.run("add", "B", "--kind", "unset")
 	require.Equal(t, 0, code)
-	assert.Nil(t, h.note("inbox/B.md").Frontmatter.Get("kind"))
+	assert.Empty(t, h.note("inbox/B.md").Frontmatter.Get("kind").Value)
 }
 
 func TestAddedKindsAreAcceptedAndNamedInMessages(t *testing.T) {

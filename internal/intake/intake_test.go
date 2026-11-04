@@ -290,7 +290,7 @@ func TestCaptureWritesTagsAndOmitsAnUnsetKind(t *testing.T) {
 	require.NoError(t, err)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 	n := store.ParseNote("x.md", data)
-	assert.Nil(t, n.Frontmatter.Get("kind"))
+	assert.Empty(t, n.Frontmatter.Get("kind").Value)
 	assert.Len(t, n.Frontmatter.Get("tags").Content, 2)
 }
 
@@ -351,7 +351,7 @@ func TestExtractFromADailyNoteDoesNotLinkBack(t *testing.T) {
 		data, _ := os.ReadFile(filepath.Join(root, res.Rel))
 		n := store.ParseNote("x.md", data)
 		assert.Equal(t, "daily 2026-10-29", n.Frontmatter.Get("source").Value, "plain text, since the daily will be deleted")
-		assert.Nil(t, n.Frontmatter.Get("related"), "no link to a note that will disappear")
+		assert.Empty(t, n.Frontmatter.Get("related").Content, "no link to a note that will disappear")
 		assert.False(t, res.Unlinked)
 	}
 }
@@ -362,7 +362,7 @@ func TestExtractCannotLinkToANameWithLinkBreakingCharacters(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res.Unlinked)
 	data, _ := os.ReadFile(filepath.Join(root, res.Rel))
-	assert.Nil(t, store.ParseNote("x.md", data).Frontmatter.Get("related"))
+	assert.Empty(t, store.ParseNote("x.md", data).Frontmatter.Get("related").Content)
 }
 
 func TestExtractRefusals(t *testing.T) {

@@ -17,6 +17,11 @@ type Note struct {
 	// FrontmatterErr is set when a properties block exists but cannot be
 	// used. The block is still removed from Body and left untouched on disk.
 	FrontmatterErr error
+	// HasFrontmatter is set when the note starts with a closed properties
+	// block, valid or not. RawFrontmatter is that block as written, without
+	// its --- lines and the final line break.
+	HasFrontmatter bool
+	RawFrontmatter string
 	// Kind is the kind property, or KindUnset.
 	Kind Kind
 	// Body is the note text after the frontmatter, unmodified.
@@ -29,6 +34,8 @@ func ParseNote(name string, data []byte) Note {
 	raw, body, ok := splitFrontmatter(data)
 	n.Body = string(body)
 	if ok {
+		n.HasFrontmatter = true
+		n.RawFrontmatter = strings.TrimRight(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n")
 		n.Frontmatter, n.FrontmatterErr = ParseFrontmatter(raw)
 	}
 	n.Title = noteTitle(name)

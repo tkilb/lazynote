@@ -31,7 +31,7 @@ func TestBlankNote(t *testing.T) {
 	require.NotNil(t, n.Frontmatter)
 	assert.NotEmpty(t, n.Frontmatter.Get("uid").Value)
 	assert.Equal(t, "My Idea", n.Frontmatter.Get("title").Value, "the title property equals the file name")
-	assert.Nil(t, n.Frontmatter.Get("kind"), "the kind stays unset")
+	assert.Empty(t, n.Frontmatter.Get("kind").Value, "the kind stays unset")
 	assert.Equal(t, KindUnset, n.Kind)
 	assert.Empty(t, n.Body)
 	assert.Equal(t, "My Idea", n.Title)

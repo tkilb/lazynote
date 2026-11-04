@@ -92,3 +92,25 @@ func TestReadNote(t *testing.T) {
 		}
 	})
 }
+
+func TestParseNoteKeepsTheRawFrontmatter(t *testing.T) {
+	tests := []struct {
+		name, in string
+		has      bool
+		raw      string
+	}{
+		{"a block", "---\nuid: a\nkind: fact\n---\nbody\n", true, "uid: a\nkind: fact"},
+		{"an empty block", "---\n---\nbody\n", true, ""},
+		{"windows line endings", "---\r\nuid: a\r\n---\r\nbody\r\n", true, "uid: a"},
+		{"an invalid block is kept as written", "---\nkey: [oops\n---\nbody\n", true, "key: [oops"},
+		{"no block", "just text\n", false, ""},
+		{"an unclosed block is not one", "---\nuid: a\nbody\n", false, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := ParseNote("a.md", []byte(tt.in))
+			assert.Equal(t, tt.has, n.HasFrontmatter)
+			assert.Equal(t, tt.raw, n.RawFrontmatter)
+		})
+	}
+}

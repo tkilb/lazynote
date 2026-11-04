@@ -32,7 +32,7 @@ func TestEditChangesOnlyTheNamedPropertyAndAddsIdentity(t *testing.T) {
 	for _, pr := range n.Frontmatter.Properties() {
 		keys = append(keys, pr.Key)
 	}
-	assert.Equal(t, []string{"kind", "owner", "tags", "uid", "title"}, keys, "existing order kept, new keys appended")
+	assert.Equal(t, []string{"uid", "title", "kind", "source", "date", "tags", "people", "owner", "related"}, keys, "standard order, other properties kept")
 }
 
 func TestEditKeepsAnExistingUID(t *testing.T) {

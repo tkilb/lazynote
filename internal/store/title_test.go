@@ -27,7 +27,7 @@ func TestSetTitle(t *testing.T) {
 		for _, p := range n.Frontmatter.Properties() {
 			keys = append(keys, p.Key)
 		}
-		assert.Equal(t, []string{"uid", "tags", "kind", "title"}, keys)
+		assert.Equal(t, []string{"uid", "title", "kind", "source", "date", "tags", "people", "related"}, keys)
 	})
 
 	t.Run("replaces a different title in place", func(t *testing.T) {
@@ -35,7 +35,8 @@ func TestSetTitle(t *testing.T) {
 		require.NoError(t, err)
 		n := ParseNote("x.md", out)
 		assert.Equal(t, "New", n.Frontmatter.Get("title").Value)
-		assert.Equal(t, "title", n.Frontmatter.Properties()[0].Key)
+		assert.Equal(t, "uid", n.Frontmatter.Properties()[0].Key, "uid first")
+		assert.Equal(t, "title", n.Frontmatter.Properties()[1].Key)
 		assert.Equal(t, "body", n.Body)
 	})
 
