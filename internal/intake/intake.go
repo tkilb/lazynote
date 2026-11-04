@@ -91,6 +91,16 @@ func Name(title string) string {
 // given kind (KindUnset for none), source and tags. A missing title is
 // ErrEmpty.
 func Capture(s store.Store, now time.Time, kind store.Kind, source, title, body string, tags []string) (Result, error) {
+	return CaptureIn(s, now, "", kind, source, title, body, tags)
+}
+
+// CaptureIn is Capture for the folder dir, relative to the notebook root,
+// such as "projects/alpha". An empty dir means the inbox. A missing folder is
+// created, and one outside the notebook is refused.
+func CaptureIn(s store.Store, now time.Time, dir string, kind store.Kind, source, title, body string, tags []string) (Result, error) {
+	if dir == "" {
+		dir = inboxDir
+	}
 	name := Name(title)
 	if name == "" {
 		return Result{}, ErrEmpty
@@ -99,7 +109,7 @@ func Capture(s store.Store, now time.Time, kind store.Kind, source, title, body 
 	if body = strings.TrimSpace(body); body != "" {
 		text = body + "\n"
 	}
-	return createUnique(s, name, func(final string) ([]byte, error) {
+	return createUniqueIn(s, dir, name, func(final string) ([]byte, error) {
 		return store.IntakeNote(final, kind, source, now.Format(dayLayout), text, tags)
 	})
 }

@@ -51,6 +51,33 @@ func TestCaptureWritesAnInboxNoteAndIsUndoable(t *testing.T) {
 	assert.FileExists(t, filepath.Join(root, res.Rel))
 }
 
+func TestCaptureInSavesInTheGivenFolder(t *testing.T) {
+	tests := []struct {
+		name, dir, want string
+	}{
+		{"empty folder means the inbox", "", "inbox/Idea.md"},
+		{"a project folder", "projects/alpha", "projects/alpha/Idea.md"},
+		{"a folder that does not exist yet", "areas/new/deep", "areas/new/deep/Idea.md"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root, s := newStore(t)
+			res, err := CaptureIn(s, now, tt.dir, store.KindIdea, SourceAdhoc, "Idea", "body", nil)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, res.Rel)
+			assert.FileExists(t, filepath.Join(root, res.Rel))
+			require.NoError(t, res.Action.Undo())
+			assert.NoFileExists(t, filepath.Join(root, res.Rel))
+		})
+	}
+}
+
+func TestCaptureInRefusesAFolderOutsideTheNotebook(t *testing.T) {
+	_, s := newStore(t)
+	_, err := CaptureIn(s, now, "../outside", store.KindIdea, SourceAdhoc, "Idea", "body", nil)
+	assert.Error(t, err)
+}
+
 func TestCaptureWithoutABodyMakesAnEmptyBody(t *testing.T) {
 	root, s := newStore(t)
 	res, err := Capture(s, now, store.KindIdea, SourceAdhoc, "Just a title", "  ", nil)
