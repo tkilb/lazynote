@@ -29,7 +29,7 @@ var styles = map[store.Kind]struct {
 	store.KindFossil:   {"foss", lipgloss.Color("8")},
 	store.KindIdea:     {"idea", lipgloss.Color("4")},
 	store.KindDraft:    {"draf", lipgloss.Color("5")},
-	store.KindLink:      {"link", lipgloss.Color("111")},
+	store.KindLink:     {"link", lipgloss.Color("111")},
 }
 
 // addedColor is the color of a kind the config added without one.
