@@ -2,7 +2,6 @@
 // without opening the interface:
 //
 //	lazynote add [TITLE] [BODY] [--kind K] [--source S] [--tags a,b] [--clipboard]
-//	lazynote import FILE [--type transcript|note]
 //
 // Everything is optional but the title, which may also come from the first
 // line of piped or clipboard text. The commands print the new note's path on
@@ -77,15 +76,6 @@ func kindNames() string {
 	return strings.Join(names, ", ")
 }
 
-const importUsage = `Usage: lazynote import FILE [flags]
-
-Copies a file into the inbox and prints the new note's path. A note keeps its
-name and properties; a transcript becomes a note holding the text as written.
-
-Flags:
-  --type T       transcript or note (default: note for a .md file, else transcript)
-`
-
 // Run runs the command named by args[0], reporting whether it was one of
 // ours. Anything else is left to the caller.
 func Run(args []string, env Env) (handled bool, code int) {
@@ -95,8 +85,6 @@ func Run(args []string, env Env) (handled bool, code int) {
 	switch args[0] {
 	case "add":
 		return true, runAdd(args[1:], env)
-	case "import":
-		return true, runImport(args[1:], env)
 	}
 	return false, exitOK
 }
@@ -274,52 +262,6 @@ func externalText(clipboard bool, env Env) (text string, haveText bool, err erro
 		return "", false, errors.New("the piped text is too large")
 	}
 	return string(data), true, nil
-}
-
-func runImport(args []string, env Env) int {
-	fs := newFlagSet("import", importUsage, env)
-	typeFlag := fs.String("type", "", "")
-	pos, err := parse(fs, args)
-	if err != nil {
-		return flagError(err, importUsage, env)
-	}
-	switch {
-	case len(pos) == 0:
-		return fail(env, "give the file to import")
-	case len(pos) > 1:
-		return fail(env, "import takes one file")
-	}
-	path := pos[0]
-	kind := strings.ToLower(strings.TrimSpace(*typeFlag))
-	switch kind {
-	case "":
-		kind = "transcript"
-		if strings.EqualFold(filepath.Ext(path), ".md") {
-			kind = "note"
-		}
-	case "transcript", "note":
-	default:
-		return fail(env, "unknown type %q: use transcript or note", kind)
-	}
-
-	st, _, err := env.Open()
-	if err != nil {
-		return fail(env, "%v", err)
-	}
-	var res intake.Result
-	if kind == "note" {
-		res, err = intake.ImportNote(st, env.Now, path)
-	} else {
-		res, err = intake.ImportTranscript(st, env.Now, path)
-	}
-	if err != nil {
-		return fail(env, "could not import: %v", err)
-	}
-	if res.Unchanged {
-		fmt.Fprintln(env.Stderr, "lazynote: warning: the note's properties could not be read, so it was imported unchanged and keeps its original uid")
-	}
-	fmt.Fprintln(env.Stdout, filepath.ToSlash(res.Rel))
-	return exitOK
 }
 
 // SystemEnv is the Env for the real terminal: it reads os.Stdin when piped

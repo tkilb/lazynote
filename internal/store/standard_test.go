@@ -67,13 +67,10 @@ func TestCreatedNotesAreStandard(t *testing.T) {
 	require.NoError(t, err)
 	extracted, err := ExtractedNote("x.md", KindIdea, "adhoc", "2026-11-03", "body", []string{"[[O]]"})
 	require.NoError(t, err)
-	imported, err := ImportedNote([]byte("---\nz: 1\nrelated: []\ntags: [a]\n---\nb"), "x.md", "2026-11-03")
-	require.NoError(t, err)
 	want := append(append([]string(nil), standardKeys...), "related")
 	for name, data := range map[string][]byte{"blank": blank, "intake": intake, "extracted": extracted} {
 		assert.Equal(t, want, keysOf(t, data), name)
 	}
-	assert.Equal(t, append(append([]string(nil), standardKeys...), "z", "related"), keysOf(t, imported), "imported")
 }
 
 func writeNote(t *testing.T, root, rel, content string) string {

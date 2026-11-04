@@ -102,9 +102,6 @@ func (m model) finishIntake(res intake.Result, err error) model {
 	if res.Unlinked {
 		m = m.notify(popup.Warning, "The note's name has characters a link cannot hold (| # [ ] ^), so the new note does not link back to it.")
 	}
-	if res.Unchanged {
-		m = m.notify(popup.Warning, "The note's properties could not be read, so it was imported unchanged and keeps its original uid.")
-	}
 	if !m.para.Shows(res.Rel) {
 		m = m.notify(popup.Info, "Saved to "+savedPlace(res.Rel)+" as "+strings.TrimSuffix(filepath.Base(res.Rel), ".md")+".")
 	}
