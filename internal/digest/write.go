@@ -57,6 +57,8 @@ type Folder struct {
 	src  loader.Source
 	acts []undo.Action
 	done bool
+	// keepName stops Finish renaming the folder, for a re-run.
+	keepName bool
 }
 
 // Result describes a finished import.
@@ -91,11 +93,7 @@ func Begin(s store.Store, now time.Time, kind store.Kind, src loader.Source) (*F
 	if err != nil {
 		return nil, err
 	}
-	body := src.Text
-	if !strings.HasSuffix(body, "\n") {
-		body += "\n"
-	}
-	data, err := store.IntakeNote(SourceFile, kind, f.sourceProp(placeholderSource), now.Format(dayLayout), body, nil)
+	data, err := store.IntakeNote(SourceFile, kind, f.sourceProp(placeholderSource), now.Format(dayLayout), storedText(src.Text), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +134,9 @@ func (f *Folder) Finish(d Digest) (Result, error) {
 	var warnings []string
 	if err := f.renameToTopic(d.Topic); err != nil {
 		warnings = append(warnings, "could not name the folder after its topic")
+	}
+	if d.Unmerged {
+		warnings = append(warnings, "the parts of a large source could not be merged and are kept side by side")
 	}
 	src := f.sourceProp(sourceOr(d.Source))
 	if f.src.Kind != loader.Web {
@@ -182,6 +183,15 @@ func (f *Folder) create(name string, data []byte) error {
 	return nil
 }
 
+// storedText is text as _source.md holds it and as the agent receives it, so
+// a first run and a re-run see the same input: with a final line break.
+func storedText(text string) string {
+	if strings.HasSuffix(text, "\n") {
+		return text
+	}
+	return text + "\n"
+}
+
 // sourceProp is the value of the source property: the address for a web
 // import, else value.
 func (f *Folder) sourceProp(value string) string {
@@ -214,7 +224,7 @@ func (f *Folder) setSource(value string) error {
 // added when that is taken. An empty or unchanged name does nothing.
 func (f *Folder) renameToTopic(topic string) error {
 	name := cleanName(topic)
-	if name == "" {
+	if name == "" || f.keepName {
 		return nil
 	}
 	want := FolderPrefix + f.now.Format(dayLayout) + "_" + name
