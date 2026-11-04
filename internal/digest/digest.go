@@ -53,6 +53,9 @@ type Digest struct {
 	Source  string
 	Notes   []Note
 	Actions []string
+	// Unmerged is set when a large source was split and the merge failed, so
+	// the notes of the parts are kept side by side. The caller warns.
+	Unmerged bool
 }
 
 // Digester runs the agent over one source text.
