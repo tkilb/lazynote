@@ -111,9 +111,9 @@ Every note has one kind, stored in its `kind` property and shown as a badge:
 | `fossil` | Is or was true, but may have drifted |
 | `idea` | A loose thought |
 | `draft` | Incomplete, still being revised |
-| `web` | A web page saved by its address (the `source`) |
+| `link` | A link to a web page, saved by its address (the `source`) |
 
-Add your own kinds, or change how these look, with the `kinds` list in the config file. Each entry needs a `name`; `color` is a hex value such as `#ff8800`, `meaning` is a short description shown in the pickers, and `badge` is up to four characters for the PARA list (an added kind defaults to the first four letters of its name). An entry named like a built-in kind (`fact`, `web` and so on) changes that kind; any other name adds one. The pickers list the kinds in the order of your `kinds` list, followed by any built-in kinds you did not list, in their usual order. Built-in kinds cannot be removed. A note whose kind is not in the list reads as unset and is left alone, so nothing is lost if you remove one.
+Add your own kinds, or change how these look, with the `kinds` list in the config file. Each entry needs a `name`; `color` is a hex value such as `#ff8800`, `meaning` is a short description shown in the pickers, and `badge` is up to four characters for the PARA list (an added kind defaults to the first four letters of its name). An entry named like a built-in kind (`fact`, `link` and so on) changes that kind; any other name adds one. The pickers list the kinds in the order of your `kinds` list, followed by any built-in kinds you did not list, in their usual order. Built-in kinds cannot be removed. A note whose kind is not in the list reads as unset and is left alone, so nothing is lost if you remove one.
 
 ## Keys
 
@@ -175,7 +175,7 @@ New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source
 
 - **`A` Quick Add** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`lazynote add` still saves to the Inbox).
 - **`I` Import** reads a file: a transcript becomes a note holding the text unchanged (kind `rumor`), and a markdown note is copied in with its properties kept.
-- **`U` Clip** opens a form with a Title (optional) and a URL. The URL is filled in from your clipboard only when it holds a web address and nothing else. It saves a `web` note in the folder PARA is showing, named after the title you typed or, when you leave it blank, the page's own title (fetched for you), with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
+- **`U` Clip** opens a form with a Title (optional) and a URL. The URL is filled in from your clipboard only when it holds a web address and nothing else. It saves a `link` note in the folder PARA is showing, named after the title you typed or, when you leave it blank, the page's own title (fetched for you), with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
 - **Extract**: in Content, select lines and press `enter` to turn them into a new note that links back to the original.
 
 The same capture works from a shell, without opening the interface. Both commands print the new note's path:

@@ -342,7 +342,7 @@ func DailyFrom(s store.Store, t time.Time, template []byte) (Result, error) {
 
 // Clip creates a note for a web page in the folder dir (relative to the
 // notebook root; empty means the inbox): named after title (or, when the
-// title has nothing usable, after the address), with kind web and the
+// title has nothing usable, after the address), with kind link and the
 // address as its source, and an empty body. u must come from clip.ParseURL.
 func Clip(s store.Store, now time.Time, dir string, u *url.URL, title string) (Result, error) {
 	if dir == "" {
@@ -357,7 +357,7 @@ func Clip(s store.Store, now time.Time, dir string, u *url.URL, title string) (R
 	}
 	address := u.String()
 	return createUniqueIn(s, dir, name, func(final string) ([]byte, error) {
-		return store.IntakeNote(final, store.KindWeb, address, now.Format(dayLayout), "", nil)
+		return store.IntakeNote(final, store.KindLink, address, now.Format(dayLayout), "", nil)
 	})
 }
 

@@ -38,7 +38,7 @@ func TestParseKind(t *testing.T) {
 
 func TestKinds(t *testing.T) {
 	got := Kinds()
-	assert.Equal(t, []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb}, got)
+	assert.Equal(t, []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindLink}, got)
 	assert.NotContains(t, got, KindUnset)
 
 	got[0] = KindDraft
@@ -136,8 +136,8 @@ func TestSetKindOnANoteWithoutOne(t *testing.T) {
 }
 
 func TestWebKind(t *testing.T) {
-	assert.Equal(t, KindWeb, ParseKind(" Web "))
-	assert.Contains(t, Kinds(), KindWeb)
-	assert.NotEmpty(t, KindWeb.Meaning())
+	assert.Equal(t, KindLink, ParseKind(" Link "))
+	assert.Contains(t, Kinds(), KindLink)
+	assert.NotEmpty(t, KindLink.Meaning())
 	assert.Len(t, Kinds(), 7)
 }

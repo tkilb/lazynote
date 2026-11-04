@@ -29,8 +29,8 @@ const (
 	KindIdea Kind = "idea"
 	// KindDraft is a forming idea that is incomplete and still being revised.
 	KindDraft Kind = "draft"
-	// KindWeb is a saved web page; its address is the source property.
-	KindWeb Kind = "web"
+	// KindLink is a saved link to a web page; its address is the source property.
+	KindLink Kind = "link"
 )
 
 // Kinds returns the assignable kinds (not KindUnset) in display order: the
@@ -95,8 +95,8 @@ func (k Kind) Meaning() string {
 		return "Loose thought"
 	case KindDraft:
 		return "Incomplete, still revising"
-	case KindWeb:
-		return "Web page, saved by its address (o opens it)"
+	case KindLink:
+		return "Saved link to a web page (o opens it)"
 	}
 	return ""
 }

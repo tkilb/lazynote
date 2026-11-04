@@ -44,7 +44,7 @@ var (
 )
 
 func builtinKinds() []Kind {
-	return []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb}
+	return []Kind{KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindLink}
 }
 
 // ResetKinds goes back to the built-in kinds.

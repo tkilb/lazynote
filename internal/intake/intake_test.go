@@ -449,7 +449,7 @@ func TestClipWritesAWebNoteNamedAfterThePage(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root, res.Rel))
 	require.NoError(t, err)
 	n := store.ParseNote("x.md", data)
-	assert.Equal(t, store.KindWeb, n.Kind)
+	assert.Equal(t, store.KindLink, n.Kind)
 	assert.Equal(t, "https://example.com/a/b?x=1", n.Frontmatter.Get("source").Value)
 	assert.Equal(t, "2026-10-30", n.Frontmatter.Get("date").Value)
 	assert.Equal(t, "Tom a b", n.Frontmatter.Get("title").Value)

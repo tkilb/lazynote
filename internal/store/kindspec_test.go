@@ -18,11 +18,11 @@ func useKinds(t *testing.T, specs ...KindSpec) {
 func TestSetKindsFollowsTheConfigOrderBuiltInsIncluded(t *testing.T) {
 	useKinds(t,
 		KindSpec{Name: "recipe"},
-		KindSpec{Name: "web"},
+		KindSpec{Name: "link"},
 		KindSpec{Name: "fact"},
 	)
 	assert.Equal(t,
-		[]Kind{"recipe", KindWeb, KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft},
+		[]Kind{"recipe", KindLink, KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft},
 		Kinds(), "listed kinds come first in config order, then the built-ins not listed, in their own order")
 }
 
@@ -32,7 +32,7 @@ func TestSetKindsPutsAddedKindsInConfigOrderBeforeUnlistedBuiltIns(t *testing.T)
 		KindSpec{Name: "Quote"},
 	)
 	got := Kinds()
-	assert.Equal(t, []Kind{"recipe", "quote", KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindWeb}, got)
+	assert.Equal(t, []Kind{"recipe", "quote", KindFact, KindRumor, KindProposal, KindFossil, KindIdea, KindDraft, KindLink}, got)
 
 	assert.Equal(t, Kind("recipe"), ParseKind("  RECIPE "), "matching ignores case and space")
 	assert.Equal(t, "Something to cook", Kind("recipe").Meaning())
