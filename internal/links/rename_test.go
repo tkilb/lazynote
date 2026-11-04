@@ -304,3 +304,22 @@ func TestRenameToTitleOfAMissingNote(t *testing.T) {
 	_, err := RenameToTitle(s, x, "inbox/gone.md")
 	assert.Error(t, err)
 }
+
+func TestRenameCanChangeOnlyTheCase(t *testing.T) {
+	root, s, x := notebook(t, map[string]string{
+		"projects/PAW.md": "---\nuid: u1\ntitle: PAW\n---\nbody\n",
+		"inbox/a.md":      note("[[PAW]]"),
+	})
+
+	_, res, err := Rename(s, x, "projects/PAW.md", false, "paw")
+	require.NoError(t, err)
+	assert.Equal(t, RenameResult{Updated: 1}, res)
+
+	entries, err := os.ReadDir(filepath.Join(root, "projects"))
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "paw.md", entries[0].Name())
+	n := store.ParseNote("paw.md", []byte(readFile(t, root, "projects/paw.md")))
+	assert.Equal(t, "paw", n.Frontmatter.Get("title").Value)
+	assert.Contains(t, readFile(t, root, "inbox/a.md"), "[[paw]]")
+}

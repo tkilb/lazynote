@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -538,4 +539,56 @@ func TestExists(t *testing.T) {
 		_, err := s.Exists(rel)
 		assert.Error(t, err, rel)
 	}
+}
+
+// caseInsensitive reports whether dir's filesystem treats names that differ
+// only by case as the same item.
+func caseInsensitive(t *testing.T, dir string) bool {
+	t.Helper()
+	put(t, filepath.Join(dir, "Probe"), "x")
+	return exists(filepath.Join(dir, "probe"))
+}
+
+func TestMoveCaseOnlyRename(t *testing.T) {
+	root, _ := newRoot(t)
+	if !caseInsensitive(t, root) {
+		t.Skip("filesystem is case-sensitive; a case-only rename is an ordinary move")
+	}
+	put(t, filepath.Join(root, "inbox", "PAW.md"), "body")
+	put(t, filepath.Join(root, "projects", "PAW", "a.md"), "a")
+	s := NewMarkdown(root)
+
+	tests := []struct{ name, src, dst, content string }{
+		{"file", "inbox/PAW.md", "inbox/paw.md", "body"},
+		{"folder", "projects/PAW", "projects/paw", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			act, err := s.Move(tt.src, tt.dst)
+			require.NoError(t, err)
+			assert.Equal(t, filepath.Base(tt.dst), spelled(t, filepath.Join(root, tt.dst)))
+
+			require.NoError(t, act.Undo())
+			assert.Equal(t, filepath.Base(tt.src), spelled(t, filepath.Join(root, tt.src)))
+
+			require.NoError(t, act.Redo())
+			assert.Equal(t, filepath.Base(tt.dst), spelled(t, filepath.Join(root, tt.dst)))
+		})
+	}
+	assert.Equal(t, "body", read(t, filepath.Join(root, "inbox", "paw.md")))
+	assert.Equal(t, "a", read(t, filepath.Join(root, "projects", "paw", "a.md")))
+}
+
+// spelled returns the name path has in its folder, as stored on disk.
+func spelled(t *testing.T, path string) string {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Dir(path))
+	require.NoError(t, err)
+	for _, e := range entries {
+		if strings.EqualFold(e.Name(), filepath.Base(path)) {
+			return e.Name()
+		}
+	}
+	t.Fatalf("%s not found", path)
+	return ""
 }

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tkilb/lazynote/internal/undo"
 )
@@ -98,21 +99,41 @@ func moveItem(from, to string, want snapshot) ([]string, error) {
 	case got != want:
 		return nil, ErrChanged
 	}
-	if err := mustNotExist(to); err != nil {
-		return nil, err
-	}
-	if want.isDir && isInside(from, to) {
-		return nil, ErrIntoItself
+	caseOnly := isCaseOnlyRename(from, to)
+	if !caseOnly {
+		if err := mustNotExist(to); err != nil {
+			return nil, err
+		}
+		if want.isDir && isInside(from, to) {
+			return nil, ErrIntoItself
+		}
 	}
 	made, err := mkdirAllTracked(filepath.Dir(to))
 	if err != nil {
 		return nil, err
+	}
+	if caseOnly {
+		return nil, renameOrFail(from, to)
 	}
 	if err := renameNoReplace(from, to, want); err != nil {
 		removeEmpty(made)
 		return nil, err
 	}
 	return made, nil
+}
+
+// isCaseOnlyRename reports whether from and to are the same item in the same
+// folder, spelled with different case, as PAW and paw are on a
+// case-insensitive filesystem. Such a rename replaces nothing, so the checks
+// that to is free do not apply to it.
+func isCaseOnlyRename(from, to string) bool {
+	if from == to || filepath.Dir(from) != filepath.Dir(to) ||
+		!strings.EqualFold(filepath.Base(from), filepath.Base(to)) {
+		return false
+	}
+	a, errA := os.Lstat(from)
+	b, errB := os.Lstat(to)
+	return errA == nil && errB == nil && os.SameFile(a, b)
 }
 
 // renameNoReplace moves from to to without ever replacing an existing item,
