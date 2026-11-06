@@ -26,7 +26,7 @@ const (
 	SelectedRowBackground = lipgloss.Color("4")
 	// activeTabColor highlights the selected tab in a FrameTabs title, kept
 	// distinct from FocusedColor so it stays visible in a focused panel.
-	activeTabColor = lipgloss.Color("4")
+	activeTabColor = lipgloss.Color("#e78a4e")
 
 	// minWidth/minHeight guard against nonsensical (zero or negative) panel
 	// sizes, e.g. before the first tea.WindowSizeMsg arrives.

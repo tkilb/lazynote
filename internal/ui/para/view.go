@@ -107,11 +107,12 @@ func (m Model) headerRows() int {
 // path row, if there is one.
 func (m Model) listRows() int { return max(m.innerRows-m.headerRows(), 1) }
 
-// The path is drawn in the color of the folder rows: the folder you are in is
-// bold, the ones above it plain, and the slashes dim.
+// The path is drawn in blue (the color the selected tab once had): the folder
+// you are in is bold, the ones above it plain, and the slashes dim.
 var (
-	currentStyle = lipgloss.NewStyle().Bold(true).Foreground(dirColor)
-	parentStyle  = dirStyle
+	pathColor    = lipgloss.Color("4")
+	currentStyle = lipgloss.NewStyle().Bold(true).Foreground(pathColor)
+	parentStyle  = lipgloss.NewStyle().Foreground(pathColor)
 )
 
 // breadcrumb shows the folders below the tab root, such as "alpha/notes/" (the
