@@ -12,6 +12,7 @@ import (
 	"github.com/tkilb/para/internal/store"
 	"github.com/tkilb/para/internal/textsafe"
 	"github.com/tkilb/para/internal/ui/grep"
+	"github.com/tkilb/para/internal/ui/para"
 	"github.com/tkilb/para/internal/ui/picker"
 	"github.com/tkilb/para/internal/ui/popup"
 )
@@ -52,15 +53,23 @@ func (m model) openFileFinder() (model, tea.Cmd) {
 }
 
 // openTextFinder opens the text search: type words to list the lines, in
-// the notes in the folder PARA shows (and its subfolders), that contain all of
-// them (exact text, ignoring case), with a preview of the note beside the list.
-// It opens the note at the line chosen.
+// the notes of the notebook, that contain all of them (exact text, ignoring
+// case), with a preview of the note beside the list. The space and dir
+// filters above the list start at the folder PARA shows. It opens the note at
+// the line chosen.
 func (m model) openTextFinder() (model, tea.Cmd) {
-	res := findtext.Lines(m.store, findtext.InDir(m.links.Rels(), m.para.Dir()))
+	res := findtext.Lines(m.store, m.links.Rels())
 	if len(res.Lines) == 0 {
-		return m.notify(popup.Info, "There is no text to search in this folder."), nil
+		return m.notify(popup.Info, "There is no text to search in this notebook."), nil
 	}
-	g, cmd := grep.New(res.Lines, res.Truncated, previewLoader(m.store))
+	labels, dirs := para.SpaceDirs()
+	spaces := make([]grep.Space, len(dirs))
+	for i := range dirs {
+		spaces[i] = grep.Space{Label: labels[i], Dir: dirs[i]}
+	}
+	space, sub := m.para.Location()
+	g, cmd := grep.New(res.Lines, res.Truncated, previewLoader(m.store),
+		grep.Options{Spaces: spaces, Space: space, Dir: sub})
 	m.grep = &g
 	return m, cmd
 }

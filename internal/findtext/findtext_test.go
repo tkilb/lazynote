@@ -82,3 +82,20 @@ func TestInDirKeepsNotesInsideTheFolder(t *testing.T) {
 		assert.Equal(t, tt.want, InDir(rels, tt.dir), tt.dir)
 	}
 }
+
+func TestUnderPathMatchesPrefixIgnoringCase(t *testing.T) {
+	tests := []struct {
+		rel, prefix string
+		want        bool
+	}{
+		{"projects/deep/b.md", "", true},
+		{"projects/deep/b.md", "projects/", true},
+		{"projects/deep/b.md", "Projects/DEEP", true},
+		{"projects/deep/b.md", "/projects/de", true},
+		{"projects/deep/b.md", "areas/", false},
+		{"projects/deep/b.md", "deep", false},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, UnderPath(tt.rel, tt.prefix), tt.rel+" "+tt.prefix)
+	}
+}

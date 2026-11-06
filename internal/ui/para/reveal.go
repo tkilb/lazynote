@@ -47,3 +47,17 @@ func (m Model) Reveal(rel string) (Model, bool) {
 	}
 	return m, false
 }
+
+// Location returns the folder of the active tab (such as "projects") and the
+// folder inside it that the panel is in (such as "deep/er", empty at the top).
+func (m Model) Location() (space, sub string) {
+	return tabDefs[m.active].dir, filepath.ToSlash(m.tabs[m.active].dir)
+}
+
+// SpaceDirs returns the labels and folders of the tabs, in tab order.
+func SpaceDirs() (labels, dirs []string) {
+	for _, d := range tabDefs {
+		labels, dirs = append(labels, d.label), append(dirs, d.dir)
+	}
+	return labels, dirs
+}

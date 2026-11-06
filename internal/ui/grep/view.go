@@ -18,8 +18,10 @@ const (
 	boxMarginRows = 6
 	minWidth      = 60
 	maxWidth      = 200
-	minHeight     = 10
-	maxHeight     = 45
+	// filterRows is the height of the space and dir panels above the list.
+	filterRows = 3
+	minHeight  = 10
+	maxHeight  = 45
 	// leftPercent is the share of the width the list takes.
 	leftPercent = 50
 	// pathPercent is the most of a list row the path may take.
@@ -31,7 +33,7 @@ const (
 	beforeHit = 3
 	noQuery   = "(type to search)"
 	noMatch   = "(no matches)"
-	hint      = "enter open  esc cancel  ctrl+d/u preview"
+	hint      = "enter open  tab filters  esc cancel"
 )
 
 // The popup's colors: the gruvbox-material palette of the Content panel.
@@ -50,7 +52,7 @@ func dims(screenW, screenH int) (left, right, inner int) {
 	total := min(max(screenW-boxMarginCols, minWidth), maxWidth)
 	left = total * leftPercent / 100
 	outer := min(max(screenH-boxMarginRows, minHeight), maxHeight)
-	return left, total - left, outer - 2
+	return left, total - left, outer - 2 - filterRows
 }
 
 // pageRows is how many list rows the popup shows.
@@ -59,14 +61,49 @@ func (m Model) pageRows() int {
 	return max(inner-2, 1) // the query and the rule above the list
 }
 
-// View draws the popup for a terminal screenW x screenH: the query and the
-// lines on the left, the note around the highlighted line on the right.
+// View draws the popup for a terminal screenW x screenH: the space and dir
+// filters on top, flush with the panes below them, then the query and the
+// lines on the left and the note around the highlighted line on the right.
 func (m Model) View(screenW, screenH int) string {
 	left, right, inner := dims(screenW, screenH)
-	return lipgloss.JoinHorizontal(lipgloss.Top,
+	filters := lipgloss.JoinHorizontal(lipgloss.Top,
+		m.spacePane(left-2),
+		m.dirPane(right-2),
+	)
+	panes := lipgloss.JoinHorizontal(lipgloss.Top,
 		m.listPane(left-2, inner),
 		m.previewPane(right-2, inner),
 	)
+	return lipgloss.JoinVertical(lipgloss.Left, filters, panes)
+}
+
+// spacePane draws the space filter: the chosen space between arrows.
+func (m Model) spacePane(width int) string {
+	focused := m.focus == focusSpace
+	label := m.spaces[m.space].Label
+	body := dimStyle.Render("‹ ") + promptStyle.Render(label) + dimStyle.Render(" ›")
+	footer := panel.Footer{}
+	if focused {
+		footer = panel.Footer{Left: "←/→ or space change", Tint: true}
+	}
+	return panel.Frame("Space", ansi.Truncate(body, width, "…"), width, 1, focused, footer)
+}
+
+// dirPane draws the path filter, which is inside the chosen space.
+func (m Model) dirPane(width int) string {
+	focused := m.focus == focusDir
+	in := m.dirField
+	in.Width = max(width-1, 1)
+	body := dimStyle.Render("")
+	if prefix := m.spaces[m.space].Dir; prefix != "" && (focused || in.Value() != "") {
+		body = dimStyle.Render(prefix + "/")
+		in.Width = max(width-ansi.StringWidth(prefix)-2, 1)
+	}
+	footer := panel.Footer{}
+	if focused {
+		footer = panel.Footer{Left: "path in the space", Tint: true}
+	}
+	return panel.Frame("Dir", ansi.Truncate(body+in.View(), width, ""), width, 1, focused, footer)
 }
 
 // listPane draws the query, a rule and the matching lines.
@@ -98,7 +135,7 @@ func (m Model) listPane(width, height int) string {
 	} else if m.res.Truncated {
 		footer.Right = fmt.Sprintf("first %d of %d", len(m.res.Hits), m.res.Total)
 	}
-	return panel.Frame("Grep", strings.Join(lines, "\n"), width, height, true, footer)
+	return panel.Frame("Grep", strings.Join(lines, "\n"), width, height, m.focus == focusQuery, footer)
 }
 
 // listRow draws one hit: the path (folders dim and italic, the note's name

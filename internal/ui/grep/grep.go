@@ -5,6 +5,8 @@
 package grep
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -34,12 +36,45 @@ const (
 // them, for the preview.
 type Loader func(rel string) []string
 
+// Space is a folder of the notebook the search can be limited to.
+type Space struct {
+	Label, Dir string
+}
+
+// Options sets the filters the popup opens with.
+type Options struct {
+	// Spaces are the folders to choose from; "All" is added before them.
+	Spaces []Space
+	// Space is the Dir of the space chosen at first ("" for all).
+	Space string
+	// Dir is the folder path inside the space that the search starts in.
+	Dir string
+}
+
+// focus is the field the keys edit.
+type focus int
+
+const (
+	focusQuery focus = iota
+	focusSpace
+	focusDir
+	focusCount
+)
+
+const allLabel = "All"
+
 // Model is the popup state. Methods return updated copies.
 type Model struct {
 	field  textinput.Model
 	lines  []findtext.Line
-	capped bool // the lines were cut at findtext.MaxLines
-	load   Loader
+	scoped []findtext.Line // lines inside the space and the path filter
+
+	spaces   []Space // spaces[0] is All
+	space    int
+	dirField textinput.Model
+	focus    focus
+	capped   bool // the lines were cut at findtext.MaxLines
+	load     Loader
 
 	res    search.Result
 	cursor int
@@ -53,16 +88,78 @@ type Model struct {
 	screenW, screenH int
 }
 
-// New returns the popup over lines, which capped says were cut short. load
-// reads a note for the preview. The command blinks the query's cursor.
-func New(lines []findtext.Line, capped bool, load Loader) (Model, tea.Cmd) {
+// New returns the popup over lines, which capped says were cut short, opened
+// with the filters in opts. load reads a note for the preview. The command
+// blinks the query's cursor.
+func New(lines []findtext.Line, capped bool, load Loader, opts Options) (Model, tea.Cmd) {
 	field := textinput.New()
 	field.CharLimit = charLimit
 	field.Prompt = "> "
 	field.PromptStyle = promptStyle
 	field.Focus()
-	m := Model{field: field, lines: lines, capped: capped, load: load}
+
+	dir := textinput.New()
+	dir.CharLimit = charLimit
+	dir.Prompt = ""
+	dir.Placeholder = "(whole space)"
+
+	dir.SetValue(opts.Dir)
+	m := Model{field: field, dirField: dir, lines: lines, capped: capped, load: load}
+	m.spaces = append([]Space{{Label: allLabel}}, opts.Spaces...)
+	for i, sp := range m.spaces {
+		if i > 0 && sp.Dir == opts.Space {
+			m.space = i
+		}
+	}
+	m.scoped = m.scope()
 	return m, textinput.Blink
+}
+
+// scope returns the lines inside the chosen space and path filter. The path
+// is inside the space, or from the notebook root when the space is All.
+func (m Model) scope() []findtext.Line {
+	prefix := strings.TrimLeft(strings.TrimSpace(m.dirField.Value()), "/")
+	if d := m.spaces[m.space].Dir; d != "" {
+		prefix = d + "/" + prefix
+	}
+	if prefix == "" {
+		return m.lines
+	}
+	var out []findtext.Line
+	for _, l := range m.lines {
+		if findtext.UnderPath(l.Rel, prefix) {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// rescope applies the filters and searches again.
+func (m Model) rescope() Model {
+	m.scoped = m.scope()
+	m.res = search.Find(m.scoped, m.field.Value(), maxHits)
+	m.cursor, m.scroll = 0, 0
+	return m.syncPreview()
+}
+
+// setFocus moves the keyboard to field f.
+func (m Model) setFocus(f focus) (Model, tea.Cmd) {
+	m.focus = f
+	m.field.Blur()
+	m.dirField.Blur()
+	switch f {
+	case focusQuery:
+		return m, m.field.Focus()
+	case focusDir:
+		return m, m.dirField.Focus()
+	}
+	return m, nil
+}
+
+// pickSpace moves the chosen space delta places, wrapping.
+func (m Model) pickSpace(delta int) Model {
+	m.space = (m.space + delta + len(m.spaces)) % len(m.spaces)
+	return m.rescope()
 }
 
 // WithScreen tells the popup how big the terminal is, so paging and the
@@ -81,8 +178,10 @@ func (m Model) Chosen() (search.Hit, bool) {
 }
 
 // Update handles a message: the arrows move through the lines, page up and
-// down move by a page, ctrl+d and ctrl+u scroll the preview, enter chooses,
-// esc cancels, and anything else edits the query.
+// down move by a page, ctrl+d and ctrl+u scroll the preview, tab and
+// shift+tab move between the query, space and dir fields, enter chooses,
+// esc cancels, and anything else edits the field in focus (left, right, h, l
+// and space change the space).
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 	if k, ok := msg.(tea.KeyMsg); ok {
 		switch k.String() {
@@ -105,13 +204,37 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd, Outcome) {
 			return m.scrollPreview(-m.pageRows() / 2), nil, Pending
 		case "ctrl+d":
 			return m.scrollPreview(m.pageRows() / 2), nil, Pending
+		case "tab":
+			m, cmd := m.setFocus((m.focus + 1) % focusCount)
+			return m, cmd, Pending
+		case "shift+tab":
+			m, cmd := m.setFocus((m.focus + focusCount - 1) % focusCount)
+			return m, cmd, Pending
 		}
+		if m.focus == focusSpace {
+			switch k.String() {
+			case "left", "h", "shift+left":
+				return m.pickSpace(-1), nil, Pending
+			case "right", "l", " ", "shift+right":
+				return m.pickSpace(1), nil, Pending
+			}
+			return m, nil, Pending
+		}
+	}
+	if m.focus == focusDir {
+		before := m.dirField.Value()
+		var cmd tea.Cmd
+		m.dirField, cmd = m.dirField.Update(msg)
+		if m.dirField.Value() != before {
+			m = m.rescope()
+		}
+		return m, cmd, Pending
 	}
 	before := m.field.Value()
 	var cmd tea.Cmd
 	m.field, cmd = m.field.Update(msg)
 	if m.field.Value() != before {
-		m.res = search.Find(m.lines, m.field.Value(), maxHits)
+		m.res = search.Find(m.scoped, m.field.Value(), maxHits)
 		m.cursor, m.scroll = 0, 0
 		m = m.syncPreview()
 	}

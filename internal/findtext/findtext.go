@@ -94,3 +94,12 @@ func cut(line string) string {
 	}
 	return string(r[:maxLineRunes])
 }
+
+// UnderPath reports whether the note at rel starts with the slash path
+// prefix, ignoring case. A prefix may end partway through a folder name
+// ("proj" holds "projects/a.md"); an empty prefix holds every note.
+func UnderPath(rel, prefix string) bool {
+	rel = strings.ToLower(filepath.ToSlash(rel))
+	prefix = strings.ToLower(strings.TrimLeft(filepath.ToSlash(prefix), "/"))
+	return strings.HasPrefix(rel, prefix)
+}
