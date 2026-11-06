@@ -93,6 +93,7 @@ var globalBindings = []statusbar.Binding{
 	{Key: "+", Label: "zoom"},
 	{Key: "u", Label: "undo"},
 	{Key: "?", Label: "help"},
+	{Key: "ctrl+g", Label: "lazygit"},
 	{Key: "ctrl+l", Label: "refresh"},
 	{Key: "ctrl+z", Label: "suspend"},
 	{Key: "q", Label: "quit"},
@@ -431,6 +432,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case editDoneMsg:
 		return m.finishEdit(msg), tea.ClearScreen
+	case lazygitDoneMsg:
+		return m.finishLazygit(msg)
 	case tea.ResumeMsg:
 		// Returning from ctrl+z: repaint everything on the alternate screen.
 		return m, tea.ClearScreen
@@ -527,6 +530,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m = m.openDaily(0)
 	case "T":
 		m = m.openDaily(1)
+	case "ctrl+g":
+		return m.openLazygit()
 	case "ctrl+z":
 		return m.saveOrWarn(), tea.Suspend
 	case "ctrl+l":

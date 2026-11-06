@@ -23,6 +23,7 @@ var helpGlobalBindings = []statusbar.Binding{
 	{Key: "b/t/T", Label: "open yesterday's/today's/tomorrow's daily note"},
 	{Key: "u", Label: "undo"},
 	{Key: "ctrl+r", Label: "redo"},
+	{Key: "ctrl+g", Label: "open lazygit in the notebook's folder (para returns when you quit it)"},
 	{Key: "ctrl+l", Label: "refresh from disk"},
 	{Key: "ctrl+z", Label: "suspend"},
 	{Key: "+", Label: "zoom/unzoom the focused panel"},

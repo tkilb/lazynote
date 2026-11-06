@@ -136,6 +136,7 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | `o` | Open the web address in the selected note's `source` in the browser |
 | `b` / `t` / `T` | Open yesterday's / today's / tomorrow's daily note |
 | `u` / `ctrl+r` | Undo / redo |
+| `ctrl+g` | Open [lazygit](https://github.com/jesseduffield/lazygit) in the open notebook's folder, so a commit needs no `cd`. para hands the terminal over until you quit lazygit, then refreshes from disk and re-reads the git state in the status bar. lazygit must be on your `PATH` |
 | `ctrl+l` | Refresh from disk |
 | `ctrl+z` | Suspend |
 
