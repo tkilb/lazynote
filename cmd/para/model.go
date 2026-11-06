@@ -13,6 +13,7 @@ import (
 	"github.com/tkilb/para/internal/browser"
 	"github.com/tkilb/para/internal/clip"
 	"github.com/tkilb/para/internal/config"
+	"github.com/tkilb/para/internal/gitsync"
 	"github.com/tkilb/para/internal/links"
 	"github.com/tkilb/para/internal/store"
 	"github.com/tkilb/para/internal/ui/clipform"
@@ -164,9 +165,12 @@ type model struct {
 	// removed this session, and retentionDays is the daily retention.
 	notebooks      []config.Notebook
 	activeNotebook int
-	purged         map[string]bool
-	retentionDays  int
-	title          title.Model
+	// gitSync is the open notebook's git state (see gitsync.Status); nil when
+	// it is not in a repository or is not read yet.
+	gitSync       *gitsync.Status
+	purged        map[string]bool
+	retentionDays int
+	title         title.Model
 	// links indexes the related properties; nil until it could be built.
 	links *links.Index
 	shown shownNote
@@ -343,7 +347,7 @@ func (m model) showDirContent(entry store.Entry) content.Model {
 	return m.content.LoadListing(entry.Rel, m.dirItems(entries))
 }
 
-func (m model) Init() tea.Cmd { return nil }
+func (m model) Init() tea.Cmd { return m.readSync() }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
@@ -400,7 +404,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.para = m.para.Reload()
 			m = m.refreshLinks()
 		}
-		return m, nil
+		return m, m.readSync()
+	case syncReadMsg:
+		return m.finishSync(msg), nil
 	case clipFetchedMsg:
 		return m.finishClip(msg)
 	case importDoneMsg:
@@ -513,7 +519,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+l":
 		m.para = m.para.Reload()
 		m = m.refreshLinks()
-		cmd = tea.ClearScreen
+		cmd = tea.Batch(tea.ClearScreen, m.readSync())
 	case "u":
 		m = m.runHistory("Undid", "Undo", m.history.Undo)
 	case "ctrl+r":

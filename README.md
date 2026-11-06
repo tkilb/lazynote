@@ -98,7 +98,7 @@ para never edits files other than your notes, so it does not add that line for y
 | `4` | **Info** | The note's kind, source, date, tags, people and any other properties. |
 | | Title | The note's title, led by its kind badge. Not focusable. |
 
-Move between panels with `0`-`4` or `Tab`/`Shift+Tab`. The open notebook's name is shown in the status bar. Press `?` for the full key list of the focused panel. In that list, `/` searches the keys and descriptions (`n` and `N` step through matches).
+Move between panels with `0`-`4` or `Tab`/`Shift+Tab`. The open notebook's name is shown in the status bar. When the notebook is in a git repository, the name is followed by its git state with no space, such as `work(629,2↑3↓)`: `629` (red) is the files changed, added or removed since the last commit; `↑` (orange) is commits to push and `↓` (blue) is commits to pull, each shown only when it needs syncing. With an upstream and nothing to sync, a green `✓` is shown, such as `work(✓)`. Without an upstream only the uncommitted files are shown, such as `work(629)`, and nothing when there are none. Nothing is shown outside a repository. It reads local git state only, so `↓` is as of your last fetch; it refreshes at startup, when the terminal regains focus, when you switch notebooks and on `ctrl+l`. Press `?` for the full key list of the focused panel. In that list, `/` searches the keys and descriptions (`n` and `N` step through matches).
 
 ### Kinds
 

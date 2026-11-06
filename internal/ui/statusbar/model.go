@@ -5,6 +5,7 @@
 package statusbar
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -25,6 +26,11 @@ var (
 	bookStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("6"))
+
+	aheadStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#e78a4e"))
+	behindStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
+	inSyncStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	dirtyStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 
 	separator = "  "
 )
@@ -51,14 +57,55 @@ func Render(bindings []Binding) string {
 	return strings.Join(parts, separator)
 }
 
-// RenderWithBook renders the open notebook's name followed by a space and the
-// key bindings.
-func RenderWithBook(book string, bindings []Binding) string {
+// Sync is the open notebook's git state: the number of uncommitted files and,
+// with an upstream (Tracked), the commits to push (Ahead) and to pull (Behind).
+type Sync struct {
+	Tracked       bool
+	Ahead, Behind int
+	Uncommitted   int
+}
+
+// renderSync draws the sync state right after the notebook name, with no space
+// before it, as parts joined by commas: the uncommitted files "629" (red),
+// then the commits to push "2↑" (orange) and to pull "3↓" (blue), only the
+// sides that need syncing, or "✓" (green) when a tracked branch needs none.
+// Such as "(629,2↑3↓)" or "(✓)". Nothing is drawn for a nil sync or when
+// there is nothing to show.
+func renderSync(s *Sync) string {
+	if s == nil {
+		return ""
+	}
+	var parts []string
+	if s.Uncommitted > 0 {
+		parts = append(parts, dirtyStyle.Bold(true).Render(strconv.Itoa(s.Uncommitted)))
+	}
+	if s.Tracked {
+		var ud string
+		if s.Ahead > 0 {
+			ud += aheadStyle.Bold(true).Render(strconv.Itoa(s.Ahead) + "↑")
+		}
+		if s.Behind > 0 {
+			ud += behindStyle.Bold(true).Render(strconv.Itoa(s.Behind) + "↓")
+		}
+		if ud == "" {
+			ud = inSyncStyle.Bold(true).Render("✓")
+		}
+		parts = append(parts, ud)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return bookStyle.Render("(") + strings.Join(parts, bookStyle.Render(",")) + bookStyle.Render(")")
+}
+
+// RenderWithBook renders the open notebook's name, its git sync state when
+// sync is not nil, then a space and the key bindings.
+func RenderWithBook(book string, sync *Sync, bindings []Binding) string {
 	res := Render(bindings)
 	if book == "" {
 		return res
 	}
-	rendered := bookStyle.Render(book)
+	rendered := bookStyle.Render(book) + renderSync(sync)
 	if res == "" {
 		return rendered
 	}

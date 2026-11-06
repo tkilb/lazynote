@@ -69,7 +69,7 @@ func (m model) pickerKey(msg tea.Msg) (model, tea.Cmd) {
 		m.picker = nil
 		switch m.pickerOp {
 		case pickNotebook:
-			return m.chooseNotebook(item.Value), nil
+			return m.chooseNotebook(item.Value)
 		case pickFile:
 			return m.chooseFoundNote(item.Value), nil
 		case pickKind:

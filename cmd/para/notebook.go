@@ -78,12 +78,13 @@ func (m model) openNotebookPicker() (model, tea.Cmd) {
 }
 
 // chooseNotebook acts on the notebook picked in the picker.
-func (m model) chooseNotebook(value string) model {
+func (m model) chooseNotebook(value string) (model, tea.Cmd) {
 	i, err := strconv.Atoi(value)
 	if err != nil || i < 0 || i >= len(m.notebooks) || i == m.activeNotebook {
-		return m
+		return m, nil
 	}
-	return m.switchNotebook(i)
+	m = m.switchNotebook(i)
+	return m, m.readSync()
 }
 
 // shortPath shows the home directory as "~".
@@ -131,6 +132,7 @@ func (m model) switchNotebook(i int) model {
 	m.session.notebook = nb.Path
 	m = m.loadStickies().restorePosition().resizePanels()
 	m.activeNotebook = i
+	m.gitSync = nil
 	m.focus = panelPARA
 	return m.notifyPurge(purged, purgeErr).refreshLinks()
 }

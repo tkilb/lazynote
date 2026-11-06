@@ -273,15 +273,15 @@ func (m model) statusLine() string {
 		return m.input.field.View()
 	}
 	if m.clipping > 0 {
-		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "…", Label: "fetching the page title"}})
+		return statusbar.RenderWithBook(m.notebookName(), m.syncState(), []statusbar.Binding{{Key: "…", Label: "fetching the page title"}})
 	}
 	if m.importing > 0 {
-		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "…", Label: m.importLabel}})
+		return statusbar.RenderWithBook(m.notebookName(), m.syncState(), []statusbar.Binding{{Key: "…", Label: m.importLabel}})
 	}
 	if m.status != "" {
-		return statusbar.RenderWithBook(m.notebookName(), []statusbar.Binding{{Key: "✓", Label: m.status}})
+		return statusbar.RenderWithBook(m.notebookName(), m.syncState(), []statusbar.Binding{{Key: "✓", Label: m.status}})
 	}
-	return statusbar.RenderWithBook(m.notebookName(), m.bindings())
+	return statusbar.RenderWithBook(m.notebookName(), m.syncState(), m.bindings())
 }
 
 func capitalize(s string) string {
