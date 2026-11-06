@@ -31,6 +31,7 @@ var (
 	behindStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
 	inSyncStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	dirtyStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	cleanStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 
 	separator = "  "
 )
@@ -69,8 +70,9 @@ type Sync struct {
 // before it, as parts joined by commas: the uncommitted files "629" (red),
 // then the commits to push "2↑" (orange) and to pull "3↓" (blue), only the
 // sides that need syncing, or "✓" (green) when a tracked branch needs none.
-// Such as "(629,2↑3↓)" or "(✓)". Nothing is drawn for a nil sync or when
-// there is nothing to show.
+// A branch without an upstream that is fully committed shows a yellow "✓", as
+// there is nothing to compare with. Such as "(629,2↑3↓)" or "(✓)". Nothing is
+// drawn for a nil sync.
 func renderSync(s *Sync) string {
 	if s == nil {
 		return ""
@@ -92,8 +94,8 @@ func renderSync(s *Sync) string {
 		}
 		parts = append(parts, ud)
 	}
-	if len(parts) == 0 {
-		return ""
+	if len(parts) == 0 { // committed, with no upstream to compare with
+		parts = append(parts, cleanStyle.Bold(true).Render("✓"))
 	}
 	return bookStyle.Render("(") + strings.Join(parts, bookStyle.Render(",")) + bookStyle.Render(")")
 }
