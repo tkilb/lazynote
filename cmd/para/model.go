@@ -167,7 +167,11 @@ type model struct {
 	activeNotebook int
 	// gitSync is the open notebook's git state (see gitsync.Status); nil when
 	// it is not in a repository or is not read yet.
-	gitSync       *gitsync.Status
+	gitSync *gitsync.Status
+	// syncGate spaces out the reads that follow changes to the notes, and
+	// syncDirty is set when the notes changed since Update last looked.
+	syncGate      *gitsync.Gate
+	syncDirty     bool
 	purged        map[string]bool
 	retentionDays int
 	title         title.Model
@@ -259,7 +263,7 @@ func initialModel(s store.Store) model {
 	return model{
 		store: s, focus: panelPARA, para: para.New(s),
 		content: content.New(), info: info.New(), related: related.New(), title: title.New(), history: &undo.Stack{}, purged: map[string]bool{}, stickies: stickies.New(),
-		helpSearch: helppopup.NoSearch, sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
+		syncGate: gitsync.NewGate(syncDebounce), helpSearch: helppopup.NoSearch, sources: config.DefaultSources, writeClipboard: clipboard.WriteAll, fetcher: clip.NewFetcher(), openURL: browser.Open,
 	}
 }
 
@@ -347,7 +351,10 @@ func (m model) showDirContent(entry store.Entry) content.Model {
 	return m.content.LoadListing(entry.Rel, m.dirItems(entries))
 }
 
-func (m model) Init() tea.Cmd { return m.readSync() }
+func (m model) Init() tea.Cmd {
+	_, cmd := m.forceSync()
+	return cmd
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	next, cmd := m.update(msg)
@@ -357,6 +364,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	after = after.syncSelection()
 	after.content = after.content.SetFront(after.wantFront())
+	if after.syncDirty {
+		after.syncDirty = false
+		cmd = tea.Batch(cmd, after.requestSync())
+	}
 	return after, cmd
 }
 
@@ -404,7 +415,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.para = m.para.Reload()
 			m = m.refreshLinks()
 		}
-		return m, m.readSync()
+		return m, nil
+	case syncDueMsg:
+		return m, m.finishDue()
 	case syncReadMsg:
 		return m.finishSync(msg), nil
 	case clipFetchedMsg:
@@ -519,7 +532,9 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+l":
 		m.para = m.para.Reload()
 		m = m.refreshLinks()
-		cmd = tea.Batch(tea.ClearScreen, m.readSync())
+		var syncCmd tea.Cmd
+		m, syncCmd = m.forceSync()
+		cmd = tea.Batch(tea.ClearScreen, syncCmd)
 	case "u":
 		m = m.runHistory("Undid", "Undo", m.history.Undo)
 	case "ctrl+r":

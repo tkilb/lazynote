@@ -103,6 +103,7 @@ func main() {
 		start = start.notify(popup.Warning, fmt.Sprintf("Your position will not be saved: %s.", sessErr))
 	}
 	start = start.notifyPurge(purged, purgeErr).withSession(sess).refreshLinks()
+	start.syncDirty = false // Init reads the git state itself
 
 	// The alternate screen gives the program the full terminal buffer, so
 	// resuming after ctrl+z or an external editor repaints cleanly. Focus

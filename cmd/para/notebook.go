@@ -83,8 +83,7 @@ func (m model) chooseNotebook(value string) (model, tea.Cmd) {
 	if err != nil || i < 0 || i >= len(m.notebooks) || i == m.activeNotebook {
 		return m, nil
 	}
-	m = m.switchNotebook(i)
-	return m, m.readSync()
+	return m.switchNotebook(i).forceSync()
 }
 
 // shortPath shows the home directory as "~".

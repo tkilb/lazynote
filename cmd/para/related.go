@@ -48,5 +48,6 @@ func (m model) refreshLinks() model {
 		m = m.notify(popup.Warning, fmt.Sprintf("Could not read the related links: %s.", err))
 	}
 	m.shown = shownNote{}
+	m.syncDirty = true // the notes changed, so the git state may have
 	return m.syncStickies()
 }
