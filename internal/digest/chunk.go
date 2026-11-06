@@ -163,6 +163,7 @@ func concat(parts []Digest) Digest {
 		}
 		out.Notes = append(out.Notes, p.Notes...)
 		out.Actions = append(out.Actions, p.Actions...)
+		out.Facts = append(out.Facts, p.Facts...)
 	}
 	return out
 }
@@ -172,6 +173,7 @@ type partJSON struct {
 	Source  string     `json:"source"`
 	Notes   []noteJSON `json:"notes"`
 	Actions []string   `json:"actions"`
+	Facts   []string   `json:"facts"`
 }
 
 type noteJSON struct {
@@ -186,7 +188,7 @@ type noteJSON struct {
 func MarshalParts(parts []Digest) ([]byte, error) {
 	out := make([]partJSON, 0, len(parts))
 	for _, p := range parts {
-		pj := partJSON{Topic: p.Topic, Source: p.Source, Notes: []noteJSON{}, Actions: append([]string{}, p.Actions...)}
+		pj := partJSON{Topic: p.Topic, Source: p.Source, Notes: []noteJSON{}, Actions: append([]string{}, p.Actions...), Facts: append([]string{}, p.Facts...)}
 		for _, n := range p.Notes {
 			pj.Notes = append(pj.Notes, noteJSON{Title: n.Title, Body: n.Body, Tags: append([]string{}, n.Tags...)})
 		}

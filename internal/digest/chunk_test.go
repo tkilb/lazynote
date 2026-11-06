@@ -205,9 +205,11 @@ func TestChunkedAllPartsEmptyIsEmpty(t *testing.T) {
 
 func TestChunkedMergeFailureKeepsTheParts(t *testing.T) {
 	text, _ := threeParts()
+	partA, partB := part("", "A", "Call Sam"), part("Pricing", "B", "Send sheet", "Call Sam")
+	partA.Facts, partB.Facts = []string{"Fact A"}, []string{"Fact B"}
 	p := &scripted{answers: []Digest{
-		part("", "A", "Call Sam"),
-		part("Pricing", "B", "Send sheet", "Call Sam"),
+		partA,
+		partB,
 		{Topic: "Later", Source: "slack", Notes: []Note{{Title: "C", Body: "c"}, {Title: "D", Body: "d"}}},
 	}}
 	m := &merger{err: ErrBackendFailed}
@@ -221,6 +223,7 @@ func TestChunkedMergeFailureKeepsTheParts(t *testing.T) {
 	}
 	assert.Equal(t, []string{"A", "B", "C", "D"}, titles, "every note of every part, in order")
 	assert.Equal(t, []string{"Call Sam", "Send sheet", "Call Sam"}, d.Actions)
+	assert.Equal(t, []string{"Fact A", "Fact B"}, d.Facts)
 	assert.Equal(t, "Pricing", d.Topic, "the first topic there is")
 	assert.Equal(t, "meeting", d.Source, "the first source there is")
 }
@@ -267,7 +270,7 @@ func TestChunkedDefaultLimit(t *testing.T) {
 
 func TestMarshalParts(t *testing.T) {
 	data, err := MarshalParts([]Digest{
-		{Topic: "One", Source: "meeting", Notes: []Note{{Title: "A", Body: "a", Tags: []string{"x"}}}, Actions: []string{"Call"}},
+		{Topic: "One", Source: "meeting", Notes: []Note{{Title: "A", Body: "a", Tags: []string{"x"}}}, Actions: []string{"Call"}, Facts: []string{"Fact"}},
 		{Topic: "Two", Source: "slack"},
 	})
 	require.NoError(t, err)
@@ -277,11 +280,13 @@ func TestMarshalParts(t *testing.T) {
 	assert.Equal(t, "One", got[0]["topic"])
 	assert.Equal(t, "meeting", got[0]["source"])
 	assert.Equal(t, []any{"Call"}, got[0]["actions"])
+	assert.Equal(t, []any{"Fact"}, got[0]["facts"])
 	note := got[0]["notes"].([]any)[0].(map[string]any)
 	assert.Equal(t, "A", note["title"])
 	assert.Equal(t, []any{"x"}, note["tags"])
 	assert.Equal(t, []any{}, got[1]["notes"], "empty lists are lists, not null")
 	assert.Equal(t, []any{}, got[1]["actions"])
+	assert.Equal(t, []any{}, got[1]["facts"])
 }
 
 func TestCLIMerge(t *testing.T) {

@@ -33,7 +33,7 @@ agent and never call a model.
 | 7 | Press `Enter` on `standup.txt` | The box closes. The status bar shows `Importing…` and the app stays usable (move around, open notes). |
 | 8 | While it runs, press `I` again | A notice says an import is already running. |
 | 9 | When it finishes | Status bar: `✓ Imported: import_YYYY-MM-DD_<topic> (N files)`, gone after 5 seconds. The cursor has not moved. |
-| 10 | Open the new folder in the Inbox | `_source.md` first (your text, unchanged), concept notes, and `_actions.md` only if there were actions. Each file has `kind: import`, a source, the date and tags. Small talk is gone. |
+| 10 | Open the new folder in the Inbox | `_source.md` first (your text, unchanged), concept notes, `_actions.md` only if there were actions, and `_facts.md` only if there were facts. Each file has `kind: import`, a source, the date and tags. Small talk is gone. |
 | 11 | Press `u` | The whole folder disappears in one undo. `ctrl+r` brings it back. |
 | 12 | Put the cursor on the `import_` folder (or any file inside it) and press `I` | No box. Status: `Re-running import_…`, then `✓ Re-ran: …`. Old files are replaced; the folder keeps its name. |
 | 13 | Press `u` after a re-run | The previous files come back exactly as they were. |

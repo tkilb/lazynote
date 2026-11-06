@@ -19,6 +19,7 @@ type rawDigest struct {
 	Source  string    `json:"source"`
 	Notes   []rawNote `json:"notes"`
 	Actions []string  `json:"actions"`
+	Facts   []string  `json:"facts"`
 }
 
 type rawNote struct {
@@ -50,15 +51,16 @@ func Parse(data []byte, sources []string) (Digest, error) {
 		Source:  matchSource(raw.Source, sources),
 		Notes:   cleanNotes(raw.Notes),
 		Actions: cleanActions(raw.Actions),
+		Facts:   cleanFacts(raw.Facts),
 	}
-	if len(d.Notes) == 0 && len(d.Actions) == 0 {
+	if len(d.Notes) == 0 && len(d.Actions) == 0 && len(d.Facts) == 0 {
 		return Digest{}, ErrEmpty
 	}
 	return d, nil
 }
 
 // cleanName makes text a safe file name, with no leading underscore: files
-// the writer owns, _source.md and _actions.md, start with one.
+// the writer owns, _source.md, _actions.md and _facts.md, start with one.
 func cleanName(text string) string {
 	name := store.CleanTitle(textsafe.SingleLine(text))
 	return strings.TrimLeft(name, "_ ")
@@ -128,17 +130,26 @@ func cleanTags(raw []string) []string {
 }
 
 func cleanActions(raw []string) []string {
-	var actions []string
-	for _, a := range raw {
-		if len(actions) == MaxActions {
+	return cleanLines(raw, MaxActions, MaxActionRunes)
+}
+
+func cleanFacts(raw []string) []string {
+	return cleanLines(raw, MaxFacts, MaxFactRunes)
+}
+
+// cleanLines keeps up to max non-empty single-line items, each cut to runes.
+func cleanLines(raw []string, max, runes int) []string {
+	var out []string
+	for _, r := range raw {
+		if len(out) == max {
 			break
 		}
-		a = cutRunes(strings.TrimSpace(textsafe.SingleLine(a)), MaxActionRunes)
-		if a != "" {
-			actions = append(actions, a)
+		r = cutRunes(strings.TrimSpace(textsafe.SingleLine(r)), runes)
+		if r != "" {
+			out = append(out, r)
 		}
 	}
-	return actions
+	return out
 }
 
 func cutRunes(s string, n int) string {

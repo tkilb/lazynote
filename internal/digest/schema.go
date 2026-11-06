@@ -9,5 +9,6 @@ const Schema = `{"type":"object","properties":{` +
 	`"notes":{"type":"array","items":{"type":"object","properties":{` +
 	`"title":{"type":"string"},"body":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}}},` +
 	`"required":["title","body","tags"]}},` +
-	`"actions":{"type":"array","items":{"type":"string"}}},` +
-	`"required":["topic","source","notes","actions"]}`
+	`"actions":{"type":"array","items":{"type":"string"}},` +
+	`"facts":{"type":"array","items":{"type":"string"}}},` +
+	`"required":["topic","source","notes","actions","facts"]}`

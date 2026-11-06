@@ -24,13 +24,17 @@ const (
 	MaxActions = 100
 	// MaxActionRunes is the longest action item kept.
 	MaxActionRunes = 300
+	// MaxFacts is how many facts are kept.
+	MaxFacts = 200
+	// MaxFactRunes is the longest fact kept.
+	MaxFactRunes = 500
 )
 
 var (
 	// ErrBadJSON reports an answer that is not one JSON object of the expected
 	// shape. It carries no part of the answer.
 	ErrBadJSON = errors.New("the agent did not return the expected JSON")
-	// ErrEmpty reports an answer with no usable notes or action items.
+	// ErrEmpty reports an answer with no usable notes, action items or facts.
 	ErrEmpty = errors.New("the agent returned nothing usable")
 	// ErrTooLarge reports an answer over MaxInputBytes.
 	ErrTooLarge = errors.New("the agent's answer is too large")
@@ -53,6 +57,9 @@ type Digest struct {
 	Source  string
 	Notes   []Note
 	Actions []string
+	// Facts are standalone statements the source gives, kept apart from the
+	// notes so they can be picked into a notebook one at a time.
+	Facts []string
 	// Unmerged is set when a large source was split and the merge failed, so
 	// the notes of the parts are kept side by side. The caller warns.
 	Unmerged bool

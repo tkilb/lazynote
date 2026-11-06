@@ -213,6 +213,35 @@ func TestFinishWritesActionsApart(t *testing.T) {
 	}
 }
 
+func TestFinishWritesFactsApart(t *testing.T) {
+	root, f := begun(t)
+	d := sample
+	d.Facts = []string{"Renewals lock for a year", "Pro tier costs 40 a seat"}
+	res, err := f.Finish(d)
+	require.NoError(t, err)
+
+	n := readNote(t, root, res.Rel+"/_facts.md")
+	assert.Equal(t, "import", prop(n, "kind"))
+	assert.Equal(t, "- Renewals lock for a year\n- Pro tier costs 40 a seat\n", n.Body)
+	assert.Contains(t, res.Files, "_facts.md")
+}
+
+func TestFinishWithoutFactsWritesNoFactsFile(t *testing.T) {
+	root, f := begun(t)
+	res, err := f.Finish(sample)
+	require.NoError(t, err)
+	assert.NoFileExists(t, filepath.Join(root, res.Rel, "_facts.md"))
+	assert.NotContains(t, res.Files, "_facts.md")
+}
+
+func TestFinishNoteNamedFactsDoesNotCollide(t *testing.T) {
+	root, f := begun(t)
+	d := Digest{Notes: []Note{{Title: "Facts", Body: "x"}}, Facts: []string{"A fact"}}
+	res, err := f.Finish(d)
+	require.NoError(t, err)
+	assert.Equal(t, "A fact", strings.TrimSpace(strings.TrimPrefix(readNote(t, root, res.Rel+"/_facts.md").Body, "- ")))
+}
+
 func TestFinishWithoutActionsWritesNoActionsFile(t *testing.T) {
 	root, f := begun(t)
 	d := sample

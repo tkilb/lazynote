@@ -22,6 +22,8 @@ const (
 	SourceFile = "_source.md"
 	// ActionsFile holds the action items, and exists only when there are some.
 	ActionsFile = "_actions.md"
+	// FactsFile holds the facts, and exists only when there are some.
+	FactsFile = "_facts.md"
 
 	importKindName = "import"
 	inboxDir       = "inbox"
@@ -113,7 +115,7 @@ func (f *Folder) Action() undo.Action {
 }
 
 // Finish writes the checked digest d into the folder: one file per note,
-// _actions.md when there are action items, and the source set to the one the
+// _actions.md when there are action items, _facts.md when there are facts, and the source set to the one the
 // agent judged (a web import keeps its address). It then renames the folder
 // to the agent's topic, or leaves its name when there is none or the rename
 // fails. A note without a usable title or text is skipped. Nothing is
@@ -126,8 +128,8 @@ func (f *Folder) Finish(d Digest) (Result, error) {
 	if f.done {
 		return Result{}, ErrFinished
 	}
-	notes, actions := usableNotes(d.Notes), cleanActions(d.Actions)
-	if len(notes) == 0 && len(actions) == 0 {
+	notes, actions, facts := usableNotes(d.Notes), cleanActions(d.Actions), cleanFacts(d.Facts)
+	if len(notes) == 0 && len(actions) == 0 && len(facts) == 0 {
 		return Result{}, ErrEmpty
 	}
 	f.done = true
@@ -149,7 +151,7 @@ func (f *Folder) Finish(d Digest) (Result, error) {
 	finish := func(err error) (Result, error) {
 		return Result{Rel: f.Rel, Files: files, Action: f.Action(), KindMissing: f.kind == store.KindUnset, Warnings: warnings}, err
 	}
-	taken := map[string]bool{strings.ToLower(SourceFile): true, strings.ToLower(ActionsFile): true}
+	taken := map[string]bool{strings.ToLower(SourceFile): true, strings.ToLower(ActionsFile): true, strings.ToLower(FactsFile): true}
 	for _, n := range notes {
 		name := freeName(intake.Name(n.Title), taken)
 		data, err := store.IntakeNote(name, f.kind, src, f.now.Format(dayLayout), n.Body+"\n", n.Tags)
@@ -161,15 +163,21 @@ func (f *Folder) Finish(d Digest) (Result, error) {
 		}
 		files = append(files, name)
 	}
-	if len(actions) > 0 {
-		data, err := store.IntakeNote(ActionsFile, f.kind, src, f.now.Format(dayLayout), actionList(actions), nil)
+	for _, l := range []struct {
+		name  string
+		items []string
+	}{{ActionsFile, actions}, {FactsFile, facts}} {
+		if len(l.items) == 0 {
+			continue
+		}
+		data, err := store.IntakeNote(l.name, f.kind, src, f.now.Format(dayLayout), bulletList(l.items), nil)
 		if err == nil {
-			err = f.create(ActionsFile, data)
+			err = f.create(l.name, data)
 		}
 		if err != nil {
-			return finish(fmt.Errorf("write %s: %w", ActionsFile, err))
+			return finish(fmt.Errorf("write %s: %w", l.name, err))
 		}
-		files = append(files, ActionsFile)
+		files = append(files, l.name)
 	}
 	return finish(nil)
 }
@@ -309,9 +317,9 @@ func freeName(name string, taken map[string]bool) string {
 	return final
 }
 
-func actionList(actions []string) string {
+func bulletList(items []string) string {
 	var b strings.Builder
-	for _, a := range actions {
+	for _, a := range items {
 		b.WriteString("- " + a + "\n")
 	}
 	return b.String()

@@ -45,6 +45,24 @@ func TestParseValid(t *testing.T) {
 	assert.Equal(t, []string{"Send the price sheet"}, d.Actions)
 }
 
+func TestParseFacts(t *testing.T) {
+	d, err := parse(t, obj{"facts": []string{"  Renewals lock\nfor a year ", "", strings.Repeat("y", MaxFactRunes+50), "Tier\x1b[0m pro"}})
+	require.NoError(t, err, "facts alone are not empty")
+	assert.Empty(t, d.Notes)
+	require.Len(t, d.Facts, 3)
+	assert.Equal(t, "Renewals lock for a year", d.Facts[0])
+	assert.Len(t, []rune(d.Facts[1]), MaxFactRunes)
+	assert.Equal(t, "Tier[0m pro", d.Facts[2])
+
+	var many []string
+	for i := range MaxFacts + 5 {
+		many = append(many, strings.Repeat("a", i+1))
+	}
+	d, err = parse(t, obj{"facts": many})
+	require.NoError(t, err)
+	assert.Len(t, d.Facts, MaxFacts)
+}
+
 func TestParseActionsOnlyIsNotEmpty(t *testing.T) {
 	d, err := parse(t, obj{"notes": []obj{}, "actions": []string{"Call Sam"}})
 	require.NoError(t, err)
