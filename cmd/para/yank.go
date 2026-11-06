@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // yankContent copies the selected Content lines, or the cursor line, to the system

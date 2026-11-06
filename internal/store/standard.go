@@ -99,7 +99,7 @@ func (f *Frontmatter) isStandard(name string) bool {
 	return slices.Equal(keys[:len(standardHead)], standardHead) && keys[len(keys)-1] == relatedKey
 }
 
-// Conform makes the note at rel standard on disk, as it is when lazynote
+// Conform makes the note at rel standard on disk, as it is when para
 // writes it: the standard properties added, the title set to the file name,
 // and the order standard. It reports whether it wrote anything; a note that
 // is standard already is left as it is, and so is one whose properties

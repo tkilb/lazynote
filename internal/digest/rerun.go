@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tkilb/lazynote/internal/clip"
-	"github.com/tkilb/lazynote/internal/loader"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/clip"
+	"github.com/tkilb/para/internal/loader"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // ErrNotImport reports a folder that is not an import folder: its name does

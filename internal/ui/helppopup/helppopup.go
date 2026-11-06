@@ -24,8 +24,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/tkilb/lazynote/internal/ui/panel"
-	"github.com/tkilb/lazynote/internal/ui/statusbar"
+	"github.com/tkilb/para/internal/ui/panel"
+	"github.com/tkilb/para/internal/ui/statusbar"
 )
 
 // Section is a named group of bindings shown under its own header, e.g.

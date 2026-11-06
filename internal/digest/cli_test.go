@@ -123,7 +123,7 @@ func TestCLIDigestRunsInAnEmptyTemporaryDirectory(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, dir, cwd)
 	assert.NotEqual(t, wd, cwd, "never the project or the notebook")
-	assert.Equal(t, "lazynote-digest-", filepath.Base(cwd)[:len("lazynote-digest-")], "a fresh directory made for the run")
+	assert.Equal(t, "para-digest-", filepath.Base(cwd)[:len("para-digest-")], "a fresh directory made for the run")
 	_, statErr := os.Stat(cwd)
 	assert.True(t, os.IsNotExist(statErr), "the directory is removed afterwards")
 }

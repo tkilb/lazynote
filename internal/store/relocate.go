@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // Errors returned by write operations. Like the others they never echo
@@ -47,7 +47,7 @@ func takeSnapshot(path string) (snapshot, error) {
 
 // relocation is one item that lives at a before the action and at b after
 // it. Every reversible write is a relocation: a move goes src to dst, a
-// trash goes the item to a slot under .lazynote/trash, and a create or copy
+// trash goes the item to a slot under .para/trash, and a create or copy
 // is the reverse (its undo goes the new item to a slot). Nothing is ever
 // deleted by an undo, so nothing is lost.
 type relocation struct {

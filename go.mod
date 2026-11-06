@@ -1,4 +1,4 @@
-module github.com/tkilb/lazynote
+module github.com/tkilb/para
 
 go 1.25.0
 

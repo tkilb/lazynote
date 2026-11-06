@@ -1,4 +1,4 @@
-// Command lazynote is a TUI note browser.
+// Command para is a TUI note browser.
 package main
 
 import (
@@ -10,11 +10,11 @@ import (
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/cli"
-	"github.com/tkilb/lazynote/internal/config"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/popup"
-	"github.com/tkilb/lazynote/internal/version"
+	"github.com/tkilb/para/internal/cli"
+	"github.com/tkilb/para/internal/config"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/popup"
+	"github.com/tkilb/para/internal/version"
 )
 
 // startup is what the config gives the interface and the shell commands.
@@ -72,7 +72,7 @@ func isVersionArg(args []string) bool {
 
 func main() {
 	if isVersionArg(os.Args[1:]) {
-		fmt.Printf("lazynote %s\n", version.Version)
+		fmt.Printf("para %s\n", version.Version)
 		return
 	}
 	open := func() (store.Store, []string, error) {
@@ -85,7 +85,7 @@ func main() {
 
 	boot, err := openStore()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "lazynote: %v\n", err)
+		fmt.Fprintf(os.Stderr, "para: %v\n", err)
 		os.Exit(1)
 	}
 	sess, sessErr := openSession(boot.root)
@@ -115,10 +115,10 @@ func main() {
 	p := tea.NewProgram(start, opts...)
 	final, err := p.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running lazynote: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error running para: %v\n", err)
 		os.Exit(1)
 	}
 	if m, ok := final.(model); ok && m.saveErr != nil {
-		fmt.Fprintf(os.Stderr, "lazynote: could not save your position: %v\n", m.saveErr)
+		fmt.Fprintf(os.Stderr, "para: could not save your position: %v\n", m.saveErr)
 	}
 }

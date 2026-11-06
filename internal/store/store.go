@@ -5,7 +5,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // Errors returned by Store implementations. Like the path-safety errors,
@@ -22,7 +22,7 @@ var errNotDir = syscall.ENOTDIR
 // maxNoteBytes bounds how much of a single note is read into memory.
 const maxNoteBytes = 10 << 20
 
-// MaxNoteBytes is the largest file lazynote reads as a note.
+// MaxNoteBytes is the largest file para reads as a note.
 const MaxNoteBytes = maxNoteBytes
 
 // Entry is one row of a directory listing.
@@ -89,6 +89,6 @@ type Store interface {
 	// Copy copies a file or a directory tree, giving every note in the copy
 	// a fresh uid and a title equal to its file name.
 	Copy(src, dst string) (undo.Action, CopyResult, error)
-	// Trash moves a file or directory into .lazynote/trash.
+	// Trash moves a file or directory into .para/trash.
 	Trash(rel string) (undo.Action, error)
 }

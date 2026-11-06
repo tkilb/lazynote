@@ -1,6 +1,6 @@
 package para
 
-import "github.com/tkilb/lazynote/internal/undo"
+import "github.com/tkilb/para/internal/undo"
 
 // Effect is what a key press asks the root model to do besides updating the
 // panel: record an undo action, show a message, or ask for confirmation.

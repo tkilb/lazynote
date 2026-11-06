@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 // MaxBytes is the most text one import reads: the same limit as a note.

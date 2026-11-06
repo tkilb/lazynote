@@ -9,10 +9,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/ui/noteform"
-	"github.com/tkilb/lazynote/internal/ui/para"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/ui/noteform"
+	"github.com/tkilb/para/internal/ui/para"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // startQuickAdd opens the Quick Add form. The note is saved in the folder PARA

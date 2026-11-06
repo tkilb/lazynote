@@ -101,7 +101,7 @@ func (c CLI) args() []string {
 }
 
 func (c CLI) run(ctx context.Context, source string) ([]byte, error) {
-	dir, err := os.MkdirTemp("", "lazynote-digest-")
+	dir, err := os.MkdirTemp("", "para-digest-")
 	if err != nil {
 		return nil, fmt.Errorf("%w: no temporary directory", ErrBackendFailed)
 	}

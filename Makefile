@@ -1,8 +1,8 @@
-BINARY  := lazynote
+BINARY  := para
 INSTALL_DIR := $(HOME)/bin
-CMD_PKG := ./cmd/lazynote
+CMD_PKG := ./cmd/para
 VERSION := $(shell cat VERSION)
-LDFLAGS := -X github.com/tkilb/lazynote/internal/version.Version=$(VERSION)
+LDFLAGS := -X github.com/tkilb/para/internal/version.Version=$(VERSION)
 
 .PHONY: build install test clean release minor major patch
 

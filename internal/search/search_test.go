@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/findtext"
+	"github.com/tkilb/para/internal/findtext"
 )
 
 func line(rel string, index int, text string) findtext.Line {

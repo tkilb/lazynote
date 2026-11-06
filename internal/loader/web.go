@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/clip"
+	"github.com/tkilb/para/internal/clip"
 )
 
 const (

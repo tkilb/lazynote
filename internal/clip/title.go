@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/tkilb/lazynote/internal/textsafe"
+	"github.com/tkilb/para/internal/textsafe"
 )
 
 var titleTag = regexp.MustCompile(`(?is)<title(?:\s[^>]*)?>(.*?)</title\s*>`)

@@ -14,9 +14,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/kindstyle"
-	"github.com/tkilb/lazynote/internal/ui/panel"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/kindstyle"
+	"github.com/tkilb/para/internal/ui/panel"
 )
 
 const (

@@ -6,8 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/editor"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/editor"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // editDoneMsg arrives when the editor exits; err is nil on success.

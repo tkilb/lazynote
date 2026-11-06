@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // askDelete asks for confirmation before trashing or permanently deleting

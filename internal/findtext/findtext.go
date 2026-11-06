@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/textsafe"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/textsafe"
 )
 
 const (

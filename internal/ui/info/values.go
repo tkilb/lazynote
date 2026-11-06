@@ -5,7 +5,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/textsafe"
+	"github.com/tkilb/para/internal/textsafe"
 )
 
 const (

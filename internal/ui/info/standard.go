@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 const (

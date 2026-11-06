@@ -3,10 +3,10 @@ package main
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/kindstyle"
-	"github.com/tkilb/lazynote/internal/ui/para"
-	"github.com/tkilb/lazynote/internal/ui/picker"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/kindstyle"
+	"github.com/tkilb/para/internal/ui/para"
+	"github.com/tkilb/para/internal/ui/picker"
 )
 
 const setKindTitle = "Set kind"

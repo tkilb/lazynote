@@ -18,7 +18,7 @@ const (
 	maxBodyBytes   = 512 << 10
 	maxRedirects   = 3
 	maxHeaderBytes = 64 << 10
-	userAgent      = "lazynote (note clipper)"
+	userAgent      = "para (note clipper)"
 )
 
 // errPrivate is why a connection was refused; it never reaches the user.

@@ -5,8 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 const moveTitle = "Move to"

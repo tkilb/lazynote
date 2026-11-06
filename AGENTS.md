@@ -1,4 +1,4 @@
-# lazynote
+# para
 
 A TUI note browser in Go with Bubble Tea, modeled on `~/Git/lazytask`.
 There is no plan file. `README.md`, the code and its tests record the current
@@ -8,13 +8,13 @@ check for the import.
 ## Commands
 
 - Go 1.25 (`go.mod` declares 1.25.0, which `modernc.org/sqlite` requires).
-- Build: `make build` (writes the `lazynote` binary, which is git-ignored).
+- Build: `make build` (writes the `para` binary, which is git-ignored).
 - Install: `make install` (builds, then copies the binary to `~/bin`, which must
   be on `PATH`).
 - Test: `make test` (`go test ./...`).
 - Both `go build ./...` and `go test ./...` must pass before a commit, and
   after a commit that adds files, from a clean clone (a bad `.gitignore` once
-  hid `cmd/lazynote/` from every commit).
+  hid `cmd/para/` from every commit).
 
 ## Testing policy
 
@@ -22,7 +22,7 @@ Tests cover engine packages only (`internal/store`, `internal/state`,
 `internal/undo`, `internal/config`, `internal/intake`, `internal/cli`,
 `internal/digest`, `internal/loader`, `internal/clip`, the link index). Use table-driven tests
 against temp directories; never touch a real notebook or the real state
-database. UI packages (`cmd/lazynote`, `internal/ui/*`) have no automated
+database. UI packages (`cmd/para`, `internal/ui/*`) have no automated
 tests; each UI chunk ships a manual QA note instead. This deliberately
 deviates from the organization 80% coverage policy (project owner decision).
 

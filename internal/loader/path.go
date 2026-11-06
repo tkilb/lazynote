@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/clip"
+	"github.com/tkilb/para/internal/clip"
 )
 
 // ResolveFile turns what the user typed into the path to read. A bare name,

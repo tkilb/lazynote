@@ -8,8 +8,8 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // linkBreakers are characters that cannot be part of a note name inside a

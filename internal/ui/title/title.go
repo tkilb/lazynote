@@ -10,10 +10,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/textsafe"
-	"github.com/tkilb/lazynote/internal/ui/kindstyle"
-	"github.com/tkilb/lazynote/internal/ui/panel"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/textsafe"
+	"github.com/tkilb/para/internal/ui/kindstyle"
+	"github.com/tkilb/para/internal/ui/panel"
 )
 
 // The label in the top border: "Title" for a note, "Directory" for a folder.

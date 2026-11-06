@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/links"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/picker"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/links"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/picker"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 const addReferenceTitle = "Add reference"

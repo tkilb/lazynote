@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/undo"
 )
 
 func put(t *testing.T, path, content string) {
@@ -39,11 +39,11 @@ func bump(t *testing.T, path, content string) {
 	require.NoError(t, os.Chtimes(path, later, later))
 }
 
-// trashed lists the files stored under .lazynote/trash.
+// trashed lists the files stored under .para/trash.
 func trashed(t *testing.T, root string) []string {
 	t.Helper()
 	var files []string
-	_ = filepath.WalkDir(filepath.Join(root, ".lazynote", "trash"), func(p string, d os.DirEntry, err error) error {
+	_ = filepath.WalkDir(filepath.Join(root, ".para", "trash"), func(p string, d os.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
 			files = append(files, p)
 		}
@@ -69,7 +69,7 @@ func TestCreate(t *testing.T) {
 	require.NoError(t, act.Redo())
 	assert.Equal(t, "hello", read(t, filepath.Join(root, "inbox", "deep", "new.md")))
 	assert.Empty(t, trashed(t, root))
-	assert.False(t, exists(filepath.Join(root, ".lazynote")), "empty trash folders are cleaned up")
+	assert.False(t, exists(filepath.Join(root, ".para")), "empty trash folders are cleaned up")
 }
 
 func TestCreateNeverOverwrites(t *testing.T) {
@@ -246,7 +246,7 @@ func TestTrash(t *testing.T) {
 
 	require.NoError(t, act.Undo())
 	assert.Equal(t, "body", read(t, filepath.Join(root, "inbox", "n.md")))
-	assert.False(t, exists(filepath.Join(root, ".lazynote")))
+	assert.False(t, exists(filepath.Join(root, ".para")))
 
 	require.NoError(t, act.Redo())
 	assert.False(t, exists(filepath.Join(root, "inbox", "n.md")))

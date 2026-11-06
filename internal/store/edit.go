@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // Edit implements Store.

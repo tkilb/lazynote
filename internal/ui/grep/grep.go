@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/findtext"
-	"github.com/tkilb/lazynote/internal/search"
+	"github.com/tkilb/para/internal/findtext"
+	"github.com/tkilb/para/internal/search"
 )
 
 const (

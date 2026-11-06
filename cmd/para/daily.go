@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // maxTemplateBytes bounds a template file, as a note is bounded.

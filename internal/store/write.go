@@ -9,12 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // trashRel is the notebook-relative folder that holds trashed items. Each
 // trashed item gets its own slot folder so names never collide.
-const trashRel = ".lazynote/trash"
+const trashRel = ".para/trash"
 
 const slotIDBytes = 8
 
@@ -114,7 +114,7 @@ func (m *Markdown) Move(src, dst string) (undo.Action, error) {
 	return r.action("move " + filepath.Base(from)), nil
 }
 
-// Trash moves the item at rel into .lazynote/trash. Undo restores it, and
+// Trash moves the item at rel into .para/trash. Undo restores it, and
 // refuses when its original path is taken or the item changed.
 func (m *Markdown) Trash(rel string) (undo.Action, error) {
 	from, err := ResolveInRoot(m.root, rel)

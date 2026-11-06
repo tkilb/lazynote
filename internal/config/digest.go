@@ -129,7 +129,7 @@ func parseDigestTimeout(n *yaml.Node) (time.Duration, error) {
 func promptPath(key string, n *yaml.Node, home string) (string, error) {
 	p := strings.TrimSpace(n.Value)
 	if n.Kind != yaml.ScalarNode || p == "" {
-		return "", fmt.Errorf("digest %s must be the path of a file, for example: ~/.config/lazynote/import-prompt.md", key)
+		return "", fmt.Errorf("digest %s must be the path of a file, for example: ~/.config/para/import-prompt.md", key)
 	}
 	return expandHome(p, home), nil
 }

@@ -1,6 +1,6 @@
 package para
 
-import "github.com/tkilb/lazynote/internal/store"
+import "github.com/tkilb/para/internal/store"
 
 // KindRequest asks to choose a new kind for the note at Rel, which has
 // Current now.

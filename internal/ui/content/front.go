@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/tkilb/lazynote/internal/textsafe"
+	"github.com/tkilb/para/internal/textsafe"
 )
 
 // cleanFront makes the frontmatter lines safe to show: each is one line of

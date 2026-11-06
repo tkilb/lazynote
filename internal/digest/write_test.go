@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/loader"
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/loader"
+	"github.com/tkilb/para/internal/store"
 )
 
 var day = time.Date(2026, 11, 3, 14, 30, 0, 0, time.Local)

@@ -3,7 +3,7 @@ package para
 import (
 	"path/filepath"
 
-	"github.com/tkilb/lazynote/internal/state"
+	"github.com/tkilb/para/internal/state"
 )
 
 // Snapshot returns the position to remember: the active tab and, for each

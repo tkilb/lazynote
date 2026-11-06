@@ -12,7 +12,7 @@ import (
 func TestParseDigestDefaults(t *testing.T) {
 	const nb = "notebooks:\n  - /tmp\n"
 	home := t.TempDir()
-	dir := filepath.Join(home, ".config", "lazynote")
+	dir := filepath.Join(home, ".config", "para")
 	want := Digest{
 		Enabled:     false,
 		Command:     "claude",
@@ -56,8 +56,8 @@ func TestParseDigest(t *testing.T) {
 			assert.Equal(t, filepath.Join(home, "p", "main.md"), d.Prompt)
 			assert.Equal(t, filepath.Join(home, "p", "merge.md"), d.MergePrompt)
 		}},
-		{"absolute prompt path", "digest:\n  prompt: /etc/lazynote/main.md\n", func(t *testing.T, d Digest) {
-			assert.Equal(t, "/etc/lazynote/main.md", d.Prompt)
+		{"absolute prompt path", "digest:\n  prompt: /etc/para/main.md\n", func(t *testing.T, d Digest) {
+			assert.Equal(t, "/etc/para/main.md", d.Prompt)
 		}},
 	}
 	for _, tt := range tests {

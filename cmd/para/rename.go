@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/links"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/para"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/links"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/para"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // startRename carries out a rename asked for by the PARA panel. When other

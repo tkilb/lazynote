@@ -5,9 +5,9 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/content"
-	"github.com/tkilb/lazynote/internal/ui/kindstyle"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/content"
+	"github.com/tkilb/para/internal/ui/kindstyle"
 )
 
 // dirItems turns the entries of a folder into Content's listing, in the order

@@ -152,7 +152,7 @@ func TestDelete(t *testing.T) {
 
 	require.NoError(t, s.Delete("inbox/n.md"))
 	assert.False(t, exists(filepath.Join(root, "inbox", "n.md")))
-	assert.False(t, exists(filepath.Join(root, ".lazynote")), "permanent delete does not use the trash")
+	assert.False(t, exists(filepath.Join(root, ".para")), "permanent delete does not use the trash")
 
 	require.NoError(t, s.Delete("projects/p"))
 	assert.False(t, exists(filepath.Join(root, "projects", "p")), "the whole tree goes, attachments included")

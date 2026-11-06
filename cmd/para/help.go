@@ -5,8 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/ui/helppopup"
-	"github.com/tkilb/lazynote/internal/ui/statusbar"
+	"github.com/tkilb/para/internal/ui/helppopup"
+	"github.com/tkilb/para/internal/ui/statusbar"
 )
 
 // helpGlobalBindings are the keys that work whatever panel has focus. Panel

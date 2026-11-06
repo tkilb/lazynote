@@ -7,9 +7,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/textsafe"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/textsafe"
 )
 
 const fallbackSource = "adhoc"

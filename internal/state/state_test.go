@@ -25,15 +25,15 @@ func TestDir(t *testing.T) {
 		env  map[string]string
 		want string
 	}{
-		{"override wins", map[string]string{"LAZYNOTE_STATE_DIR": "/o", "XDG_STATE_HOME": "/x"}, "/o"},
-		{"xdg state home", map[string]string{"XDG_STATE_HOME": "/x"}, "/x/lazynote"},
-		{"relative xdg is ignored", map[string]string{"XDG_STATE_HOME": "rel"}, filepath.Join(home, ".local", "state", "lazynote")},
-		{"home fallback", nil, filepath.Join(home, ".local", "state", "lazynote")},
+		{"override wins", map[string]string{"PARA_STATE_DIR": "/o", "XDG_STATE_HOME": "/x"}, "/o"},
+		{"xdg state home", map[string]string{"XDG_STATE_HOME": "/x"}, "/x/para"},
+		{"relative xdg is ignored", map[string]string{"XDG_STATE_HOME": "rel"}, filepath.Join(home, ".local", "state", "para")},
+		{"home fallback", nil, filepath.Join(home, ".local", "state", "para")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("HOME", home)
-			t.Setenv("LAZYNOTE_STATE_DIR", "")
+			t.Setenv("PARA_STATE_DIR", "")
 			t.Setenv("XDG_STATE_HOME", "")
 			for k, v := range tt.env {
 				t.Setenv(k, v)

@@ -14,8 +14,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/tkilb/lazynote/internal/textsafe"
-	"github.com/tkilb/lazynote/internal/ui/panel"
+	"github.com/tkilb/para/internal/textsafe"
+	"github.com/tkilb/para/internal/ui/panel"
 )
 
 // dirColor is the color of a folder name, as in PARA.

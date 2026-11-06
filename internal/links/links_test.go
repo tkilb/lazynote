@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 func TestTarget(t *testing.T) {
@@ -129,7 +129,7 @@ func TestRelatedValueShapes(t *testing.T) {
 func TestHiddenFoldersAreNotIndexed(t *testing.T) {
 	root := t.TempDir()
 	put(t, root, ".obsidian/Ghost.md", "x")
-	put(t, root, ".lazynote/trash/ab/Ghost.md", "x")
+	put(t, root, ".para/trash/ab/Ghost.md", "x")
 	put(t, root, "projects/.hidden/Ghost.md", "x")
 	put(t, root, "Ghost.md", "outside the PARA folders")
 	put(t, root, "inbox/a.md", note("[[Ghost]]"))

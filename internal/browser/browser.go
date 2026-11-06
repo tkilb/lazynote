@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/tkilb/lazynote/internal/clip"
+	"github.com/tkilb/para/internal/clip"
 )
 
 // Errors never echo the address.

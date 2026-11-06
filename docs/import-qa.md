@@ -7,7 +7,7 @@ agent and never call a model.
 
 ## Setup
 
-1. Add to `~/.config/lazynote/config.yaml`:
+1. Add to `~/.config/para/config.yaml`:
 
    ```yaml
    digest:
@@ -18,7 +18,7 @@ agent and never call a model.
 2. Put a short transcript in the notebook's `inbox/`, for example
    `standup.txt` with a few lines of `Name: text` turns, some small talk and
    one action item.
-3. `make install`, then start `lazynote`.
+3. `make install`, then start `para`.
 
 ## Checks
 

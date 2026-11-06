@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/tkilb/lazynote/internal/clip"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/clip"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // openWeb sends the web address in the source property of the note under

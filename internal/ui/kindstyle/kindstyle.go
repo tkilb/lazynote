@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 // BadgeWidth is the width of every badge; shorter ones are padded.

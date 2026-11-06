@@ -9,11 +9,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/tkilb/lazynote/internal/ui/helppopup"
-	"github.com/tkilb/lazynote/internal/ui/para"
-	"github.com/tkilb/lazynote/internal/ui/popup"
-	"github.com/tkilb/lazynote/internal/ui/statusbar"
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/ui/helppopup"
+	"github.com/tkilb/para/internal/ui/para"
+	"github.com/tkilb/para/internal/ui/popup"
+	"github.com/tkilb/para/internal/ui/statusbar"
+	"github.com/tkilb/para/internal/undo"
 )
 
 // input is an open text prompt.

@@ -8,12 +8,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/findtext"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/textsafe"
-	"github.com/tkilb/lazynote/internal/ui/grep"
-	"github.com/tkilb/lazynote/internal/ui/picker"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/findtext"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/textsafe"
+	"github.com/tkilb/para/internal/ui/grep"
+	"github.com/tkilb/para/internal/ui/picker"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 const (

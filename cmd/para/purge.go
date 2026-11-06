@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // notifyPurge reports the result of the startup purge of archived daily

@@ -1,6 +1,6 @@
 name: Release
 
-# Builds and publishes lazynote binaries for Linux and macOS (no Windows)
+# Builds and publishes para binaries for Linux and macOS (no Windows)
 # whenever a `v*` tag is pushed, e.g. `v0.0.2`. The tag's version (with the
 # leading `v` stripped) is injected into the binary the same way `make build`
 # does, via internal/version.Version.
@@ -42,14 +42,14 @@ jobs:
           for target in $targets; do
             goos="${target%/*}"
             goarch="${target#*/}"
-            outdir="dist/lazynote_${VERSION}_${goos}_${goarch}"
+            outdir="dist/para_${VERSION}_${goos}_${goarch}"
             mkdir -p "$outdir"
             echo "Building $goos/$goarch..."
             CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build \
-              -ldflags "-X github.com/tkilb/lazynote/internal/version.Version=${VERSION}" \
-              -o "$outdir/lazynote" ./cmd/lazynote
-            tar -C dist -czf "dist/lazynote_${VERSION}_${goos}_${goarch}.tar.gz" \
-              "lazynote_${VERSION}_${goos}_${goarch}"
+              -ldflags "-X github.com/tkilb/para/internal/version.Version=${VERSION}" \
+              -o "$outdir/para" ./cmd/para
+            tar -C dist -czf "dist/para_${VERSION}_${goos}_${goarch}.tar.gz" \
+              "para_${VERSION}_${goos}_${goarch}"
             rm -rf "$outdir"
           done
 

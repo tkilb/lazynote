@@ -15,9 +15,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/kindstyle"
-	"github.com/tkilb/lazynote/internal/ui/panel"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/kindstyle"
+	"github.com/tkilb/para/internal/ui/panel"
 )
 
 // Field identifies one of the form's inputs, in tab order.

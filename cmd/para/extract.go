@@ -7,11 +7,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/kindstyle"
-	"github.com/tkilb/lazynote/internal/ui/picker"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/kindstyle"
+	"github.com/tkilb/para/internal/ui/picker"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 const extractKindTitle = "Extract as"

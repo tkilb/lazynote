@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 func TestParse(t *testing.T) {
@@ -86,7 +86,7 @@ func TestParse(t *testing.T) {
 				tt.want.Sources = DefaultSources
 			}
 			if tt.want.Digest == (Digest{}) {
-				dir := filepath.Join(home, ".config", "lazynote")
+				dir := filepath.Join(home, ".config", "para")
 				tt.want.Digest = Digest{
 					Command: "claude", Model: "sonnet", Timeout: 5 * time.Minute,
 					Prompt: filepath.Join(dir, "import-prompt.md"), MergePrompt: filepath.Join(dir, "import-merge-prompt.md"),
@@ -204,7 +204,7 @@ func TestDefaultPath(t *testing.T) {
 
 	got, err := DefaultPath()
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(home, ".config", "lazynote", "config.yaml"), got)
+	assert.Equal(t, filepath.Join(home, ".config", "para", "config.yaml"), got)
 }
 
 func TestParseSources(t *testing.T) {
@@ -386,7 +386,7 @@ func TestParseKindsRejectsMistakes(t *testing.T) {
 func TestDailyTemplateIsFoundInTheConfigFolder(t *testing.T) {
 	home := t.TempDir()
 	nb := "notebooks:\n  - " + home + "\n"
-	want := filepath.Join(home, ".config", "lazynote", "templates", "daily.md")
+	want := filepath.Join(home, ".config", "para", "templates", "daily.md")
 
 	cfg, err := Parse([]byte(nb), home)
 	require.NoError(t, err)

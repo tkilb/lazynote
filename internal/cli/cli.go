@@ -1,7 +1,7 @@
-// Package cli implements lazynote's shell commands, which create inbox notes
+// Package cli implements para's shell commands, which create inbox notes
 // without opening the interface:
 //
-//	lazynote add [TITLE] [BODY] [--kind K] [--source S] [--tags a,b] [--clipboard]
+//	para add [TITLE] [BODY] [--kind K] [--source S] [--tags a,b] [--clipboard]
 //
 // Everything is optional but the title, which may also come from the first
 // line of piped or clipboard text. The commands print the new note's path on
@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tkilb/lazynote/internal/config"
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/config"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/store"
 )
 
 const (
@@ -48,7 +48,7 @@ type Env struct {
 	Clipboard func() (string, error)
 }
 
-const addUsageFormat = `Usage: lazynote add [TITLE] [BODY] [flags]
+const addUsageFormat = `Usage: para add [TITLE] [BODY] [flags]
 
 Adds a note to the inbox and prints its path. TITLE names the note. BODY, or
 text piped in, or the clipboard, is its body; with no TITLE the first line of
@@ -135,12 +135,12 @@ func flagError(err error, usage string, env Env) int {
 		fmt.Fprint(env.Stderr, usage)
 		return exitOK
 	}
-	fmt.Fprintf(env.Stderr, "lazynote: %v\n\n%s", err, usage)
+	fmt.Fprintf(env.Stderr, "para: %v\n\n%s", err, usage)
 	return exitUsage
 }
 
 func fail(env Env, format string, args ...any) int {
-	fmt.Fprintf(env.Stderr, "lazynote: "+format+"\n", args...)
+	fmt.Fprintf(env.Stderr, "para: "+format+"\n", args...)
 	return exitError
 }
 

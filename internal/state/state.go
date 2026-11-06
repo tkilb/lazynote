@@ -30,7 +30,7 @@ const (
 	busyTimeoutMS = 5000
 )
 
-// ErrNewerSchema reports a database written by a newer lazynote.
+// ErrNewerSchema reports a database written by a newer para.
 var ErrNewerSchema = errors.New("state database is from a newer version")
 
 // Session is what is remembered across notebooks.
@@ -61,21 +61,21 @@ type DB struct {
 	sql *sql.DB
 }
 
-// Dir returns the directory holding the database: LAZYNOTE_STATE_DIR, else
-// $XDG_STATE_HOME/lazynote when that is an absolute path, else
-// ~/.local/state/lazynote.
+// Dir returns the directory holding the database: PARA_STATE_DIR, else
+// $XDG_STATE_HOME/para when that is an absolute path, else
+// ~/.local/state/para.
 func Dir() (string, error) {
-	if d := os.Getenv("LAZYNOTE_STATE_DIR"); d != "" {
+	if d := os.Getenv("PARA_STATE_DIR"); d != "" {
 		return d, nil
 	}
 	if x := os.Getenv("XDG_STATE_HOME"); filepath.IsAbs(x) {
-		return filepath.Join(x, "lazynote"), nil
+		return filepath.Join(x, "para"), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("find home directory: %w", err)
 	}
-	return filepath.Join(home, ".local", "state", "lazynote"), nil
+	return filepath.Join(home, ".local", "state", "para"), nil
 }
 
 // Open opens the database in dir, creating the directory and file when

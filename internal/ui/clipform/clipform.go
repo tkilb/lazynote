@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/ui/panel"
+	"github.com/tkilb/para/internal/ui/panel"
 )
 
 // Field identifies one of the form's inputs, in tab order.

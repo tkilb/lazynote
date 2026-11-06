@@ -10,10 +10,10 @@ import (
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/clip"
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/ui/clipform"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/clip"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/ui/clipform"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // clipTimeout bounds the whole title fetch, a little over the fetcher's own.

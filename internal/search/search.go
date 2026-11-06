@@ -11,7 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/tkilb/lazynote/internal/findtext"
+	"github.com/tkilb/para/internal/findtext"
 )
 
 // Hit is one line that matched.

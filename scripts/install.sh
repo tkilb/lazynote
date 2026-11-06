@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Installs the latest lazynote release for Linux or macOS.
+# Installs the latest para release for Linux or macOS.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/tkilb/lazynote/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/tkilb/para/main/scripts/install.sh | bash
 #
 # Env vars:
 #   INSTALL_DIR - where to put the binary (default: $HOME/bin)
@@ -10,7 +10,7 @@
 # Linux and macOS only. Windows is not supported by this script.
 set -euo pipefail
 
-REPO="tkilb/lazynote"
+REPO="tkilb/para"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/bin}"
 
 os="$(uname -s)"
@@ -19,7 +19,7 @@ Linux) goos="linux" ;;
 Darwin) goos="darwin" ;;
 MINGW* | MSYS* | CYGWIN*)
 	cat >&2 <<'EOF'
-lazynote does not support Windows.
+para does not support Windows.
 Use Linux or macOS (WSL works) and try again.
 EOF
 	exit 1
@@ -51,7 +51,7 @@ if [ -z "$tag" ]; then
 fi
 version="${tag#v}"
 
-archive="lazynote_${version}_${goos}_${goarch}.tar.gz"
+archive="para_${version}_${goos}_${goarch}.tar.gz"
 url="https://github.com/${REPO}/releases/download/${tag}/${archive}"
 
 tmp_dir="$(mktemp -d)"
@@ -81,9 +81,9 @@ echo "Extracting..."
 tar -xzf "$tmp_dir/$archive" -C "$tmp_dir"
 
 mkdir -p "$INSTALL_DIR"
-install -m 755 "$tmp_dir/lazynote_${version}_${goos}_${goarch}/lazynote" "$INSTALL_DIR/lazynote"
+install -m 755 "$tmp_dir/para_${version}_${goos}_${goarch}/para" "$INSTALL_DIR/para"
 
-echo "Installed lazynote $version to $INSTALL_DIR/lazynote"
+echo "Installed para $version to $INSTALL_DIR/para"
 case ":$PATH:" in
 *":$INSTALL_DIR:"*) ;;
 *) echo "Note: $INSTALL_DIR is not on your PATH. Add it to your shell profile." ;;

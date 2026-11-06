@@ -1,5 +1,5 @@
-// Package config loads lazynote's user-editable YAML config from
-// ~/.config/lazynote/config.yaml (the same fixed path on every OS, as in
+// Package config loads para's user-editable YAML config from
+// ~/.config/para/config.yaml (the same fixed path on every OS, as in
 // lazytask). It lists the notebooks and the daily-note retention period.
 package config
 
@@ -16,11 +16,11 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 const (
-	dirName  = "lazynote"
+	dirName  = "para"
 	fileName = "config.yaml"
 
 	// DefaultRetentionDays is used when retention.daily is absent.
@@ -65,7 +65,7 @@ type Config struct {
 	Digest Digest
 }
 
-// Templates names the template files, found in ~/.config/lazynote/templates.
+// Templates names the template files, found in ~/.config/para/templates.
 // An empty path means no template.
 type Templates struct {
 	// Daily is the absolute path of templates/daily.md, the template for a new
@@ -132,7 +132,7 @@ type rawConfig struct {
 	} `yaml:"ui"`
 }
 
-// DefaultPath returns ~/.config/lazynote/config.yaml.
+// DefaultPath returns ~/.config/para/config.yaml.
 func DefaultPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {

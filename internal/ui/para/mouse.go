@@ -1,6 +1,6 @@
 package para
 
-import "github.com/tkilb/lazynote/internal/ui/panel"
+import "github.com/tkilb/para/internal/ui/panel"
 
 // TabAt returns the tab drawn at column x of the panel's top border, for a
 // panel outerWidth columns wide.

@@ -13,7 +13,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 const (
@@ -260,7 +260,7 @@ type Note struct {
 }
 
 // ByUID returns the path of the note whose uid property is uid. A uid that
-// two notes share (a copy made outside lazynote) goes to the one with the
+// two notes share (a copy made outside para) goes to the one with the
 // shortest path.
 func (x *Index) ByUID(uid string) (string, bool) {
 	if x == nil || uid == "" {

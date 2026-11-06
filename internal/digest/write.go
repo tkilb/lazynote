@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tkilb/lazynote/internal/intake"
-	"github.com/tkilb/lazynote/internal/loader"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/textsafe"
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/intake"
+	"github.com/tkilb/para/internal/loader"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/textsafe"
+	"github.com/tkilb/para/internal/undo"
 )
 
 const (

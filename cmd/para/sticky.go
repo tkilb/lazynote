@@ -8,10 +8,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/state"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/popup"
-	"github.com/tkilb/lazynote/internal/ui/stickies"
+	"github.com/tkilb/para/internal/state"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/popup"
+	"github.com/tkilb/para/internal/ui/stickies"
 )
 
 // noteUID reads the uid property of the note at rel, or "" when it has none.

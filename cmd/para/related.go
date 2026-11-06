@@ -5,9 +5,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/links"
-	"github.com/tkilb/lazynote/internal/ui/popup"
-	"github.com/tkilb/lazynote/internal/ui/related"
+	"github.com/tkilb/para/internal/links"
+	"github.com/tkilb/para/internal/ui/popup"
+	"github.com/tkilb/para/internal/ui/related"
 )
 
 // relatedKey sends a key to the Related panel and applies what it asks for:

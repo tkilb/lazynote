@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/tkilb/lazynote/internal/state"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/state"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // session is the saved state for the running notebook. A nil db means

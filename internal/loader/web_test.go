@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/clip"
+	"github.com/tkilb/para/internal/clip"
 )
 
 func mustURL(t *testing.T, raw string) *url.URL {

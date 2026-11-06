@@ -9,12 +9,12 @@ import (
 	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/tkilb/lazynote/internal/config"
-	"github.com/tkilb/lazynote/internal/digest"
-	"github.com/tkilb/lazynote/internal/loader"
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/ui/para"
-	"github.com/tkilb/lazynote/internal/ui/popup"
+	"github.com/tkilb/para/internal/config"
+	"github.com/tkilb/para/internal/digest"
+	"github.com/tkilb/para/internal/loader"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/ui/para"
+	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // statusDuration is how long a success message stays in the status bar.

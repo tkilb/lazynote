@@ -14,8 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/tkilb/lazynote/internal/store"
-	"github.com/tkilb/lazynote/internal/undo"
+	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/undo"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 	SourceAdhoc = "adhoc"
 	// SourceExtract is the source of a note extracted from another note.
 	SourceExtract = "extract"
-	// SourceDaily is the source of a daily note lazynote creates.
+	// SourceDaily is the source of a daily note para creates.
 	SourceDaily = "daily"
 
 	inboxDir     = "inbox"

@@ -5,7 +5,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/store"
 )
 
 // AddReference adds [[name]] to the related property of fm, creating the

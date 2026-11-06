@@ -16,7 +16,7 @@ func TestCountNotes(t *testing.T) {
 		"resources/d.md", "archives/e.md",
 		"inbox/readme.txt",        // not a note
 		"other/f.md",              // outside the PARA folders
-		".lazynote/trash/g.md",    // hidden
+		".para/trash/g.md",        // hidden
 		"projects/.obsidian/h.md", // hidden
 		"notes.md",                // at the root
 	}

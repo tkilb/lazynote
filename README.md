@@ -1,6 +1,6 @@
-# lazynote
+# para
 
-[![Build](https://github.com/tkilb/lazynote/actions/workflows/build.yml/badge.svg)](https://github.com/tkilb/lazynote/actions/workflows/build.yml)
+[![Build](https://github.com/tkilb/para/actions/workflows/build.yml/badge.svg)](https://github.com/tkilb/para/actions/workflows/build.yml)
 
 A terminal note browser for a folder of markdown notes, written in Go with [Bubble Tea](https://github.com/charmbracelet/bubbletea). It is modeled on [lazytask](https://github.com/tkilb/lazytask): a [lazygit](https://github.com/jesseduffield/lazygit)-style panel layout, with a [Yazi](https://yazi-rs.github.io/)-style file browser for the notes.
 
@@ -13,7 +13,7 @@ Notes are plain markdown files with YAML properties, so a notebook opens unchang
 Linux and macOS only.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tkilb/lazynote/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tkilb/para/main/scripts/install.sh | bash
 ```
 
 This downloads the latest release for your OS and architecture, checks its checksum, and installs it to `~/bin` (set `INSTALL_DIR=/some/path` to change that). Make sure the directory is on your `PATH`.
@@ -21,16 +21,16 @@ This downloads the latest release for your OS and architecture, checks its check
 To build from source (Go 1.25 or newer):
 
 ```bash
-make build      # writes ./lazynote
+make build      # writes ./para
 make install    # builds, then copies it to ~/bin
 make test       # go test ./...
 ```
 
-`lazynote version` prints the version.
+`para version` prints the version.
 
 ## Setup
 
-lazynote reads `~/.config/lazynote/config.yaml`. The only required key is the list of notebooks, each a folder of notes:
+para reads `~/.config/para/config.yaml`. The only required key is the list of notebooks, each a folder of notes:
 
 ```yaml
 notebooks:
@@ -58,7 +58,7 @@ kinds:              # optional: restyle kinds or add your own (see Kinds)
 - **`notebooks`**: the first available entry opens on the first run, and after that the notebook you used last. A path that is not an existing folder is listed as unavailable and cannot be opened. `~` is expanded.
 - **`retention.daily`**: how long archived daily notes are kept, a whole number of days followed by `d`.
 - **`ui.mouse`**: set to `false` to turn the mouse off.
-- **`~/.config/lazynote/templates/daily.md`**: a markdown file to make each new daily note from (`b`, `t` and `T`). It is found by its place, not named in `config.yaml`. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily.
+- **`~/.config/para/templates/daily.md`**: a markdown file to make each new daily note from (`b`, `t` and `T`). It is found by its place, not named in `config.yaml`. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily.
 - **`digest`**: the agentic import, off until `enabled: true`. The other keys are `command` (default `claude`), `model` (default `sonnet`), `timeout` (default `5m`, at most `1h`), `prompt` and `merge_prompt` (the two prompt files, by default `import-prompt.md` and `import-merge-prompt.md` in the config folder). See Importing with an agent.
 - **`sources`**: up to 40 characters each, distinct ignoring case. Without it the list is adhoc, meeting, conversation, email, web, document.
 
@@ -72,20 +72,20 @@ areas/
 resources/
 archives/
   daily/        archived daily notes
-.lazynote/      hidden: the trash (see Syncing)
+.para/      hidden: the trash (see Syncing)
 ```
 
-Where lazynote keeps its own state (your position in each notebook, your stickies, the last notebook) is `~/.local/state/lazynote/state.db`, or `$XDG_STATE_HOME/lazynote`, or the folder in `LAZYNOTE_STATE_DIR`. It is outside the notebooks.
+Where para keeps its own state (your position in each notebook, your stickies, the last notebook) is `~/.local/state/para/state.db`, or `$XDG_STATE_HOME/para`, or the folder in `PARA_STATE_DIR`. It is outside the notebooks.
 
 ## Syncing and version control
 
-**Exclude `.lazynote/` from sync and version control.** Trashing a note with `d` moves it to `.lazynote/trash/` inside the notebook so that `u` can undo it, and that folder is not cleaned up automatically. Sync tools and git would otherwise pick it up. For git, add this line to the notebook's `.gitignore`:
+**Exclude `.para/` from sync and version control.** Trashing a note with `d` moves it to `.para/trash/` inside the notebook so that `u` can undo it, and that folder is not cleaned up automatically. Sync tools and git would otherwise pick it up. For git, add this line to the notebook's `.gitignore`:
 
 ```
-.lazynote/
+.para/
 ```
 
-lazynote never edits files other than your notes, so it does not add that line for you. Obsidian already hides folders that start with a dot. Everything else lazynote keeps (positions, stickies) lives outside the notebook, so there is nothing else to exclude.
+para never edits files other than your notes, so it does not add that line for you. Obsidian already hides folders that start with a dot. Everything else para keeps (positions, stickies) lives outside the notebook, so there is nothing else to exclude.
 
 ## The screen
 
@@ -172,9 +172,9 @@ The mouse works too: click a panel to focus it, click a row, tab or Content line
 
 New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source`, `date`, `tags`, `people` and `related`.
 
-**Property standard.** Every note follows one order: `uid`, `title`, `kind`, `source`, `date`, `tags`, `people`, then any other properties as they were, then `related` last. lazynote applies it to every note it creates and to every note you view or open. Viewing a note adds any missing standard property (empty, never guessed), sets the title to the file name, puts the properties in order, and writes the file only when something changed. Your other properties and the text are kept, and a note whose properties cannot be parsed is left as it is.
+**Property standard.** Every note follows one order: `uid`, `title`, `kind`, `source`, `date`, `tags`, `people`, then any other properties as they were, then `related` last. para applies it to every note it creates and to every note you view or open. Viewing a note adds any missing standard property (empty, never guessed), sets the title to the file name, puts the properties in order, and writes the file only when something changed. Your other properties and the text are kept, and a note whose properties cannot be parsed is left as it is.
 
-- **`A` Quick Add** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`lazynote add` still saves to the Inbox).
+- **`A` Quick Add** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`para add` still saves to the Inbox).
 - **`I` Import** hands the clipboard, a web page or a file to an agent, which writes grouped notes (see Importing with an agent).
 - **`U` Clip** opens a form with a Title (optional) and a URL. The URL is filled in from your clipboard only when it holds a web address and nothing else. It saves a `link` note in the folder PARA is showing, named after the title you typed or, when you leave it blank, the page's own title (fetched for you), with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
 - **Extract**: in Content, select lines and press `enter` to turn them into a new note that links back to the original.
@@ -182,16 +182,16 @@ New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source
 The same capture works from a shell, without opening the interface. The command prints the new note's path:
 
 ```bash
-lazynote add "Water boils" "At 100C at sea level" --kind fact --tags physics
-lazynote add --clipboard --source meeting
-echo "an idea" | lazynote add --kind idea
+para add "Water boils" "At 100C at sea level" --kind fact --tags physics
+para add --clipboard --source meeting
+echo "an idea" | para add --kind idea
 ```
 
-It saves into the notebook the interface would open. Run `lazynote add -h` for the flags.
+It saves into the notebook the interface would open. Run `para add -h` for the flags.
 
 ## Importing with an agent
 
-`I` turns a meeting transcript, a Confluence page, a Slack thread, a web page or any UTF-8 text file into a folder of notes. It is off until you set `digest.enabled: true`, which also means you accept that imported content is sent to the `digest.command` (the Claude Code CLI, which uses your own login; lazynote handles no API key).
+`I` turns a meeting transcript, a Confluence page, a Slack thread, a web page or any UTF-8 text file into a folder of notes. It is off until you set `digest.enabled: true`, which also means you accept that imported content is sent to the `digest.command` (the Claude Code CLI, which uses your own login; para handles no API key).
 
 - **What to give it.** Press `I` and type nothing to import the clipboard, an `http` or `https` address to import a page, or a file path. `Tab` completes a path, `~` works, and a bare name such as `standup` is looked for in `inbox/` first. A line under the box previews what will be read. A page behind a login cannot be fetched: paste its text or save it as a file instead.
 - **What comes out.** `inbox/IMPORT_YYYY-MM-DD_<topic>/` holds `_source.md` (your text, saved first so nothing is lost), one note for each cluster of related concepts and ideas, `_actions.md` only when there are action items, and `_facts.md` only when the source states facts (short standalone statements, also covered in the notes, for you to pick from). Small talk is dropped. Every file has kind `import` (add it under `kinds`, or the files get no kind), a source, the date and suggested tags. The original file is never changed.

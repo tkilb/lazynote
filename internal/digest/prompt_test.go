@@ -11,7 +11,7 @@ import (
 )
 
 func TestEnsurePromptsWritesDefaultsWhenMissing(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "config", "lazynote")
+	dir := filepath.Join(t.TempDir(), "config", "para")
 	main, merge := filepath.Join(dir, "import-prompt.md"), filepath.Join(dir, "import-merge-prompt.md")
 
 	require.NoError(t, EnsurePrompts(main, merge))

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tkilb/lazynote/internal/clip"
-	"github.com/tkilb/lazynote/internal/store"
+	"github.com/tkilb/para/internal/clip"
+	"github.com/tkilb/para/internal/store"
 )
 
 var now = time.Date(2026, 10, 30, 14, 30, 5, 0, time.Local)
