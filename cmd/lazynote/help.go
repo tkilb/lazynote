@@ -17,7 +17,7 @@ var helpGlobalBindings = []statusbar.Binding{
 	{Key: "ctrl+/ or F", Label: "search text in the notes of the PARA folder, grep style (opens it at the line)"},
 	{Key: "B", Label: "choose the notebook to open (your place in each is remembered)"},
 	{Key: "A", Label: "Quick Add a note in the folder PARA shows (tab, ctrl+s saves)"},
-	{Key: "I", Label: "import the clipboard, a web page or a file with the agent; on an import_ folder, run it again"},
+	{Key: "I", Label: "import the clipboard, a web page or a file with the agent; on an IMPORT_ folder, run it again"},
 	{Key: "U", Label: "clip a web page: a title (optional) and a URL; saved in the folder PARA shows"},
 	{Key: "o", Label: "open the web address in the note's source in the browser"},
 	{Key: "b/t/T", Label: "open yesterday's/today's/tomorrow's daily note"},

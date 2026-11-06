@@ -32,14 +32,14 @@ agent and never call a model.
 | 6 | Type `https://example.com` | The line says `web page, example.com`. Type `https://` : `not a valid web address`. |
 | 7 | Press `Enter` on `standup.txt` | The box closes. The status bar shows `Importing…` and the app stays usable (move around, open notes). |
 | 8 | While it runs, press `I` again | A notice says an import is already running. |
-| 9 | When it finishes | Status bar: `✓ Imported: import_YYYY-MM-DD_<topic> (N files)`, gone after 5 seconds. The cursor has not moved. |
+| 9 | When it finishes | Status bar: `✓ Imported: IMPORT_YYYY-MM-DD_<topic> (N files)`, gone after 5 seconds. The cursor has not moved. |
 | 10 | Open the new folder in the Inbox | `_source.md` first (your text, unchanged), concept notes, `_actions.md` only if there were actions, and `_facts.md` only if there were facts. Each file has `kind: import`, a source, the date and tags. Small talk is gone. |
 | 11 | Press `u` | The whole folder disappears in one undo. `ctrl+r` brings it back. |
-| 12 | Put the cursor on the `import_` folder (or any file inside it) and press `I` | No box. Status: `Re-running import_…`, then `✓ Re-ran: …`. Old files are replaced; the folder keeps its name. |
+| 12 | Put the cursor on the `IMPORT_` folder (or any file inside it) and press `I` | No box. Status: `Re-running IMPORT_…`, then `✓ Re-ran: …`. Old files are replaced; the folder keeps its name. |
 | 13 | Press `u` after a re-run | The previous files come back exactly as they were. |
-| 14 | Copy some text, press `I` on an empty box, `Enter` | A folder `import_<date>_<topic or clipboard>` appears. |
+| 14 | Copy some text, press `I` on an empty box, `Enter` | A folder `IMPORT_<date>_<topic or clipboard>` appears. |
 | 15 | `I`, type `/nonexistent`, `Enter` | A notice: `Could not import: File not found.` Nothing is written. |
-| 16 | Set `digest.command` to a name that does not exist, import | A notice: the agent command was not found, and the source is saved in an `import_…` folder (press `I` on it to retry). |
+| 16 | Set `digest.command` to a name that does not exist, import | A notice: the agent command was not found, and the source is saved in an `IMPORT_…` folder (press `I` on it to retry). |
 | 17 | Import a page behind a login (a Confluence or Slack URL) | A notice: the page needs a login; paste its text or save it as a file. Nothing is written. |
 | 18 | Switch notebook (`B`) while an import runs | The finished import lands in the notebook it started in. The status message still names the folder, and the notebook now open is not reloaded or disturbed. |
 

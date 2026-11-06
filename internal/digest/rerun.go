@@ -36,7 +36,7 @@ func Import(ctx context.Context, s store.Store, now time.Time, kind store.Kind, 
 }
 
 // FindImportFolder returns the import folder that rel is, or is inside: the
-// nearest folder on the path whose name starts with FolderPrefix, so the
+// nearest folder on the path whose name starts with FolderPrefix (any case), so the
 // cursor on a file in an import folder finds it. A final part ending in .md
 // is a note, not a folder. It only reads the path; Rerun checks the folder.
 func FindImportFolder(rel string) (string, bool) {
@@ -46,7 +46,7 @@ func FindImportFolder(rel string) (string, bool) {
 		if i == len(parts)-1 && strings.EqualFold(filepath.Ext(name), ".md") {
 			continue
 		}
-		if strings.HasPrefix(name, FolderPrefix) {
+		if hasFolderPrefix(name) {
 			return filepath.Join(parts[:i+1]...), true
 		}
 	}
@@ -90,7 +90,7 @@ func Rerun(ctx context.Context, s store.Store, now time.Time, kind store.Kind, d
 // readImport checks that rel is an import folder and reads its source: the
 // text, where it came from, and the day it was imported.
 func readImport(s store.Store, now time.Time, rel string) (loader.Source, time.Time, error) {
-	if !strings.HasPrefix(filepath.Base(rel), FolderPrefix) {
+	if !hasFolderPrefix(filepath.Base(rel)) {
 		return loader.Source{}, time.Time{}, ErrNotImport
 	}
 	n, err := s.ReadNote(filepath.Join(rel, SourceFile))

@@ -34,7 +34,7 @@ type importDoneMsg struct {
 // statusClearMsg arrives statusDuration after a status message was shown.
 type statusClearMsg struct{ id int }
 
-// importKey handles I. On an import_ folder, or anything inside one, it runs
+// importKey handles I. On an IMPORT_ folder, or anything inside one, it runs
 // that import again at once; anywhere else it asks what to import.
 func (m model) importKey() (model, tea.Cmd) {
 	if !m.digest.Enabled {

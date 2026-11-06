@@ -38,7 +38,7 @@ func TestImportRunsTheWholeFlow(t *testing.T) {
 	f := &Fake{Result: sample}
 	root, s, res := imported(t, f)
 
-	assert.Equal(t, "inbox/import_2026-11-03_Pricing review", res.Rel)
+	assert.Equal(t, "inbox/IMPORT_2026-11-03_Pricing review", res.Rel)
 	assert.Equal(t, []string{"Renewal rules.md", "Tier pricing.md", "_actions.md", "_source.md"}, names(t, root, res.Rel))
 	assert.Equal(t, []string{"Sam: the transcript\n\nAnna: more\n"}, f.Calls, "the agent gets the source text")
 	_ = s
@@ -50,7 +50,7 @@ func TestImportKeepsTheSourceWhenTheAgentFails(t *testing.T) {
 	res, err := Import(context.Background(), s, day, importKind, &Fake{Err: boom}, fileSource("Standup", "the transcript"))
 
 	require.ErrorIs(t, err, boom)
-	assert.Equal(t, "inbox/import_2026-11-03_Standup", res.Rel, "the fallback name, from the source")
+	assert.Equal(t, "inbox/IMPORT_2026-11-03_Standup", res.Rel, "the fallback name, from the source")
 	assert.Equal(t, []string{"_source.md"}, names(t, root, res.Rel))
 	assert.Equal(t, "the transcript\n", readNote(t, root, res.Rel+"/_source.md").Body)
 
@@ -86,14 +86,15 @@ func TestFindImportFolder(t *testing.T) {
 		name, in, want string
 		ok             bool
 	}{
-		{"the folder itself", "inbox/import_2026-11-03_Standup", "inbox/import_2026-11-03_Standup", true},
-		{"a file in it", "inbox/import_2026-11-03_Standup/Tier pricing.md", "inbox/import_2026-11-03_Standup", true},
-		{"a file in a folder in it", "inbox/import_2026-11-03_Standup/sub/deep/x.md", "inbox/import_2026-11-03_Standup", true},
-		{"after being moved into PARA", "projects/alpha/import_2026-11-03_Standup/_source.md", "projects/alpha/import_2026-11-03_Standup", true},
+		{"the folder itself", "inbox/IMPORT_2026-11-03_Standup", "inbox/IMPORT_2026-11-03_Standup", true},
+		{"a file in it", "inbox/IMPORT_2026-11-03_Standup/Tier pricing.md", "inbox/IMPORT_2026-11-03_Standup", true},
+		{"a file in a folder in it", "inbox/IMPORT_2026-11-03_Standup/sub/deep/x.md", "inbox/IMPORT_2026-11-03_Standup", true},
+		{"after being moved into PARA", "projects/alpha/IMPORT_2026-11-03_Standup/_source.md", "projects/alpha/IMPORT_2026-11-03_Standup", true},
 		{"the nearest one wins", "inbox/import_a/import_b/x.md", "inbox/import_a/import_b", true},
 		{"an ordinary note", "inbox/Note.md", "", false},
 		{"an ordinary folder", "inbox/daily", "", false},
 		{"a name that only starts like it", "inbox/important/x.md", "", false},
+		{"the old lower case prefix", "inbox/import_2026-11-03_Standup/x.md", "inbox/import_2026-11-03_Standup", true},
 		{"the prefix inside a name", "inbox/my_import_x/x.md", "", false},
 		{"the prefix alone", "inbox/import_", "inbox/import_", true},
 		{"empty", "", "", false},
@@ -228,12 +229,12 @@ func TestRerunRefusesWhatIsNotAnImportFolder(t *testing.T) {
 
 func TestRerunWorksOnAFolderMovedIntoPARA(t *testing.T) {
 	root, s, first := imported(t, &Fake{Result: sample})
-	_, err := s.Move(first.Rel, "projects/alpha/import_2026-11-03_Pricing review")
+	_, err := s.Move(first.Rel, "projects/alpha/IMPORT_2026-11-03_Pricing review")
 	require.NoError(t, err)
 
-	res, err := Rerun(context.Background(), s, laterDay, importKind, &Fake{Result: Digest{Source: "meeting", Notes: []Note{{Title: "N", Body: "b"}}}}, "projects/alpha/import_2026-11-03_Pricing review")
+	res, err := Rerun(context.Background(), s, laterDay, importKind, &Fake{Result: Digest{Source: "meeting", Notes: []Note{{Title: "N", Body: "b"}}}}, "projects/alpha/IMPORT_2026-11-03_Pricing review")
 	require.NoError(t, err)
-	assert.Equal(t, "projects/alpha/import_2026-11-03_Pricing review", res.Rel)
+	assert.Equal(t, "projects/alpha/IMPORT_2026-11-03_Pricing review", res.Rel)
 	assert.Equal(t, []string{"N.md", "_source.md"}, names(t, root, res.Rel))
 }
 

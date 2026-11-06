@@ -131,7 +131,7 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | `ctrl+/` or `F` | Search text in every note in the folder PARA shows and its subfolders, as grep -i does: type words, and every line holding all of them, exactly and ignoring case, is listed with its note, line and column and a preview of the note beside it. `↑` `↓` move, `pgup` `pgdown` page, `ctrl+d` `ctrl+u` scroll the preview, `enter` opens the note at the line, `esc` cancels |
 | `s` | Pin or unpin the selected note as a sticky |
 | `A` | Quick Add a note in the folder PARA shows |
-| `I` | Import the clipboard, a web page or a file with the agent; on an `import_` folder, run that import again |
+| `I` | Import the clipboard, a web page or a file with the agent; on an `IMPORT_` folder, run that import again |
 | `U` | Clip a web page |
 | `o` | Open the web address in the selected note's `source` in the browser |
 | `b` / `t` / `T` | Open yesterday's / today's / tomorrow's daily note |
@@ -194,12 +194,12 @@ It saves into the notebook the interface would open. Run `lazynote add -h` for t
 `I` turns a meeting transcript, a Confluence page, a Slack thread, a web page or any UTF-8 text file into a folder of notes. It is off until you set `digest.enabled: true`, which also means you accept that imported content is sent to the `digest.command` (the Claude Code CLI, which uses your own login; lazynote handles no API key).
 
 - **What to give it.** Press `I` and type nothing to import the clipboard, an `http` or `https` address to import a page, or a file path. `Tab` completes a path, `~` works, and a bare name such as `standup` is looked for in `inbox/` first. A line under the box previews what will be read. A page behind a login cannot be fetched: paste its text or save it as a file instead.
-- **What comes out.** `inbox/import_YYYY-MM-DD_<topic>/` holds `_source.md` (your text, saved first so nothing is lost), one note for each cluster of related concepts and ideas, `_actions.md` only when there are action items, and `_facts.md` only when the source states facts (short standalone statements, also covered in the notes, for you to pick from). Small talk is dropped. Every file has kind `import` (add it under `kinds`, or the files get no kind), a source, the date and suggested tags. The original file is never changed.
+- **What comes out.** `inbox/IMPORT_YYYY-MM-DD_<topic>/` holds `_source.md` (your text, saved first so nothing is lost), one note for each cluster of related concepts and ideas, `_actions.md` only when there are action items, and `_facts.md` only when the source states facts (short standalone statements, also covered in the notes, for you to pick from). Small talk is dropped. Every file has kind `import` (add it under `kinds`, or the files get no kind), a source, the date and suggested tags. The original file is never changed.
 - **While it runs.** The status bar shows `Importing…` and the app stays usable. A success message clears itself after five seconds, and the cursor does not move. Sort the notes into PARA yourself.
-- **Run it again.** `I` on an `import_` folder, or on a file inside it, re-runs the agent over `_source.md` at once. Every note in the folder except `_source.md` is replaced, and `u` brings the old ones back. If the agent fails, nothing is changed.
+- **Run it again.** `I` on an `IMPORT_` folder, or on a file inside it, re-runs the agent over `_source.md` at once. Every note in the folder except `_source.md` is replaced, and `u` brings the old ones back. If the agent fails, nothing is changed.
 - **If the agent fails** the folder stays with its `_source.md` and a message says so; press `I` on it to try again.
 - **Large sources.** A source over about 400 KiB is split at speaker turns and messages, each part is digested, and a second pass merges them. If only the merge fails, the notes of the parts are kept side by side with a warning.
-- **The prompts are yours.** The two prompt files are written to the config folder on first use and are never overwritten. Each is the whole prompt, including the shape of the answer, so edit with care. Whatever the agent returns is checked, cleaned and size-limited before anything is written, and it can only write inside its own `import_` folder.
+- **The prompts are yours.** The two prompt files are written to the config folder on first use and are never overwritten. Each is the whole prompt, including the shape of the answer, so edit with care. Whatever the agent returns is checked, cleaned and size-limited before anything is written, and it can only write inside its own `IMPORT_` folder.
 - **Good to know.** The CLI also sends your global Claude instructions with every call, so they can shape the notes; say what you want in the prompt files. There is no cancel key: a stuck run stops at `digest.timeout`.
 
 ## Daily notes

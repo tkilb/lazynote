@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	// FolderPrefix starts the name of every import folder.
-	FolderPrefix = "import_"
+	// FolderPrefix starts the name of every import folder. It is upper case so
+	// the folder stands out in the inbox as a reminder to follow up. Folders
+	// made with the old lower case prefix are still recognised.
+	FolderPrefix = "IMPORT_"
 	// SourceFile holds the imported text. It starts with an underscore so it
 	// sorts first.
 	SourceFile = "_source.md"
@@ -79,7 +81,7 @@ type Result struct {
 	Warnings []string
 }
 
-// Begin creates inbox/import_YYYY-MM-DD_<name>/ and writes src's text to
+// Begin creates inbox/IMPORT_YYYY-MM-DD_<name>/ and writes src's text to
 // _source.md in it, before any agent runs, so nothing is lost if the agent
 // fails. The name comes from src.Name, cleaned, with a number added when the
 // folder exists. kind is the import kind (see ImportKind); a text that is
@@ -228,7 +230,7 @@ func (f *Folder) setSource(value string) error {
 	return nil
 }
 
-// renameToTopic moves the folder to import_<date>_<topic>, with a number
+// renameToTopic moves the folder to IMPORT_<date>_<topic>, with a number
 // added when that is taken. An empty or unchanged name does nothing.
 func (f *Folder) renameToTopic(topic string) error {
 	name := cleanName(topic)
@@ -323,4 +325,9 @@ func bulletList(items []string) string {
 		b.WriteString("- " + a + "\n")
 	}
 	return b.String()
+}
+
+// hasFolderPrefix reports whether name starts with FolderPrefix, ignoring case.
+func hasFolderPrefix(name string) bool {
+	return len(name) >= len(FolderPrefix) && strings.EqualFold(name[:len(FolderPrefix)], FolderPrefix)
 }
