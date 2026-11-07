@@ -69,7 +69,8 @@ type Sync struct {
 // renderSync draws the sync state right after the notebook name, with no space
 // before it, as parts joined by commas: the uncommitted files "629" (red),
 // then the commits to push "2↑" (orange) and to pull "3↓" (blue), only the
-// sides that need syncing, or "✓" (green) when a tracked branch needs none.
+// sides that need syncing, or "✓" (green) when a tracked branch needs none and
+// nothing is uncommitted (the red count alone then stands for the state).
 // A branch without an upstream that is fully committed shows a yellow "✓", as
 // there is nothing to compare with. Such as "(629,2↑3↓)" or "(✓)". Nothing is
 // drawn for a nil sync.
@@ -89,10 +90,12 @@ func renderSync(s *Sync) string {
 		if s.Behind > 0 {
 			ud += behindStyle.Bold(true).Render(strconv.Itoa(s.Behind) + "↓")
 		}
-		if ud == "" {
+		if ud == "" && s.Uncommitted == 0 {
 			ud = inSyncStyle.Bold(true).Render("✓")
 		}
-		parts = append(parts, ud)
+		if ud != "" {
+			parts = append(parts, ud)
+		}
 	}
 	if len(parts) == 0 { // committed, with no upstream to compare with
 		parts = append(parts, cleanStyle.Bold(true).Render("✓"))
