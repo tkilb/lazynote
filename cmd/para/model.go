@@ -211,11 +211,10 @@ type model struct {
 	clipping int
 	// writeClipboard copies text to the system clipboard (a yank).
 	writeClipboard func(string) error
-	// sources are the sources Quick Add offers, from the config.
+	// sources are the sources the Add Note form offers, from the config.
 	sources []string
-	// dailyTemplate is the path of the daily note template from the config,
-	// or empty (see config.Templates).
-	dailyTemplate string
+	// templatesDir is the folder of note templates (see package templates).
+	templatesDir string
 	// digest is the agentic import configuration; importing counts the
 	// imports running (at most one) and importLabel says what the status bar
 	// shows while it runs. status is a message that clears itself, and
@@ -481,6 +480,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case m.showingHelp:
 			return m.updateHelp(msg), nil
+		case m.question != nil && m.form != nil:
+			return m.answerQuestion(key)
 		case m.form != nil:
 			return m.formKey(msg)
 		case m.clipForm != nil:
@@ -524,6 +525,8 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m, cmd = m.startClip()
 	case "o":
 		m = m.openWeb()
+	case "ctrl+t":
+		m, cmd = m.startAppendTemplate()
 	case "b":
 		m = m.openDaily(-1)
 	case "t":

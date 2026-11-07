@@ -1,6 +1,6 @@
 // Package clipform implements the web clip form: a Title and a URL, each in
 // its own bordered box with the field name in the border and the focused box
-// highlighted, as in the Quick Add form. Tab, Shift+Tab and the arrows move
+// highlighted, as in the Add Note form. Tab, Shift+Tab and the arrows move
 // between the two boxes. The host saves on enter and cancels on esc.
 package clipform
 

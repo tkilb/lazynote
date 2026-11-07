@@ -42,7 +42,7 @@ ui:
   mouse: true       # optional, default true
 digest:             # optional: the agentic import (see Importing with an agent)
   enabled: true     # off by default
-sources:            # optional: the sources Quick Add offers
+sources:            # optional: the sources the Add Note form offers
   - adhoc
   - meeting
   - conversation
@@ -58,7 +58,9 @@ kinds:              # optional: restyle kinds or add your own (see Kinds)
 - **`notebooks`**: the first available entry opens on the first run, and after that the notebook you used last. A path that is not an existing folder is listed as unavailable and cannot be opened. `~` is expanded.
 - **`retention.daily`**: how long archived daily notes are kept, a whole number of days followed by `d`.
 - **`ui.mouse`**: set to `false` to turn the mouse off.
-- **`~/.config/para/templates/daily.md`**: a markdown file to make each new daily note from (`b`, `t` and `T`). It is found by its place, not named in `config.yaml`. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily.
+- **`~/.config/para/templates/`**: note templates, found by their place and never named in `config.yaml`. A notebook uses the subfolder named after its folder: notebook `~/Notes/work` uses `templates/work/`. `.md` files directly in `templates/` are shared by every notebook, and a notebook's template of the same name overrides the shared one. Other notebooks' subfolders are never seen.
+  - **`daily.md`** makes each new daily note (`b`, `t` and `T`). It is looked up as `templates/<notebook>/daily.md`, then `templates/daily.md`, so an existing setup keeps working. The new note keeps the template's properties and text but gets its own `uid`, the day's date and its file name as the title. If the template is an example of one day, with that day in its `date` property, that date and the weekday written after it (such as `(Monday)`) are replaced by the new day's wherever they appear; or write `{{date}}` and `{{weekday}}` where the day goes, and only those are replaced. A daily that exists is never changed. If the template cannot be read, you get a warning and an empty daily. `daily` is never offered in the template pickers.
+  - **Every other template** is offered in the Add Note form (`A`) and appended with `ctrl+t`. Its properties are only used to pre-fill the Add Note form (`kind`, `source`, `tags`); appending drops them. Its body may use exactly `{{date}}` (YYYY-MM-DD), `{{weekday}}` (such as Monday) and `{{title}}` (the note's name, or the title typed in the Add Note form; left as written while that is blank). Any other `{{word}}` stays as written, and there is no example-day replacement. A template with no body, or one that cannot be read, gives a warning and changes nothing.
 - **`digest`**: the agentic import, off until `enabled: true`. The other keys are `command` (default `claude`), `model` (default `sonnet`), `timeout` (default `5m`, at most `1h`), `prompt` and `merge_prompt` (the two prompt files, by default `import-prompt.md` and `import-merge-prompt.md` in the config folder). See Importing with an agent.
 - **`sources`**: up to 40 characters each, distinct ignoring case. Without it the list is adhoc, meeting, conversation, email, web, document.
 
@@ -130,10 +132,11 @@ Add your own kinds, or change how these look, with the `kinds` list in the confi
 | `ctrl+f` | Find a note by path (fuzzy). Results are ranked: the whole file name, then names that start with what you typed, then names where it starts a word, then names that contain it, then scattered letters in the name, then matches only in a folder; shorter names first. The folders are drawn grey |
 | `ctrl+/` or `F` | Search text in the notes of the notebook, as grep -i does, limited by two filters above the list: **Space** (All or one of the five PARA folders) and **Dir** (a path inside the space; from the notebook root when the space is All). Both start at the folder PARA shows. `tab` / `shift+tab` move between the query, Space and Dir; in Space, `←` `→` or `space` change it. Type words: type words, and every line holding all of them, exactly and ignoring case, is listed with its note, line and column and a preview of the note beside it. `↑` `↓` move, `pgup` `pgdown` page, `ctrl+d` `ctrl+u` scroll the preview, `enter` opens the note at the line, `esc` cancels |
 | `s` | Pin or unpin the selected note as a sticky |
-| `A` | Quick Add a note in the folder PARA shows |
+| `A` | Add Note: add a note in the folder PARA shows |
 | `I` | Import the clipboard, a web page or a file with the agent; on an `IMPORT_` folder, run that import again |
 | `U` | Clip a web page |
 | `o` | Open the web address in the selected note's `source` in the browser |
+| `ctrl+t` | Append a template to the end of the selected note (choose it in a picker; `u` undoes it) |
 | `b` / `t` / `T` | Open yesterday's / today's / tomorrow's daily note |
 | `u` / `ctrl+r` | Undo / redo |
 | `ctrl+g` | Open [lazygit](https://github.com/jesseduffield/lazygit) in the open notebook's folder, so a commit needs no `cd`. para hands the terminal over until you quit lazygit, then refreshes from disk and re-reads the git state in the status bar. lazygit must be on your `PATH` |
@@ -175,7 +178,8 @@ New material lands in the Inbox as a note with a `uid`, `title`, `kind`, `source
 
 **Property standard.** Every note follows one order: `uid`, `title`, `kind`, `source`, `date`, `tags`, `people`, then any other properties as they were, then `related` last. para applies it to every note it creates and to every note you view or open. Viewing a note adds any missing standard property (empty, never guessed), sets the title to the file name, puts the properties in order, and writes the file only when something changed. Your other properties and the text are kept, and a note whose properties cannot be parsed is left as it is.
 
-- **`A` Quick Add** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`para add` still saves to the Inbox).
+- **`A` Add Note** opens a form for the title, body, kind, source and tags, and saves the note in the folder PARA is showing (`para add` still saves to the Inbox). When the notebook has templates (see Setup) the form also has a **Template** field, `none` by default; choosing one fills the body with the template's text and sets the kind, source and tags the template has, and you can still edit everything. If you have typed in the body, changing the template asks before replacing it.
+- **`ctrl+t` Append a template** adds a template's body to the end of the selected note after one blank line. The note's properties and existing text are never changed, and `u` removes what was added.
 - **`I` Import** hands the clipboard, a web page or a file to an agent, which writes grouped notes (see Importing with an agent).
 - **`U` Clip** opens a form with a Title (optional) and a URL. The URL is filled in from your clipboard only when it holds a web address and nothing else. It saves a `link` note in the folder PARA is showing, named after the title you typed or, when you leave it blank, the page's own title (fetched for you), with the address in `source` and an empty body. `o` later opens it. Only `http` and `https` addresses are fetched, never anything on your own machine or private network.
 - **Extract**: in Content, select lines and press `enter` to turn them into a new note that links back to the original.

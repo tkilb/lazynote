@@ -4,30 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/tkilb/para/internal/intake"
 	"github.com/tkilb/para/internal/store"
+	"github.com/tkilb/para/internal/templates"
 	"github.com/tkilb/para/internal/ui/popup"
 )
 
 // maxTemplateBytes bounds a template file, as a note is bounded.
 const maxTemplateBytes = 1 << 20
 
-// loadDailyTemplate reads the daily template named in the config. It returns
-// nil and no error when none is configured.
+// loadDailyTemplate reads the open notebook's daily template (see
+// templates.DailyPath). It returns nil and no error when there is none.
 func (m model) loadDailyTemplate() ([]byte, error) {
-	path := m.dailyTemplate
+	path := templates.DailyPath(m.templatesDir, m.notebookName())
 	if path == "" {
 		return nil, nil
-	}
-	if !filepath.IsAbs(path) {
-		inRoot, err := m.store.Path(path)
-		if err != nil {
-			return nil, err
-		}
-		path = inRoot
 	}
 	info, err := os.Stat(path)
 	if err != nil {

@@ -22,7 +22,7 @@ type startup struct {
 	store         store.Store
 	root          string
 	sources       []string
-	dailyTemplate string
+	templatesDir  string
 	retentionDays int
 	mouse         bool
 	digest        config.Digest
@@ -50,7 +50,7 @@ func openStore() (startup, error) {
 		nb := cfg.Notebooks[i]
 		return startup{
 			store: store.NewMarkdown(nb.Path), root: nb.Path,
-			sources: cfg.Sources, dailyTemplate: cfg.Templates.Daily, retentionDays: cfg.Retention.DailyDays,
+			sources: cfg.Sources, templatesDir: cfg.TemplatesDir, retentionDays: cfg.Retention.DailyDays,
 			mouse: cfg.UI.MouseEnabled(), notebooks: cfg.Notebooks, active: i, digest: cfg.Digest,
 		}, nil
 	}
@@ -95,7 +95,7 @@ func main() {
 	purged, purgeErr := boot.store.PurgeDailies(boot.retentionDays, time.Now())
 	start := initialModel(boot.store)
 	start.sources = boot.sources
-	start.dailyTemplate = boot.dailyTemplate
+	start.templatesDir = boot.templatesDir
 	start.digest = boot.digest
 	start.para = start.para.WithRetention(boot.retentionDays, time.Now)
 	start = start.withNotebooks(boot.notebooks, boot.active, boot.retentionDays)

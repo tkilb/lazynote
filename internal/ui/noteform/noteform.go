@@ -1,5 +1,6 @@
-// Package noteform implements the Quick Add form: a Title, a multi-line Body,
-// Kind and Source choosers and a Tags field, each in its own bordered box with the
+// Package noteform implements the Add Note form: a Title, an optional
+// Template chooser, a multi-line Body, Kind and Source choosers and a Tags
+// field, each in its own bordered box with the
 // field name in the border and the focused box highlighted, as in lazytask's
 // add-task form. Tab and Shift+Tab move between the fields (not the arrows,
 // which the body's text area needs for its cursor). The body scrolls within a
@@ -26,6 +27,9 @@ type Field int
 const (
 	// FieldTitle is the single-line title.
 	FieldTitle Field = iota
+	// FieldTemplate is the template chooser, present only when the form was
+	// given templates (see WithTemplates).
+	FieldTemplate
 	// FieldBody is the multi-line body.
 	FieldBody
 	// FieldKind is the kind chooser.
@@ -56,16 +60,18 @@ const (
 	bodyPlaceholder  = "optional; enter starts a new line"
 	tagsPlaceholder  = "optional; comma or space separated"
 	noKindMeaning    = "No kind yet"
+	noTemplate       = "none"
 )
 
 // hints are the key hints for each focused field, shown on the bottom border
 // of the last box.
 var hints = [fieldCount]string{
-	FieldTitle:  "(tab/↓) next  (enter) save  (esc) cancel",
-	FieldBody:   "(tab, or ↑/↓ at the ends) move  (ctrl+s) save  (esc) cancel",
-	FieldKind:   "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
-	FieldSource: "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
-	FieldTags:   "(tab/↑↓) move  (enter) save  (esc) cancel",
+	FieldTitle:    "(tab/↓) next  (enter) save  (esc) cancel",
+	FieldTemplate: "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldBody:     "(tab, or ↑/↓ at the ends) move  (ctrl+s) save  (esc) cancel",
+	FieldKind:     "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldSource:   "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldTags:     "(tab/↑↓) move  (enter) save  (esc) cancel",
 }
 
 // Values are what the user entered.
@@ -77,11 +83,22 @@ type Values struct {
 	Source string
 	// Tags is the tags text as typed, to be parsed by the caller.
 	Tags string
+	// Template is the chosen template's name, "" for none.
+	Template string
+}
+
+// Fill is what a template pre-fills. Kind, Source and Tags that are zero
+// leave the form's own values alone.
+type Fill struct {
+	Body   string
+	Kind   store.Kind
+	Source string
+	Tags   []string
 }
 
 // Model is the form state. Methods return updated copies.
 type Model struct {
-	name    string // heads the title box, e.g. "Quick Add"
+	name    string // heads the title box, e.g. "Add Note"
 	title   textinput.Model
 	body    textarea.Model
 	tags    textinput.Model
@@ -91,11 +108,19 @@ type Model struct {
 	srcIdx  int
 	focused Field
 	width   int
+	// templates are the names the Template chooser offers after "none"; the
+	// chooser is hidden when there are none. filled is the body a template
+	// last put in, to tell whether the user has edited it since.
+	templates []string
+	tmplIdx   int
+	filled    string
+	// screenWidth and screenHeight are the terminal size of the last Resize.
+	screenWidth, screenHeight int
 	// bodyRows is how many body lines show at once.
 	bodyRows int
 }
 
-// New returns an empty form named name ("Quick Add") offering sources, the
+// New returns an empty form named name ("Add Note") offering sources, the
 // first of which is the default, sized for a screenWidth x screenHeight
 // terminal, with the title focused. The command blinks the cursor.
 func New(name string, sources []string, screenWidth, screenHeight int) (Model, tea.Cmd) {
@@ -145,14 +170,24 @@ func (m Model) WithValues(v Values, f Field) (Model, tea.Cmd) {
 			m.srcIdx = i
 		}
 	}
+	for i, name := range m.templates {
+		if name == v.Template {
+			m.tmplIdx = i + 1
+		}
+	}
 	return m.focus(f)
 }
 
 // Resize fits the form to a screenWidth x screenHeight terminal. The body
 // area keeps its text and scroll position.
 func (m Model) Resize(screenWidth, screenHeight int) Model {
+	m.screenWidth, m.screenHeight = screenWidth, screenHeight
 	m.width = min(max(screenWidth-screenMargin, minWidth), maxWidth)
-	fixed := lineBoxes*lineBoxRows + boxChrome
+	boxes := lineBoxes
+	if m.hasTemplates() {
+		boxes++
+	}
+	fixed := boxes*lineBoxRows + boxChrome
 	m.bodyRows = min(max(screenHeight-screenMargin-fixed, minBodyRows), maxBodyRows)
 	inner, _ := panel.InnerSize(m.width, 1)
 	// A text box draws its cursor in one more cell than its width; leave that
@@ -168,7 +203,7 @@ func (m Model) Resize(screenWidth, screenHeight int) Model {
 func (m Model) Values() Values {
 	return Values{
 		Title: m.title.Value(), Body: m.body.Value(), Kind: m.kinds[m.kindIdx],
-		Source: m.sources[m.srcIdx], Tags: m.tags.Value(),
+		Source: m.sources[m.srcIdx], Tags: m.tags.Value(), Template: m.TemplateName(),
 	}
 }
 
@@ -202,9 +237,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyMsg); ok {
 		switch key.String() {
 		case "tab":
-			return m.focus((m.focused + 1) % fieldCount)
+			return m.focus(m.wrap(1))
 		case "shift+tab":
-			return m.focus((m.focused + fieldCount - 1) % fieldCount)
+			return m.focus(m.wrap(-1))
 		case "up":
 			if m.atEdge(-1) {
 				return m.step(-1)
@@ -222,6 +257,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case FieldBody:
 		m.body, cmd = m.body.Update(msg)
 		m.body = followCursor(m.body)
+	case FieldTemplate:
+		m.tmplIdx = cycle(msg, m.tmplIdx, len(m.templates)+1)
 	case FieldKind:
 		m.kindIdx = cycle(msg, m.kindIdx, len(m.kinds))
 	case FieldSource:
@@ -251,10 +288,23 @@ func (m Model) atEdge(dir int) bool {
 // and last field (unlike tab, the arrows do not wrap around).
 func (m Model) step(dir int) (Model, tea.Cmd) {
 	next := m.focused + Field(dir)
+	if next == FieldTemplate && !m.hasTemplates() {
+		next += Field(dir)
+	}
 	if next < 0 || next >= fieldCount {
 		return m, nil
 	}
 	return m.focus(next)
+}
+
+// wrap returns the field after (dir 1) or before (dir -1) the focused one,
+// wrapping around and skipping the Template field when it is hidden.
+func (m Model) wrap(dir int) Field {
+	next := (m.focused + Field(dir) + fieldCount) % fieldCount
+	if next == FieldTemplate && !m.hasTemplates() {
+		next = (next + Field(dir) + fieldCount) % fieldCount
+	}
+	return next
 }
 
 // cycle returns idx moved one step by a Left or Right key press in a list of
@@ -304,12 +354,26 @@ func (m Model) View() string {
 	}
 	bodyBox := panel.Frame("Body", m.body.View(), inner, m.bodyRows, m.focused == FieldBody, bodyFooter)
 
+	boxes := []string{titleBox}
+	if m.hasTemplates() {
+		boxes = append(boxes, panel.Frame("Template", m.templateLine(), inner, 1, m.focused == FieldTemplate))
+	}
 	kindBox := panel.Frame("Kind", m.kindLine(), inner, 1, m.focused == FieldKind)
 	sourceBox := panel.Frame("Source", m.sourceLine(), inner, 1, m.focused == FieldSource)
 
 	tagsFooter := panel.Footer{Right: hints[m.focused], Tint: true}
 	tagsBox := panel.Frame("Tags", m.tags.View(), inner, 1, m.focused == FieldTags, tagsFooter)
-	return strings.Join([]string{titleBox, bodyBox, kindBox, sourceBox, tagsBox}, "\n")
+	return strings.Join(append(boxes, bodyBox, kindBox, sourceBox, tagsBox), "\n")
+}
+
+// templateLine shows the chosen template, or none, between arrows.
+func (m Model) templateLine() string {
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	name := noTemplate
+	if m.tmplIdx > 0 {
+		name = m.templates[m.tmplIdx-1]
+	}
+	return dim.Render("‹ ") + lipgloss.NewStyle().Bold(true).Render(name) + dim.Render(" ›")
 }
 
 // sourceLine shows the chosen source between arrows.

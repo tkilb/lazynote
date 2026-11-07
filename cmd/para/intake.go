@@ -15,10 +15,13 @@ import (
 	"github.com/tkilb/para/internal/ui/popup"
 )
 
-// startQuickAdd opens the Quick Add form. The note is saved in the folder PARA
+// startQuickAdd opens the Add Note form. The note is saved in the folder PARA
 // is showing when the form is submitted.
 func (m model) startQuickAdd() (model, tea.Cmd) {
-	form, cmd := noteform.New("Quick Add", m.sources, m.width, m.height)
+	form, cmd, err := m.newQuickAddForm()
+	if err != nil {
+		m = m.notify(popup.Warning, capitalize(fmt.Sprintf("the templates could not be listed (%s).", err)))
+	}
 	m.form = &form
 	m.formSave = func(m model, v noteform.Values) (model, tea.Cmd) {
 		if strings.TrimSpace(v.Title) == "" && strings.TrimSpace(v.Body) == "" {
@@ -40,13 +43,16 @@ func (m model) startQuickAdd() (model, tea.Cmd) {
 // reopenForm puts the form back after a mistake, with a warning and what was
 // typed, so a typo in the tags does not lose a long body.
 func (m model) reopenForm(v noteform.Values, f noteform.Field, why error) (model, tea.Cmd) {
-	form, _ := noteform.New("Quick Add", m.sources, m.width, m.height)
+	form, _, listErr := m.newQuickAddForm()
 	form, cmd := form.WithValues(v, f)
 	m.form = &form
+	if listErr != nil {
+		m = m.notify(popup.Warning, capitalize(fmt.Sprintf("the templates could not be listed (%s).", listErr)))
+	}
 	return m.notify(popup.Warning, capitalize(why.Error())+"."), cmd
 }
 
-// formKey handles a key while the Quick Add form is open: esc cancels, enter
+// formKey handles a key while the Add Note form is open: esc cancels, enter
 // in any single-line field and ctrl+s anywhere save, and everything else
 // edits the form.
 func (m model) formKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -66,7 +72,11 @@ func (m model) formKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return save()
 		}
 	}
+	prev := m.form.TemplateIndex()
 	f, cmd := m.form.Update(msg)
+	if f.TemplateIndex() != prev {
+		return m.templateChanged(f, prev), cmd
+	}
 	m.form = &f
 	return m, cmd
 }

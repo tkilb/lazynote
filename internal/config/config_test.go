@@ -85,6 +85,7 @@ func TestParse(t *testing.T) {
 			if tt.want.Sources == nil {
 				tt.want.Sources = DefaultSources
 			}
+			tt.want.TemplatesDir = filepath.Join(home, ".config", "para", "templates")
 			if tt.want.Digest == (Digest{}) {
 				dir := filepath.Join(home, ".config", "para")
 				tt.want.Digest = Digest{
@@ -383,22 +384,16 @@ func TestParseKindsRejectsMistakes(t *testing.T) {
 	}
 }
 
-func TestDailyTemplateIsFoundInTheConfigFolder(t *testing.T) {
+func TestTemplatesDirIsInTheConfigFolder(t *testing.T) {
 	home := t.TempDir()
+	want := filepath.Join(home, ".config", "para", "templates")
 	nb := "notebooks:\n  - " + home + "\n"
-	want := filepath.Join(home, ".config", "para", "templates", "daily.md")
 
 	cfg, err := Parse([]byte(nb), home)
 	require.NoError(t, err)
-	assert.Empty(t, cfg.Templates.Daily, "no file means no template")
-
-	require.NoError(t, os.MkdirAll(filepath.Dir(want), 0o755))
-	require.NoError(t, os.WriteFile(want, []byte("x"), 0o644))
-	cfg, err = Parse([]byte(nb), home)
-	require.NoError(t, err)
-	assert.Equal(t, want, cfg.Templates.Daily)
+	assert.Equal(t, want, cfg.TemplatesDir, "the folder need not exist")
 
 	cfg, err = Parse([]byte(nb+"templates:\n  daily: /elsewhere.md\n"), home)
 	require.NoError(t, err)
-	assert.Equal(t, want, cfg.Templates.Daily, "a templates key in the yaml is ignored")
+	assert.Equal(t, want, cfg.TemplatesDir, "a templates key in the yaml is ignored")
 }

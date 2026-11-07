@@ -13,43 +13,59 @@ import (
 
 // Edit implements Store.
 func (m *Markdown) Edit(rel string, edit func(*Frontmatter)) (undo.Action, error) {
-	path, err := ResolveInRoot(m.root, rel)
+	path, info, before, err := m.readForEdit(rel)
 	if err != nil {
 		return undo.Action{}, err
-	}
-	if !isNote(filepath.Base(path)) {
-		return undo.Action{}, ErrUnsupported
-	}
-	info, err := os.Lstat(path)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return undo.Action{}, ErrNotFound
-	case err != nil:
-		return undo.Action{}, ErrUnreadable
-	case !info.Mode().IsRegular():
-		return undo.Action{}, ErrUnsupported
-	case info.Size() > maxNoteBytes:
-		return undo.Action{}, ErrTooLarge
-	}
-	before, err := os.ReadFile(path)
-	if err != nil {
-		return undo.Action{}, ErrUnreadable
 	}
 	after, err := editedNote(before, filepath.Base(path), edit)
 	if err != nil {
 		return undo.Action{}, err
 	}
+	return rewriteNote("edit", path, info, before, after)
+}
+
+// readForEdit resolves rel, checks that it is a regular note of an editable
+// size and returns its path, file info and bytes.
+func (m *Markdown) readForEdit(rel string) (string, fs.FileInfo, []byte, error) {
+	path, err := ResolveInRoot(m.root, rel)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	if !isNote(filepath.Base(path)) {
+		return "", nil, nil, ErrUnsupported
+	}
+	info, err := os.Lstat(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "", nil, nil, ErrNotFound
+	case err != nil:
+		return "", nil, nil, ErrUnreadable
+	case !info.Mode().IsRegular():
+		return "", nil, nil, ErrUnsupported
+	case info.Size() > maxNoteBytes:
+		return "", nil, nil, ErrTooLarge
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, nil, ErrUnreadable
+	}
+	return path, info, before, nil
+}
+
+// rewriteNote replaces the note at path, whose bytes were before, with after
+// and returns the undo action, described as verb and the file name.
+func rewriteNote(verb, path string, info fs.FileInfo, before, after []byte) (undo.Action, error) {
 	pre := snapshot{size: info.Size(), modNano: info.ModTime().UnixNano()}
 	e := &editedFile{path: path, before: before, after: after, perm: info.Mode().Perm(), pre: pre}
 	if err := e.write(after, pre, nil); err != nil {
 		return undo.Action{}, err
 	}
-	e.post, err = takeSnapshot(path)
-	if err != nil {
+	var err error
+	if e.post, err = takeSnapshot(path); err != nil {
 		return undo.Action{}, ErrUnreadable
 	}
 	return undo.Action{
-		Description: "edit " + filepath.Base(path),
+		Description: verb + " " + filepath.Base(path),
 		Undo:        func() error { return e.write(e.before, e.post, &e.pre) },
 		Redo:        func() error { return e.write(e.after, e.pre, &e.post) },
 	}, nil

@@ -53,24 +53,17 @@ type Config struct {
 	Notebooks []Notebook
 	Retention Retention
 	UI        UI
-	// Sources are the sources Quick Add offers, the first being the default.
+	// Sources are the sources the Add Note form offers, the first being the default.
 	Sources []string
 	// Kinds are the kinds the config adds to the built-in ones, or whose
 	// color, badge or meaning it changes. Empty means the built-ins as they
 	// are.
 	Kinds []store.KindSpec
-	// Templates are the files new notes are made from.
-	Templates Templates
+	// TemplatesDir is ~/.config/para/templates, where the note templates
+	// live (see package templates). It need not exist.
+	TemplatesDir string
 	// Digest configures the agentic import.
 	Digest Digest
-}
-
-// Templates names the template files, found in ~/.config/para/templates.
-// An empty path means no template.
-type Templates struct {
-	// Daily is the absolute path of templates/daily.md, the template for a new
-	// daily note.
-	Daily string
 }
 
 // Notebook is one configured notebook root.
@@ -188,7 +181,7 @@ func Parse(data []byte, home string) (Config, error) {
 		return Config{}, err
 	}
 
-	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds, Templates: findTemplates(home), Digest: digest}
+	cfg := Config{Retention: Retention{DailyDays: days}, Sources: sources, Kinds: kinds, TemplatesDir: templatesDir(home), Digest: digest}
 	cfg.UI.MouseOff = raw.UI.Mouse != nil && !*raw.UI.Mouse
 	for _, p := range raw.Notebooks {
 		nb, err := newNotebook(p, home)
@@ -214,15 +207,11 @@ func newNotebook(p, home string) (Notebook, error) {
 	}, nil
 }
 
-// findTemplates looks for the template files in the config folder, under
-// templates/. They are not named in config.yaml. Only daily.md is special; a
-// missing file means no template.
-func findTemplates(home string) Templates {
-	daily := filepath.Join(home, ".config", dirName, "templates", "daily.md")
-	if info, err := os.Stat(daily); err == nil && info.Mode().IsRegular() {
-		return Templates{Daily: daily}
-	}
-	return Templates{}
+// templatesDir is the folder of note templates in the config folder. Which
+// templates a notebook uses is decided by the folder's layout, not by
+// config.yaml.
+func templatesDir(home string) string {
+	return filepath.Join(home, ".config", dirName, "templates")
 }
 
 // expandHome replaces a leading "~" or "~/" with home.

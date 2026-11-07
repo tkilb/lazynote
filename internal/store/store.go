@@ -14,6 +14,8 @@ var (
 	ErrNotFound   = errors.New("not found")
 	ErrUnreadable = errors.New("cannot read")
 	ErrTooLarge   = errors.New("note is too large")
+	// ErrNothingToAppend reports text with no content to append.
+	ErrNothingToAppend = errors.New("nothing to append")
 )
 
 // errNotDir is what the OS reports for a path below a regular file.
@@ -83,6 +85,10 @@ type Store interface {
 	// restores the exact previous bytes, and refuses (ErrChanged) when the
 	// note was changed meanwhile.
 	Edit(rel string, edit func(*Frontmatter)) (undo.Action, error)
+	// Append adds text to the end of the note at rel after one blank line,
+	// leaving every existing byte as it is. Undo restores the exact previous
+	// bytes, and refuses (ErrChanged) when the note was changed meanwhile.
+	Append(rel, text string) (undo.Action, error)
 	// Conform makes the note at rel standard on disk (see
 	// Markdown.Conform), reporting whether it wrote anything.
 	Conform(rel string) (bool, error)

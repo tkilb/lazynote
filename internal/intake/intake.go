@@ -20,7 +20,7 @@ import (
 
 const (
 	// SourceAdhoc is the built-in default source of a note added by hand; the
-	// config can change the list Quick Add offers.
+	// config can change the list the Add Note form offers.
 	SourceAdhoc = "adhoc"
 	// SourceExtract is the source of a note extracted from another note.
 	SourceExtract = "extract"
