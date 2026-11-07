@@ -67,10 +67,10 @@ const (
 // of the last box.
 var hints = [fieldCount]string{
 	FieldTitle:    "(tab/↓) next  (enter) save  (esc) cancel",
-	FieldTemplate: "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldTemplate: "(type) jump  (←/→) change  (⌫) none  (↑/↓) move  (enter) save  (esc) cancel",
 	FieldBody:     "(tab, or ↑/↓ at the ends) move  (ctrl+s) save  (esc) cancel",
-	FieldKind:     "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
-	FieldSource:   "(←/→) change  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldKind:     "(type) jump  (←/→) change  (⌫) clear  (↑/↓) move  (enter) save  (esc) cancel",
+	FieldSource:   "(type) jump  (←/→) change  (⌫) first  (↑/↓) move  (enter) save  (esc) cancel",
 	FieldTags:     "(tab/↑↓) move  (enter) save  (esc) cancel",
 }
 
@@ -104,10 +104,17 @@ type Model struct {
 	tags    textinput.Model
 	kinds   []store.Kind // unset first, then the six kinds
 	kindIdx int
-	sources []string
-	srcIdx  int
-	focused Field
-	width   int
+	// kindTyped is the letters typed in the Kind field to jump to a kind;
+	// it is cleared when the focus moves.
+	kindTyped string
+	// tmplTyped is the same for the Template chooser.
+	tmplTyped string
+	// srcTyped is the same for the Source chooser.
+	srcTyped string
+	sources  []string
+	srcIdx   int
+	focused  Field
+	width    int
 	// templates are the names the Template chooser offers after "none"; the
 	// chooser is hidden when there are none. filled is the body a template
 	// last put in, to tell whether the user has edited it since.
@@ -213,6 +220,7 @@ func (m Model) FocusedField() Field { return m.focused }
 // focus moves the keyboard to f.
 func (m Model) focus(f Field) (Model, tea.Cmd) {
 	m.focused = f
+	m.kindTyped, m.tmplTyped, m.srcTyped = "", "", ""
 	m.title.Blur()
 	m.body.Blur()
 	m.tags.Blur()
@@ -258,11 +266,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.body, cmd = m.body.Update(msg)
 		m.body = followCursor(m.body)
 	case FieldTemplate:
-		m.tmplIdx = cycle(msg, m.tmplIdx, len(m.templates)+1)
+		m.tmplIdx, m.tmplTyped = typeSelect(msg, m.templateLabels(), m.tmplIdx, m.tmplTyped, 1)
 	case FieldKind:
-		m.kindIdx = cycle(msg, m.kindIdx, len(m.kinds))
+		m.kindIdx, m.kindTyped = typeSelect(msg, m.kindLabels(), m.kindIdx, m.kindTyped, 1)
 	case FieldSource:
-		m.srcIdx = cycle(msg, m.srcIdx, len(m.sources))
+		m.srcIdx, m.srcTyped = typeSelect(msg, m.sources, m.srcIdx, m.srcTyped, 0)
 	case FieldTags:
 		m.tags, cmd = m.tags.Update(msg)
 	}
@@ -373,13 +381,21 @@ func (m Model) templateLine() string {
 	if m.tmplIdx > 0 {
 		name = m.templates[m.tmplIdx-1]
 	}
-	return dim.Render("‹ ") + lipgloss.NewStyle().Bold(true).Render(name) + dim.Render(" ›")
+	typed := ""
+	if m.tmplTyped != "" {
+		typed = dim.Render("  [" + m.tmplTyped + "]")
+	}
+	return dim.Render("‹ ") + lipgloss.NewStyle().Bold(true).Render(name) + dim.Render(" ›") + typed
 }
 
 // sourceLine shows the chosen source between arrows.
 func (m Model) sourceLine() string {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	return dim.Render("‹ ") + lipgloss.NewStyle().Bold(true).Render(m.sources[m.srcIdx]) + dim.Render(" ›")
+	typed := ""
+	if m.srcTyped != "" {
+		typed = dim.Render("  [" + m.srcTyped + "]")
+	}
+	return dim.Render("‹ ") + lipgloss.NewStyle().Bold(true).Render(m.sources[m.srcIdx]) + dim.Render(" ›") + typed
 }
 
 // kindLine shows the chosen kind in its color between arrows, with what it
@@ -392,5 +408,9 @@ func (m Model) kindLine() string {
 	}
 	name := lipgloss.NewStyle().Bold(true).Foreground(kindstyle.Color(k)).Render(k.String())
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	return dim.Render("‹ ") + name + dim.Render(" ›  "+meaning)
+	typed := ""
+	if m.kindTyped != "" {
+		typed = "  [" + m.kindTyped + "]"
+	}
+	return dim.Render("‹ ") + name + dim.Render(" ›  "+meaning+typed)
 }
